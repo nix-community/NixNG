@@ -2,6 +2,7 @@
 with lib;
 let
   cfg = config.system;
+  activation = config.activation;
 in
 {
   options.system = {
@@ -39,5 +40,14 @@ in
       };
       default = {};
     };
+  };
+
+  config = {
+    assertions = [
+      {
+        assertion = activation.enable && cfg.environment != {};
+        message = "For `system.environment` to work, the activation script must be enabled.";
+      }
+    ];
   };
 }

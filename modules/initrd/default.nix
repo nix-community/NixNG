@@ -17,10 +17,11 @@ in
       script = pkgs.runCommandNoCCLocal "init" (with pkgs; {
         inherit eudev bash busybox;
         nativeBuildInputs = [ pkgs.busybox ];
-      }) ''
-        substituteAll ${pkgs.writeShellScript "init" (builtins.readFile ./init.sh)} $out
-        chmod +x $out
-      '';
+      })
+        ''
+          substituteAll ${pkgs.writeShellScript "init" (builtins.readFile ./init.sh)} $out
+          chmod +x $out
+        '';
     })
   ];
 }
