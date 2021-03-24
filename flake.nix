@@ -5,102 +5,31 @@
 
   outputs = { nixpkgs, self }:
     let
-      defaultModules = [
-        ./modules/runit
-        ./modules/initrd
-        ./modules/initramfs
-        ./modules/init.nix
-        ./modules/activation
-        ./modules/system.nix
-        ./modules/assertions.nix
-      ];
-
-      buildSystem =
-        { system,
-          config,
-        }:
-
-        let
-          pkgs = import nixpkgs { inherit system; };
-          lib = pkgs.lib;
-          evaledModules = pkgs.lib.evalModules
-            { 
-              modules = defaultModules ++ [ config ({ ... }:
-                {
-                  _module.args = {
-                    inherit pkgs system;
-                    nixng = self;
-                  };
-                }
-              )];
-            };
-          systemClosure = pkgs.runCommandNoCC "system"
-            { nativeBuildInputs = [
-                pkgs.busybox
-              ];
-            }
-            (let
-              failedAssertions = builtins.map (x: x.message) (builtins.filter (x: !x.assertion) evaledModules.config.assertions);
-              config =
-                if failedAssertions != [] then
-                      throw "\nFailed assertions:\n${lib.concatStringsSep "\n" (map (x: "- ${x}") failedAssertions)}"
-                else
-                  evaledModules.config;
-            in ''
-              mkdir $out
-              
-              
-              ln -s ${config.activation.script} $out/activation
-              ln -s ${config.init.script} $out/init
-              ${if config.initramfs.enable then
-                  "ln -s ${config.initramfs.image} $out/initrd.img"
-                else ""}
-            '');
-          bundle =
-            let
-              systemReferences = pkgs.writeReferencesToFile systemClosure;
-            in
-              pkgs.runCommandNoCC "system"
-                {}
-                ''
-                  shopt -s dotglob
-
-                  mkdir $out
-                  cp -r ${systemClosure}/* $out
-
-                  for path in $(cat ${systemReferences}); do
-                    test -f $path && ( mkdir -p $out/$(dirname $path) ; cp -r $path $out/$path )
-                    test -d $path && ( mkdir -p $out/$path ; cp -r $path/* $out/$path )
-                  done
-                '';
-          initramfs = pkgs.runCommandNoCC "initramfs.img"
-            { nativeBuildInputs = with pkgs; [
-                findutils
-                cpio
-                gzip
-              ];
-            }
-            ''
-              ( cd ${bundle} ; find . | cpio -o -H newc --quiet | gzip -9 ) > $out
-            '';
-          qemu = {
-            run = pkgs.writeShellScript "qemu-run.sh" ''
-              ${pkgs.qemu}/bin/qemu-system-x86_64 -kernel /run/current-system/kernel -nographic -append "console=ttyS0" -initrd ${systemClosure}/initrd.img -m 512 
-            '';
-          };
-        in
-          {
-            system = systemClosure;
-            inherit bundle initramfs qemu;
-          };
+      supportedSystems = [ "x86_64-linux" "i386-linux" "aarch64-linux" ];
+      systemed = system: rec {
+        pkgs = import nixpkgs { inherit system; overlays = [ (import ./overlay) ]; };
+        callPackage = pkgs.lib.callPackageWith ({
+          nglib = self.lib system;
+          inherit pkgs;
+        } // pkgs);
+        lib = pkgs.lib;
+        nglib = self.lib system;
+      };
     in
       {
-        lib = {
-          inherit buildSystem;
-        };
+        lib = system:
+          let
+            inherit (systemed system) callPackage;
+          in
+            {
+              makeInitramfs = callPackage ./lib/make-initramfs.nix;
+              makeBundle = callPackage ./lib/make-bundle.nix;
+              makeSystem = callPackage ./lib/make-system.nix;
+            };
 
-        testSystem = buildSystem {
+        testSystem = (self.lib "x86_64-linux").makeSystem {
           system = "x86_64-linux";
+          name = "nixng-system";
           config = ({ pkgs, ... }: {
             system.environment.files = [
               {
@@ -113,18 +42,22 @@
             initramfs = {
               enable = true; 
               config = {
-                system.environment.files = [
-                  {
-                    source = "${pkgs.vim}/bin/vim";
-                    destination = "/bin/vim";
-                  }
-                ];
+                # system.environment.files = [
+                #   {
+                #     source = "${pkgs.vim}/bin/vim";
+                #     destination = "/bin/vim";
+                #   }
+                # ];
                 initrd.enable = true;
-                activation.enable = true;
               }; 
             };
             initrd.enable = false;
           });
         };
+
+        overlay = import ./overlay;
+        packages = nixpkgs.lib.genAttrs
+          supportedSystems
+          (s: import nixpkgs { system = s; overlays = [ self.overlay ]; });
       };
 }

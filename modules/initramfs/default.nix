@@ -1,4 +1,4 @@
-{ pkgs, lib, config, nixng, system, ... }:
+{ pkgs, lib, config, options, nglib, system, ... }:
 with lib;
 let
   cfg = config.initramfs;
@@ -8,7 +8,10 @@ in
     enable = mkEnableOption "Enable initramfs generation";
     config = mkOption {
       description = "Configuration for the initramfs.";
-      type = types.unspecified;
+      type = types.submoduleWith {
+        modules = (import ../default.nix).initramfs;
+        specialArgs = { inherit nglib pkgs; };
+      };
       default = {
         initrd.enable = true;
       };
@@ -20,8 +23,9 @@ in
     };
   };
 
-  config.initramfs.image = mkIf cfg.enable (nixng.lib.buildSystem {
+  config.initramfs.image = mkIf cfg.enable (nglib.makeSystem {
     inherit system;
     config = cfg.config;
+    name = "initrd";
   }).initramfs;
 }

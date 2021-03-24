@@ -45,7 +45,11 @@ in
   config = {
     assertions = [
       {
-        assertion = activation.enable && cfg.environment != {};
+        assertion =
+          if cfg.environment.files != [] || cfg.environment.packages != [] then
+            activation.enable
+          else
+            true;
         message = "For `system.environment` to work, the activation script must be enabled.";
       }
     ];
