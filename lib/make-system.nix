@@ -1,6 +1,6 @@
 { pkgs, system
 , runCommandNoCC, lib
-, busybox
+, busybox, bootloaderLinux
 , config, name
 , nglib
 }:
@@ -14,6 +14,7 @@ let
     ../modules/activation
     ../modules/system.nix
     ../modules/assertions.nix
+    ../modules/bootloader
   ];
 
   evaledModules = lib.evalModules
@@ -50,6 +51,9 @@ let
           ${if initramfs.enable then
               "ln -s ${initramfs.image} $out/initrd.img"
             else ""}
+          ${if bootloader.enable then
+            "ln -s ${bootloaderLinux} $out/bootloader"
+            else ""}
         '');
   systemBundle = nglib.makeBundle
     { name = "system";
@@ -61,8 +65,8 @@ let
     };
   qemu = {
     run = pkgs.writeShellScript "qemu-run.sh" ''
-      ${pkgs.qemu}/bin/qemu-system-x86_64 -kernel /run/current-system/kernel -nographic -append "console=ttyS0" -initrd ${systemPath}/initrd.img -m 512 
-    '';
+      ${pkgs.qemu}/bin/qemu-system-x86_64 -kernel ${systemPath}/bootloader/bzImage -nographic -append "console=ttyS0" -initrd ${systemPath}/initrd.img -m 512 
+    ''; # /run/current-system/kernel
   };
 in 
 {

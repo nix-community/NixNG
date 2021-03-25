@@ -7,7 +7,7 @@
     let
       supportedSystems = [ "x86_64-linux" "i386-linux" "aarch64-linux" ];
       systemed = system: rec {
-        pkgs = import nixpkgs { inherit system; overlays = [ (import ./overlay) ]; };
+        pkgs = import nixpkgs { inherit system; overlays = [ self.overlay ]; };
         callPackage = pkgs.lib.callPackageWith ({
           nglib = self.lib system;
           inherit pkgs;
@@ -39,6 +39,7 @@
             ];
 
             runit.enable = true;
+            bootloader.enable = true;
             initramfs = {
               enable = true; 
               config = {
@@ -51,7 +52,6 @@
                 initrd.enable = true;
               }; 
             };
-            initrd.enable = false;
           });
         };
 
