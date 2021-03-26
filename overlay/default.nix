@@ -4,4 +4,6 @@ let
 in
 {
   bootloaderLinux = callPackage ./bootloader-linux.nix {};
+  tinyLinux = callPackage ./tiny-linux.nix {};
+  runVmLinux = callPackage ./run-vm-linux.nix {};
 }

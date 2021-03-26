@@ -1,17 +1,26 @@
-{ extraConfig ? {}
-, callPackage
+{ callPackage
 , lib
 , tinyLinux
 }:
 tinyLinux.override {
   extraConfig = {
-    # EFI boot and EFI stub
-    CONFIG_EFI="y";
-    CONFIG_EFI_STUB="y";
+    CONFIG_NET_9P="y";
+    CONFIG_NET_9P_VIRTIO="y";
+    CONFIG_NET_9P_DEBUG="y"; # perhaps?
+    CONFIG_9P_FS="y";
+    CONFIG_9P_FS_POSIX_ACL="y";
 
-    # Enable 64-bit
-    CONFIG_64BIT="y";
-    CONFIG_X86_64="y";
+    CONFIG_NETWORK_FILESYSTEMS="y";
+    CONFIG_INET="y";
+    CONFIG_NET="y";
+    CONFIG_9P="y";
+
+    CONFIG_VIRTIO="y";
+
+    CONFIG_PCI="y";
+    CONFIG_VIRTIO_PCI="y";
+    CONFIG_VIRTIO_MENU="y";
+    CONFIG_PCI_HOST_GENERIC="y"; # (only needed for the QEMU Arm 'virt' board) from wikipedia
 
     # TTY stuff
     CONFIG_TTY="y";
@@ -26,16 +35,12 @@ tinyLinux.override {
     CONFIG_SERIAL_8250="y";
     CONFIG_SERIAL_8250_CONSOLE="y";
 
-    # Enables some advanced options, like the printk one
-    CONFIG_EMBEDDED="y";
-    # Enable PC speaker, beep boop
-    CONFIG_PCSPKR_PLATFORM="y";
     # Debug logs during boot are always handy
     CONFIG_PRINTK="y";
     
     # Initrd things, perhaps make the compression configurable?
     CONFIG_BLK_DEV_INITRD="y";
-    CONFIG_RD_GZIP="n";
+    CONFIG_RD_GZIP="y";
     CONFIG_RD_BZIP2="n";
     CONFIG_RD_LZMA="n";
     CONFIG_RD_XZ="n";
@@ -53,21 +58,7 @@ tinyLinux.override {
     CONFIG_PROC_PAGE_MONITOR="n";
     # sys
     CONFIG_SYSFS="y";
-    # configfs - TODO do we need it?
-    CONFIG_CONFIGFS_FS="y";
     # devtmpfs
     CONFIG_DEVTMPFS="y";
-
-    ## Networking
-    CONFIG_NET="y"; # NET
-    # Unix Domain Sockets
-    CONFIG_UNIX="y"; # udevd
-
-    # inotify
-    CONFIG_INOTIFY_USER="y"; # udevd
-
-    CONFIG_KEXEC="y";
-    
-    CONFIG_BLOCK="y";
-  } // extraConfig;
+  };
 }

@@ -55,6 +55,13 @@
           });
         };
 
+        vmTest = (self.lib "x86_64-linux").runInVm {
+          script = (systemed "x86_64-linux").pkgs.writeShellScript "script"
+            ''
+              echo "asdasd" > /out/file.txt
+            '';
+        };
+
         overlay = import ./overlay;
         packages = nixpkgs.lib.genAttrs
           supportedSystems
