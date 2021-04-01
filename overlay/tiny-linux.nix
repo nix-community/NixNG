@@ -55,6 +55,8 @@ let
         ls build
       '';
 
+      buildPhase = "";
+
       postInstall = "";
 
       nativeBuildInputs = old.nativeBuildInputs ++ [ pkg-config ncurses ];

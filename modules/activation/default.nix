@@ -1,4 +1,4 @@
-{ pkgs, lib, config, ... }:
+{ pkgs, lib, config, nglib, ... }:
 with lib;
 let
   cfg = config.activation;
@@ -18,12 +18,10 @@ in
   };
 
   config.activation = mkIf cfg.enable {
-    script = pkgs.runCommandNoCCLocal "activation" (with pkgs; {
-      nativeBuildInputs = [ pkgs.busybox ];
-    })
-      ''
-        substituteAll ${pkgs.writeShellScript "activation" (builtins.readFile ./activation.sh)} $out
-        chmod +x $out
-      '';
+    script = nglib.writeSubstitutedShellScript {
+      name = "activation";
+      file = ./activation.sh;
+      substitutes = {};
+    };
   };
 }

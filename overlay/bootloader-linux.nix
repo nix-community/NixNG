@@ -1,7 +1,9 @@
-{ extraConfig ? {}
-, callPackage
+{ callPackage
 , lib
 , tinyLinux
+}:
+{ initramfs
+, extraConfig ? {}
 }:
 tinyLinux.override {
   extraConfig = {
@@ -33,14 +35,12 @@ tinyLinux.override {
     # Debug logs during boot are always handy
     CONFIG_PRINTK="y";
     
+    CONFIG_RD_GZIP="y";
     # Initrd things, perhaps make the compression configurable?
     CONFIG_BLK_DEV_INITRD="y";
-    CONFIG_RD_GZIP="n";
-    CONFIG_RD_BZIP2="n";
-    CONFIG_RD_LZMA="n";
-    CONFIG_RD_XZ="n";
-    CONFIG_RD_LZO="n";
-    CONFIG_RD_LZ4="n";
+    CONFIG_INITRAMFS_SOURCE=''"${initramfs}"'';
+    # CONFIG_INITRAMFS_COMPRESSION="gzip";
+    # CONFIG_INITRAMFS_COMPRESSION_GZIP="y";
 
     # Required for shebangs
     CONFIG_BINFMT_ELF="y"; # general execution
