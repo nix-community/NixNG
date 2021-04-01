@@ -17,9 +17,28 @@ in
       description = "init script.";
       type = types.path;
     };
+    services = mkOption {
+      type = types.attrsOf (types.submodule {
+        options = {
+          dependencies = mkOption {
+            description = "Service dependencies";
+            type = types.listOf (types.str);
+            default = [];
+          };
+
+          script = mkOption {
+            description = "Service script";
+            type = types.path;
+            default = "";
+          };
+        };
+      });
+      description = "Service definitions";
+      default = {};
+    };
   };
 
   config = {
-    # TODO add assertions for this module
-  };
+      # TODO add assertions for this module
+    };
 }

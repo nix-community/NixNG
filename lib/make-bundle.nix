@@ -9,13 +9,17 @@ in
 runCommandNoCC name
   {}
   ''
+    set -x
     shopt -s dotglob
 
     mkdir $out
     cp -r ${path}/* $out
 
     for path in $(cat ${references}); do
-      test -f $path && ( mkdir -p $out/$(dirname $path) ; cp -r $path $out/$path )
-      test -d $path && ( mkdir -p $out/$path ; cp -r $path/* $out/$path )
+      if [[ -f $path ]]; then
+        mkdir -p $out/$(dirname $path) ; cp -r $path $out/$path
+      elif [[ -d $path ]]; then
+        mkdir -p $out/$path ; cp -r $path/* $out/$path
+      fi
     done
   ''

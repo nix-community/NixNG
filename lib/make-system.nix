@@ -1,8 +1,7 @@
-{ pkgs, system
-, runCommandNoCC, lib
+{ pkgs, callPackage, system, dockerTools
+, runCommandNoCC, lib, nglib
 , busybox, bootloaderLinux
 , config, name
-, nglib
 }:
 
 let
@@ -15,6 +14,8 @@ let
     ../modules/system.nix
     ../modules/assertions.nix
     ../modules/bootloader
+    ../modules/services/apache2.nix
+    ../modules/services/getty.nix
   ];
 
   evaledModules = lib.evalModules
@@ -43,35 +44,50 @@ let
       (with configValid;
         ''
           mkdir $out
-              
-          ${if activation.enable then
-            "ln -s ${activation.script} $out/activation"
-           else ""}
           ln -s ${init.script} $out/init
-          ${if initramfs.enable then
-              "ln -s ${initramfs.image} $out/initrd.img"
-            else ""}
-          ${if bootloader.enable then
-            "ln -s ${bootloaderLinux} $out/bootloader"
-            else ""}
         '');
+
+          # mkdir $out
+              
+          # ${lib.optionalString activation.enable
+          #   "# ln -s ${activation.script} $out/activation"}
+          # ${lib.optionalString initramfs.enable
+          #   "ln -s ${initramfs.image} $out/initrd.img"}
+          # ${lib.optionalString bootloader.enable
+          #   "ln -s ${nglib.makeBootloader { inherit (bootloader) kernelExtraConfig; }} $out/bootloader"}
   systemBundle = nglib.makeBundle
-    { name = "system";
+    { name = "${name}-bundle";
       path = systemPath;
     };
   initramfsImage = nglib.makeInitramfs 
-    { name = "initrd.img";
+    { name = "${name}-initrd.img";
       path = systemBundle;
     };
   qemu = {
     run = pkgs.writeShellScript "qemu-run.sh" ''
-      ${pkgs.qemu}/bin/qemu-system-x86_64 -kernel ${systemPath}/bootloader/bzImage -nographic -append "console=ttyS0" -initrd ${systemPath}/initrd.img -m 512 
+      ${pkgs.qemu}/bin/qemu-system-x86_64 -kernel ${systemPath}/bootloader -initrd ${systemPath}/initrd.img -nographic -append "console=ttyS0" -m 512 
     ''; # /run/current-system/kernel
   };
+
+  self = {
+    system = systemPath;
+    bundle = systemBundle;
+    initramfs = initramfsImage;
+    config = evaledModules.config;
+    iso = callPackage ./make-iso-image.nix { system = self; };
+    inherit qemu;
+    ociImage = dockerTools.buildLayeredImage {
+      inherit name;
+      tag = "latest";
+
+      contents = [ systemBundle ];
+
+      config = {
+        Entrypoint =
+          [ "/init"
+          ];
+      };
+    };
+  };
 in 
-{
-  system = systemPath;
-  bundle = systemBundle;
-  initramfs = initramfsImage;
-  inherit qemu;
-}
+self

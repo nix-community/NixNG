@@ -1,4 +1,4 @@
-{ pkgs, lib, config, ... }:
+{ pkgs, lib, config, nglib, ... }:
 with lib;
 let
   cfg = config.initrd;
@@ -14,14 +14,13 @@ in
     }
     (mkIf cfg.enable {
       type = "initrd";
-      script = pkgs.runCommandNoCCLocal "init" (with pkgs; {
-        inherit eudev bash busybox;
-        nativeBuildInputs = [ pkgs.busybox ];
-      })
-        ''
-          substituteAll ${pkgs.writeShellScript "init" (builtins.readFile ./init.sh)} $out
-          chmod +x $out
-        '';
+      script = nglib.writeSubstitutedShellScript {
+        name = "init";
+        file = ./init.sh;
+        substitutes = with pkgs; {
+          inherit eudev bash busybox;
+        };
+      };
     })
   ];
 }
