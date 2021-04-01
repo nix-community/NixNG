@@ -60,5 +60,26 @@ tinyLinux.override {
     CONFIG_SYSFS="y";
     # devtmpfs
     CONFIG_DEVTMPFS="y";
+
+    # overlayfs
+    CONFIG_EXPORTFS="y";
+    CONFIG_OVERLAY_FS="y";
+    CONFIG_OVERLAY_FS_INDEX="y";
+    CONFIG_OVERLAY_FS_METACOPY="y";
+
+    # loop devices
+    CONFIG_BLK_DEV="y";
+    CONFIG_BLK_DEV_LOOP="y";
+    CONFIG_BLK_DEV_LOOP_MIN_COUNT="4";
+
+    # filesystems
+    CONFIG_BLOCK="y";
+    CONFIG_EXT4_FS="y";
+    CONFIG_EXT4_FS_POSIX_ACL="y";
+
+    CONFIG_VFAT_FS="y";
+    CONFIG_NLS_CODEPAGE_437="y"; # why? cause "FAT-fs (loop0p1): codepage cp437 not found"
+    CONFIG_NLS_ISO8859_1="y"; # same here, "FAT-fs (loop0p1): IO charset iso8859-1 not found"
+    CONFIG_FAT_FS="y";
   };
 }

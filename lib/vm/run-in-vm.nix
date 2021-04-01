@@ -3,12 +3,17 @@
 , runCommandNoCC
 , runVmLinux
 , nglib
-, writeTextFile, writeText
+, writeTextFile, writeText, writeShellScript
 
 , storeDir ? builtins.storeDir
 , qemu ? pkgs.qemu
 , qemuMem ? 512
 , script
+, postProcess ? writeShellScript "post-process.sh"
+  ''
+    cp -r $xchg/out/* $out   
+  ''
+, preProcess ? null
 }:
 # TODO NixOS really complicated this, I'd love to know why
 # https://github.com/NixOS/nixpkgs/blob/master/pkgs/build-support/vm/default.nix
@@ -42,14 +47,17 @@ let
                 mount -t tmpfs -o "mode=1777" none /dev/shm
                 mount -t devpts none /dev/pts
 
-                echo "mounting Nix store..."
-                mkdir -p ${storeDir}
-                mount -t 9p store ${storeDir} -o trans=virtio,version=9p2000.L,cache=loose
-                sleep 5
+                mkdir -p /tmp
+                mount -t tmpfs none /tmp
 
-                echo "mounting out..."
-                mkdir -p /out
-                mount -t 9p out /out -o trans=virtio,version=9p2000.L
+                echo "mounting Nix store..."
+                mkdir -p ${storeDir} /host-store
+                mount -t 9p store /host-store -o trans=virtio,version=9p2000.L,cache=loose
+                mount -t overlay overlay -o lowerdir=/host-store:${storeDir} ${storeDir}
+                echo "mounting xchg..."
+                xchg="/xchg"
+                mkdir -p $xchg
+                mount -t 9p xchg $xchg -o trans=virtio,version=9p2000.L
                 
                 mkdir -p /etc
                 ln -sf /proc/mounts /etc/mtab
@@ -59,9 +67,8 @@ let
                   echo "root:x:0:0:System administrator:/root:/bin/sh" > /etc/passwd
                 fi
                 
-                $script
-                
-                # poweroff -f # that works, the kernel tries to reboot after /init exits but qemu doesnt honor the request and exits
+                out=/xchg/out $script
+                echo $? > /xchg/exit-code
               '';
               executable = true;
               destination = "/init";
@@ -87,15 +94,37 @@ runCommandNoCC "qemu"
       fi
     fi
 
+    _xchg=$(mktemp -d)
+    _out=$_xchg/out
+    mkdir $_out
+
+    ${lib.optionalString (preProcess != null) ''
+      (
+        export xchg=$_xchg
+        if ! ${preProcess} ; then
+          exit 1
+        fi
+      )
+    ''}
+
     ${qemuBinary qemu} \
       -virtfs local,path=${storeDir},security_model=none,mount_tag=store \
-      -virtfs local,path=$out,security_model=none,mount_tag=out \
+      -virtfs local,path=$_xchg,security_model=none,mount_tag=xchg \
       -device virtio-rng-pci \
       -nographic -no-reboot \
       -m ${toString qemuMem} \
       -kernel ${runVmLinux}/bzImage \
       -initrd ${initrd} \
       -append "panic=1 script=${script} console=${qemuSerialDevice}"
+    
+    (
+      export xchg=$_xchg
+      if ! ${postProcess} ; then
+        exit 1
+      fi
+    )
+                
+    exit $(<$_xchg/exit-code)
   ''
 # ({ ... }: {
 #   requiredSystemFeatures = [ "kvm" ];
