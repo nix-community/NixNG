@@ -72,6 +72,9 @@
             };
             services.apache2 = {
               enable = true;
+              premade.basic = {
+                enable = true;
+              };
               configuration = {
                 LoadModule = [
                   [ "mpm_event_module" "modules/mod_mpm_event.so" ]
@@ -81,11 +84,6 @@
                   [ "dir_module" "modules/mod_dir.so" ]
                   [ "mime_module" "modules/mod_mime.so" ]
                 ];
-
-                ErrorLog = "/dev/stderr";
-                TransferLog = "/dev/stdout";
-
-                LogLevel = "info";
 
                 Listen = "0.0.0.0:80";
 

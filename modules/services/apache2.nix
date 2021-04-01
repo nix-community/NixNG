@@ -31,21 +31,25 @@ let
             </${name}>
           '') value)
       else
-          abort "Unsupported type in ApacheHTTPD configuration attrset, the module system should have caught this!"
+        abort "Unsupported type in ApacheHTTPD configuration attrset, the module system should have caught this!"
     ) config);
 in
 {
+  imports = [
+    ./apache2-basic.nix
+  ];
+
   options.services.apache2 = {
     enable = mkEnableOption "Enable Apache2 http server";
     configuration = mkOption rec {
       description = "Apache2 configuration";
       type = with types;
-          types.attrsOf (oneOf [
-            str
-            int
-            (listOf (oneOf [ str int (listOf (oneOf [ str int ])) ]))
-            (attrsOf type)
-          ]);
+        types.attrsOf (oneOf [
+          str
+          int
+          (listOf (oneOf [ str int (listOf (oneOf [ str int ])) ]))
+          (attrsOf type)
+        ]);
     };
   };
 
