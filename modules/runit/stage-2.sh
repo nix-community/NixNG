@@ -1,5 +1,7 @@
 export PATH=@runit@/bin:@findutils@/bin:@busybox@/bin
 
+echo "<--- Stage 2.2 --->"
+
 mkdir -p @runtimeServiceDirectory@
 
 function linkFarm() {

@@ -7,11 +7,20 @@ in
 {
   options.runit = {
     enable = mkEnableOption "Enable runit";
+
+    pkg = mkOption {
+      description = "runit package to use";
+      type = types.package;
+      default = pkgs.runit;
+    };
+    isContainer = mkEnableOption "whether runit should shutdown just to a SIGCONT";
+
     runtimeServiceDirectory = mkOption {
       description = "where runsvdir should create superwise and log directories for services";
       type = types.path;
       default = "/run/sv";
     };
+    
     stages = mkOption {
       description = "runit stages";
       default = {};
@@ -23,7 +32,9 @@ in
             default = nglib.writeSubstitutedShellScript {
               name = "1";
               file = ./stage-1.sh;
-              substitutes = {};
+              substitutes = {
+                inherit (cfg) isContainer;
+              };
             };
           };
           stage-2 = mkOption {
@@ -58,20 +69,19 @@ in
   };
 
   config = {
-    runit = let
-      serviceDir = pkgs.runCommandNoCCLocal "service-dir" {} ''
-        mkdir $out
-        ${lib.concatStringsSep "\n" (mapAttrsToList (name: service:
-          assert service.dependencies == [];
-          ''
-            mkdir $out/${name}
-            ln -s ${service.script} $out/${name}/run
-          ''
-        ) cfgInit.services)}
-      '';
-    in
+
+    runit = 
       {
-        inherit serviceDir;
+        serviceDir = pkgs.runCommandNoCCLocal "service-dir" {} ''
+          mkdir $out
+          ${lib.concatStringsSep "\n" (mapAttrsToList (name: service:
+            assert service.dependencies == [];
+            ''
+              mkdir $out/${name}
+              ln -s ${service.script} $out/${name}/run
+            ''
+          ) cfgInit.services)}
+        '';
       };
 
     init = mkMerge [
@@ -82,14 +92,14 @@ in
         type = "runit";
         script = pkgs.writeShellScript "init"
           ''
-          export PATH=${pkgs.busybox}/bin
+          export PATH=${pkgs.busybox}/bin:${cfg.pkg}/bin
           mkdir -p /etc/runit
 
           ln -sf ${cfg.stages.stage-1} /etc/runit/1
           ln -sf ${cfg.stages.stage-2} /etc/runit/2
           ln -sf ${cfg.stages.stage-3} /etc/runit/3
 
-          exec ${pkgs.runit}/bin/runit
+          exec runit-init
         '';
       })
     ];

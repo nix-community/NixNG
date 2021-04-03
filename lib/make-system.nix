@@ -15,7 +15,7 @@ let
     ../modules/assertions.nix
     ../modules/bootloader
 
-    ../modules/services/apache2.nix
+    ../modules/services/apache2-nixos.nix
     ../modules/services/getty.nix
   ];
 
@@ -47,15 +47,6 @@ let
           mkdir $out
           ln -s ${init.script} $out/init
         '');
-
-          # mkdir $out
-              
-          # ${lib.optionalString activation.enable
-          #   "# ln -s ${activation.script} $out/activation"}
-          # ${lib.optionalString initramfs.enable
-          #   "ln -s ${initramfs.image} $out/initrd.img"}
-          # ${lib.optionalString bootloader.enable
-          #   "ln -s ${nglib.makeBootloader { inherit (bootloader) kernelExtraConfig; }} $out/bootloader"}
   systemBundle = nglib.makeBundle
     { name = "${name}-bundle";
       path = systemPath;
@@ -84,6 +75,7 @@ let
       contents = [ systemBundle ];
 
       config = {
+        StopSignal = "SIGCONT";
         Entrypoint =
           [ "/init"
           ];
