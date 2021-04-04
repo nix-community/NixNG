@@ -69,16 +69,85 @@ in
   };
 
   config = {
-
     runit = 
       {
         serviceDir = pkgs.runCommandNoCCLocal "service-dir" {} ''
           mkdir $out
-          ${lib.concatStringsSep "\n" (mapAttrsToList (name: service:
-            assert service.dependencies == [];
+          ${concatStringsSep "\n" (mapAttrsToList (n: s:
+            let
+              run = pkgs.writeShellScript "${n}-run" ''
+                ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
+                  with cv;
+                  ''
+                    if ! [[ -e ${dst} ]] ; then
+                      echo '${n}: linking `${src}` to `${dst}`'
+                      mkdir -p "$(dirname '${dst}')"
+                      ln -s '${src}' '${dst}'
+                    fi
+                  ''
+                ) s.ensureSomething.link)}  
+
+                ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
+                  with cv;
+                  ''
+                    if ! [[ -e ${dst} ]] ; then
+                      echo '${n}: copying `${src}` to `${dst}`'
+                      mkdir -p "$(dirname '${dst}')"
+                      cp -r '${src}' '${dst}'
+                    fi
+                  ''
+                ) s.ensureSomething.copy)}  
+
+                ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
+                  abort "linkFarm is not implemented yet in runit!"
+                ) s.ensureSomething.linkFarm)}  
+
+                ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
+                  with cv;
+                  ''
+                    if ! [[ -e ${dst} ]] ; then
+                      echo '${n}: executing `${executable}` to create `${dst}`'
+                      mkdir -p "$(dirname '${dst}')"
+                      out=${dst} ${executable}
+                      
+                      if ! [[ -e ${dst} ]] ; then
+                        echo '${n}: executed `${executable}` but `${dst}`
+                    fi
+                  ''
+                ) s.ensureSomething.exec)}  
+
+                ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
+                  with cv;
+                  ''
+                    if ! [[ -e ${dst} ]] ; then
+                      echo '${n}: creating `${dst}`'
+
+                      ${if (type == "directory") then
+                          "mkdir -p ${dst}"
+                        else if (type == "file") then
+                          ''
+                            mkdir -p "$(dirname '${dst}')"
+                            touch ${dst}
+                          ''
+                        else
+                          abort "Unsupported init create type, module system should have caught this!"
+                       } 
+                      
+                      chown ${owner} ${dst}
+                      ${optionalString (mode != null) "chmod ${mode} ${dst}"}
+                    fi
+                  ''
+                ) s.ensureSomething.create)}
+ 
+                exec ${s.script}
+              '';
+            in
+
+            assert s.dependencies == [];
+
             ''
-              mkdir $out/${name}
-              ln -s ${service.script} $out/${name}/run
+              mkdir $out/${n}
+              ln -s ${run} $out/${n}/run
             ''
           ) cfgInit.services)}
         '';
