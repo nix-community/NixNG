@@ -2,56 +2,43 @@
 with lib;
 let
   cfg = config.system;
-  activation = config.activation;
 in
 {
   options.system = {
-    environment = mkOption {
-      description = "Things to be included in the root of the system.";
-      type = types.submodule {
-        options = {
-          packages = mkOption {
-            type = types.listOf types.package;
-            description = "Packages to be included in the root of the system.";
-            default = [];
-          };
-          files = mkOption {
-            type = types.listOf (types.submodule {
-              options = {
-                source = mkOption {
-                  type = types.path;
-                  description = "File source.";
-                };
-                destination = mkOption {
-                  type = types.path;
-                  description = "File destination.";
-                };
-                copy = mkOption {
-                  type = types.bool;
-                  description = "Whether the file should be symlinked or copied.";
-                  default = false;
-                };
-              };
-            });
-            description = "Files to be included in the root of the system.";
-            default = [];
-          };
-        };
-      };
+    activation = mkOption {
+      description = ''
+        A set of shell script fragments that are executed when a NixNG system
+        configuration is activated. You can update /etc, 
+        create accounts, and so on. For creating service related directories or file,
+        please user <option>init.services.<service>.ensureSomething</option>.
+        These fragments are isolated and can't effect each other environment.
+        These are run every time the system configuration is activated, which alse
+        happens at boot, therefore it's important that these scripts are idempotent
+        and fast.
+      '';
+      type = types.attrsOf types.str;
       default = {};
+    };
+    activationScript = mkOption {
+      description = ''
+        Script generated from <option>system.activation</option>, used to setup the environment. 
+      '';
+      type = types.path;
+      readOnly = true;
     };
   };
 
   config = {
-    assertions = [
-      {
-        assertion =
-          if cfg.environment.files != [] || cfg.environment.packages != [] then
-            activation.enable
-          else
-            true;
-        message = "For `system.environment` to work, the activation script must be enabled.";
-      }
-    ];
+    system.activationScript = pkgs.writeShellScript "activation"
+      ''
+        ${concatStringsSep "\n" (mapAttrsToList (n: v:
+          ''
+            echo "Running activation script ${n}"
+            (
+              ${v}
+            ) || echo "Activation script ${n} exited with code $!"
+          ''
+        ) cfg.activation)}
+      '';
   };
 }

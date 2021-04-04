@@ -9,3 +9,6 @@ if [[ "@isContainer@" = "1" ]] ; then
     touch /etc/runit/stopit
     chmod 544 /etc/runit/stopit
 fi
+
+# Run activation script for this system
+@activationScript@

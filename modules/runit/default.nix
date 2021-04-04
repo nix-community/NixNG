@@ -2,6 +2,7 @@
 with lib;
 let
   cfg = config.runit;
+  cfgSystem = config.system;
   cfgInit = config.init;
 in
 {
@@ -34,6 +35,7 @@ in
               file = ./stage-1.sh;
               substitutes = {
                 inherit (cfg) isContainer;
+                activationScript = cfgSystem.activationScript;
               };
             };
           };

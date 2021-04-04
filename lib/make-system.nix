@@ -10,10 +10,12 @@ let
     ../modules/initrd
     ../modules/initramfs
     ../modules/init.nix
-    ../modules/activation
     ../modules/system.nix
     ../modules/assertions.nix
     ../modules/bootloader
+
+    ../modules/users.nix
+    ../modules/ids.nix
 
     ../modules/services/apache2-nixos.nix
     ../modules/services/getty.nix
@@ -46,6 +48,7 @@ let
         ''
           mkdir $out
           ln -s ${init.script} $out/init
+          ln -s ${configValid.system.activationScript} $out/activation
         '');
   systemBundle = nglib.makeBundle
     { name = "${name}-bundle";

@@ -186,6 +186,15 @@ in
       ) v.extraGroups)
     ) cfg.users);
 
+    system.activation."users" =
+      ''
+        export PATH=${pkgs.busybox}/bin
+
+        ln -sf ${cfg.passwdFile} /etc/passwd
+        ln -sf ${cfg.groupFile} /etc/group
+        ${cfg.generateShadow} > /etc/shadow-generator
+      '';
+
     users = {
       users = mkIf cfg.createDefaultUsersGroups {
         root = {
