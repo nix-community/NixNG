@@ -25,6 +25,11 @@ in
   options = {
     services.apache2 = {
       enable = mkEnableOption "Enable Apache2 http server";
+      package = mkOption {
+        description = "Apache2 package";
+        type = types.package;
+        default = pkgs.apacheHttpd;
+      };
       configuration = mkOption {
         description = "Apache2 configuration";
         type = with types;
@@ -53,7 +58,7 @@ in
       {
         script = pkgs.writeShellScript "apache2-run"
           ''
-            ${pkgs.apacheHttpd}/bin/httpd -f ${config} -DFOREGROUND 2>&1
+            ${cfg.package}/bin/httpd -f ${config} -DFOREGROUND 2>&1
           '';
       };
 }
