@@ -7,6 +7,8 @@ with lib;
       type = with types; attrsOf int;
       default = {
         root = 0;
+        www-data = 54;
+        gitea = 399; # might change!
         nobody = 65534;
       };
     };
@@ -15,6 +17,7 @@ with lib;
       type = with types; attrsOf int;
       default = {
         root = 0;
+        www-data = 54;
         nogroup = 65534;
       };
     };
