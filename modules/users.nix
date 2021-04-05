@@ -204,7 +204,7 @@ in
           home = "/root";
           useDefaultShell = true;
         };
-        nobody.uid = ids.uids.root;
+        nobody.uid = ids.uids.nobody;
       };
 
       groups = mkMerge [
