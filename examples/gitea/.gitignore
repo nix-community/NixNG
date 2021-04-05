@@ -2,3 +2,5 @@ internal_token
 jwt_secret
 lfs_jwt_secret
 secret_key
+
+result
