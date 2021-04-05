@@ -14,8 +14,8 @@ designs and utilizes the Nix package manager at its core. The defining features 
 
 ## Current state
 NixNG cannot boot on real hardware due to missing it's own kernel and initramfs, but it can "boot" as a container, be it
-lxc, or docker. Some modules are implemented but there a lot to do. If you want to get a feel for it, you can look into
-`./examples` where you'll find fully working systems, mostly catered to be containers.
+lxc, or docker. Some modules are implemented but there is still a lot to be done. If you want to get a feel for it, you
+can look into `./examples` where you'll find fully working systems, mostly catered to be containers.
 
 ## Contributing
 Look at the code, make changes, open a PR. There are no style guidelines as of now, but try to write readable and well
