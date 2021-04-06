@@ -69,86 +69,23 @@ in
   };
 
   config = {
-    runit = 
-      {
-        serviceDir = pkgs.runCommandNoCCLocal "service-dir" {} ''
+    runit = {
+      serviceDir = pkgs.runCommandNoCCLocal "service-dir" {} ''
           mkdir $out
           ${concatStringsSep "\n" (mapAttrsToList (n: s:
             let
-              run = pkgs.writeShellScript "${n}-run" ''
-                ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
-                  with cv;
-                  ''
-                    if ! [[ -e ${dst} ]] ; then
-                      echo '${n}: linking `${src}` to `${dst}`'
-                      mkdir -p "$(dirname '${dst}')"
-                      ln -s '${src}' '${dst}'
-                    fi
-                  ''
-                ) s.ensureSomething.link)}  
-
-                ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
-                  with cv;
-                  ''
-                    if ! [[ -e ${dst} ]] ; then
-                      echo '${n}: copying `${src}` to `${dst}`'
-                      mkdir -p "$(dirname '${dst}')"
-                      cp -r '${src}' '${dst}'
-                    fi
-                  ''
-                ) s.ensureSomething.copy)}  
-
-                ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
-                  abort "linkFarm is not implemented yet in runit!"
-                ) s.ensureSomething.linkFarm)}  
-
-                ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
-                  with cv;
-                  ''
-                    if ! [[ -e ${dst} ]] ; then
-                      echo '${n}: executing `${executable}` to create `${dst}`'
-                      mkdir -p "$(dirname '${dst}')"
-                      out=${dst} ${executable}
-                      
-                      if ! [[ -e ${dst} ]] ; then
-                        echo '${n}: executed `${executable}` but `${dst}`
-                    fi
-                  ''
-                ) s.ensureSomething.exec)}  
-
-                ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
-                  with cv;
-                  ''
-                    if ! [[ -e ${dst} ]] ; then
-                      echo '${n}: creating `${dst}`'
-
-                      ${if (type == "directory") then
-                          "mkdir -p ${dst}"
-                        else if (type == "file") then
-                          ''
-                            mkdir -p "$(dirname '${dst}')"
-                            touch ${dst}
-                          ''
-                        else
-                          abort "Unsupported init create type, module system should have caught this!"
-                       } 
-                      
-                      chown ${owner} ${dst}
-                      ${optionalString (mode != null) "chmod ${mode} ${dst}"}
-                    fi
-                  ''
-                ) s.ensureSomething.create)}
- 
-                exec ${s.script}
-              '';
+              run = pkgs.callPackage ./run.nix {} { inherit n s; };
+              finish = pkgs.callPackage ./finish.nix {} { inherit n s cfgInit; };
+              log = pkgs.callPackage ./log.nix {} { inherit n s; };
             in
+              assert s.dependencies == [];
 
-            assert s.dependencies == [];
-
-            ''
-              mkdir $out/${n}
-              ln -s ${run} $out/${n}/run
-            ''
+              ''
+                mkdir -p $out/${n}/log
+                ln -s ${run} $out/${n}/run
+                ln -s ${finish} $out/${n}/finish
+                ln -s ${log} $out/${n}/log/run
+              ''
           ) cfgInit.services)}
         '';
       };
@@ -159,17 +96,25 @@ in
       }
       (mkIf cfg.enable {
         type = "runit";
+        shutdown = pkgs.writeShellScript "runit-shutdown"
+          ''
+            mkdir -p /etc/runit
+            touch /etc/runit/stopit
+            chmod 544 /etc/runit/stopit
+            
+            kill -SIGCONT 1
+          '';
         script = pkgs.writeShellScript "init"
           ''
-          export PATH=${pkgs.busybox}/bin:${cfg.pkg}/bin
-          mkdir -p /etc/runit
+            export PATH=${pkgs.busybox}/bin:${cfg.pkg}/bin
+            mkdir -p /etc/runit
 
-          ln -sf ${cfg.stages.stage-1} /etc/runit/1
-          ln -sf ${cfg.stages.stage-2} /etc/runit/2
-          ln -sf ${cfg.stages.stage-3} /etc/runit/3
+            ln -sf ${cfg.stages.stage-1} /etc/runit/1
+            ln -sf ${cfg.stages.stage-2} /etc/runit/2
+            ln -sf ${cfg.stages.stage-3} /etc/runit/3
 
-          exec runit-init
-        '';
+            exec runit-init
+          '';
       })
     ];
   };

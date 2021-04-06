@@ -152,79 +152,45 @@ in
   };
 
   config = {
-    init.services.gitea = 
-      let
+    init.services.gitea = mkIf cfg.enable {
+      ensureSomething.create."0-server.APP_DATA_PATH" = {
+        type = "directory";
         mode = "755";
         owner = "gitea:nogroup";
         persistent = true;
+        dst = cfg.configuration."server"."APP_DATA_PATH";
+      };
 
-        ensure = section: key:
-          mkIf (cfg.configuration."${section}" ? "${key}")(mkDefault {
-            inherit mode owner persistent;
-            type = "directory";
-            dst = cfg.configuration."${section}"."${key}";
-          });
-        ensureFile = section: key:
-          mkIf (cfg.configuration."${section}" ? "${key}")(mkDefault {
-            inherit mode owner persistent;
-            type = "file";
-            dst = cfg.configuration."${section}"."${key}";
-          });
-      in mkIf cfg.enable {
-        # ensureSomething.create."repository.ROOT" =
-        #   ensure "repository" "ROOT";
-        # ensureSomething.create."repository.local.LOCAL_COPY_PATH" =
-        #   ensure "repository.local" "LOCAL_COPY_PATH";
-        # ensureSomething.create."repository.upload.TEMP_PATH" =
-        #   ensure "repository.upload" "TEMP_PATH";
-        # ensureSomething.create."server.LFS_CONTENT_PATH" =
-        #   ensure "server" "LFS_CONTENT_PATH";
-        ensureSomething.create."0-server.APP_DATA_PATH" =
-          ensure "server" "APP_DATA_PATH";
-        # ensureSomething.create."database.PATH" =
-        #   ensureFile "database" "PATH";
-        # ensureSomething.create."indexer.ISSUE_INDEXER_PATH" =
-        #   ensure "indexer" "ISSUE_INDEXER_PATH";
-        # ensureSomething.create."indexer.REPO_INDEXER_PATH" = 
-        #   ensure "indexer" "REPO_INDEXER_PATH";
-        # ensureSomething.create."session.PROVIDER_CONFIG" = 
-        #   ensure "session" "PROVIDER_CONFIG";
-        # ensureSomething.create."picture.AVATAR_UPLOAD_PATH" =
-        #   ensure "picture" "AVATAR_UPLOAD_PATH";
-        # ensureSomething.create."picture.REPOSITORY_AVATAR_UPLOAD_PATH" = 
-        #   ensure "picture" "REPOSITORY_AVATAR_UPLOAD_PATH";
-        # ensureSomething.create."attachment.PATH" = 
-        #   ensure "attachment" "PATH";
+      ensureSomething.create."runConfig" = {
+        type = "file";
+        mode = "400";
+        owner = "gitea:nogroup";
+        persistent = false;
+        dst = cfg.runConfig;
+      };
 
-        ensureSomething.create."runConfig" = {
-          type = "file";
-          mode = "400";
-          owner = "gitea:nogroup";
-          persistent = false;
-          dst = cfg.runConfig;
-        };
-
-        script = pkgs.writeShellScript "gitea-run"
-          (let
-            appIni = pkgs.writeText "app.ini"
-              ''
+      script = pkgs.writeShellScript "gitea-run"
+        (let
+          appIni = pkgs.writeText "app.ini"
+            ''
                 APP_NAME = ${cfg.appName}
                 RUN_MODE = ${cfg.runMode}
                 RUN_USER = ${cfg.user}
 
                 ${generators.toINI {} cfg.configuration}
               '';
-            inherit (cfg.secrets) secretKeyFile internalTokenFile jwtSecretFile lfsJwtSecretFile databaseUserFile databasePasswordFile databaseHostFile;
+          inherit (cfg.secrets) secretKeyFile internalTokenFile jwtSecretFile lfsJwtSecretFile databaseUserFile databasePasswordFile databaseHostFile;
 
-            subsSecret = source: key:
-              optionalString (source != null)
-                ''
+          subsSecret = source: key:
+            optionalString (source != null)
+              ''
                   if [[ -f '${source}' ]] ; then
                     SECRET="$(head -n1 ${source})"
                     sed -i "s,#${key}#,$SECRET,g" ${cfg.runConfig}
+                    echo 'Substituted contents of `${source}` in place of `#${key}#`'
                   fi
                 '';
-          in
+        in
           ''
             export PATH=${pkgs.busybox}/bin
 
@@ -238,14 +204,10 @@ in
             ${subsSecret databasePasswordFile "databasePassword"}
             ${subsSecret databaseHostFile "databaseHost"}
 
-            ls -lahR /data/gitea
-
             export HOME=${cfg.configuration.repository.ROOT}
             chpst -u ${cfg.user}:nogroup ${cfg.package}/bin/gitea -c ${cfg.runConfig}
-
-            rm ${cfg.runConfig}
           '');
-      };
+    };
 
     users.users."gitea" = mkIf (cfg.enable && cfg.user == defaultUser) {
       uid = ids.uids.gitea;
