@@ -14,7 +14,6 @@ in
       type = types.package;
       default = pkgs.runit;
     };
-    isContainer = mkEnableOption "whether runit should shutdown just to a SIGCONT";
 
     runtimeServiceDirectory = mkOption {
       description = "where runsvdir should create superwise and log directories for services";
@@ -34,7 +33,6 @@ in
               name = "1";
               file = ./stage-1.sh;
               substitutes = {
-                inherit (cfg) isContainer;
                 activationScript = cfgSystem.activationScript;
               };
             };
