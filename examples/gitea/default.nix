@@ -4,10 +4,10 @@ nglib:
   name = "nixng-gitea";
   config = ({ pkgs, ... }:
     {
-      runit = {
+      dumb-init = {
         enable = true;
-        isContainer = true;
       };
+      init.services.gitea.shutdownOnExit = true;
       services.gitea = {
         enable = true;
 

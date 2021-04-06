@@ -1,14 +1,14 @@
 nglib:
 (nglib "x86_64-linux").makeSystem {
   system = "x86_64-linux";
-  name = "nixng-apache";
+  name = "nixng-apache-runit";
   config = ({ pkgs, config, ... }:
     let
       ids = config.ids;
     in
       {
         config = {
-          dumb-init = {
+          runit = {
             enable = true;
           };
           init.services.apache2 = {
@@ -17,10 +17,6 @@ nglib:
               src = "${pkgs.apacheHttpd}/htdocs";
               dst = "/var/www";
             };
-            log.syslog = {
-              type = "uds";
-              dst = "/dev/log";
-            };
           };
           users.users."www-data" = {
             uid = ids.uids.www-data;
@@ -28,10 +24,6 @@ nglib:
           };
           users.groups."www-data" = {
             gid = ids.gids.www-data;
-          };
-          services.socklog = {
-            enable = true;
-            unix = "/dev/log";
           };
           services.apache2 = {
             enable = true;

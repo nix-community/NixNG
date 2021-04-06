@@ -31,39 +31,9 @@
               writeSubstitutedShellScript = callPackage ./lib/write-substituted-shell-script.nix {};
             };
 
-        testSystem = (self.lib "x86_64-linux").makeSystem {
-          system = "x86_64-linux";
-          name = "nixng-system";
-          config = ({ pkgs, ... }: {
-            system.environment.files = [
-              {
-                source = "${pkgs.hello}/bin/hello";
-                destination = "/bin/hello";
-              }
-            ];
-
-            runit.enable = true;
-            bootloader = {
-              enable = true;
-              initrdCompression = [ "gzip" ];
-            };
-            initramfs = {
-              enable = true; 
-              config = {
-                # system.environment.files = [
-                #   {
-                #     source = "${pkgs.vim}/bin/vim";
-                #     destination = "/bin/vim";
-                #   }
-                # ];
-                initrd.enable = true;
-              }; 
-            };
-          });
-        };
-
         giteaSystem = import ./examples/gitea self.lib;
         apacheSystem = import ./examples/apache self.lib;
+        apacheRunitSystem = import ./examples/apache-runit self.lib;
 
         overlay = import ./overlay;
         packages = nixpkgs.lib.genAttrs
