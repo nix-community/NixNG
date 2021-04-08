@@ -29,6 +29,7 @@
               makeBootloader = callPackage ./lib/make-bootloader;
               runInVm = callPackage ./lib/vm/run-in-vm.nix;
               writeSubstitutedShellScript = callPackage ./lib/write-substituted-shell-script.nix {};
+              writeSubstitutedFile = callPackage ./lib/write-substituted-file.nix {};
             };
 
         giteaSystem = import ./examples/gitea self.lib;
