@@ -30,6 +30,7 @@
               runInVm = callPackage ./lib/vm/run-in-vm.nix;
               writeSubstitutedShellScript = callPackage ./lib/write-substituted-shell-script.nix {};
               writeSubstitutedFile = callPackage ./lib/write-substituted-file.nix {};
+              writeSubstitutedShellScriptBin = callPackage ./lib/write-substituted-shell-script-bin.nix {};
             };
 
         giteaSystem = import ./examples/gitea self.lib;
