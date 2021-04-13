@@ -31,11 +31,13 @@
               writeSubstitutedShellScript = callPackage ./lib/write-substituted-shell-script.nix {};
               writeSubstitutedFile = callPackage ./lib/write-substituted-file.nix {};
               writeSubstitutedShellScriptBin = callPackage ./lib/write-substituted-shell-script-bin.nix {};
+              dag = callPackage ./lib/dag.nix {};
             };
 
         giteaSystem = import ./examples/gitea self.lib;
         apacheSystem = import ./examples/apache self.lib;
         apacheRunitSystem = import ./examples/apache-runit self.lib;
+        crondSystem = import ./examples/crond self.lib;
 
         overlay = import ./overlay;
         packages = nixpkgs.lib.genAttrs
