@@ -1,4 +1,4 @@
-{ lib, pkgs, config, ... }:
+{ nglib, lib, pkgs, config, ... }:
 with lib;
 let
   ids = config.ids;
@@ -187,13 +187,21 @@ in
     ) cfg.users);
 
     system.activation."users" =
-      ''
-        export PATH=${pkgs.busybox}/bin
+      let
+        createHomes = 
+          concatMapStringsSep "\n"
+            ({ n, v }: "mkdir -p ${v.home} && chown ${n}:${v.group} ${v.home}")
+            (filter ({ v, ... }: v.createHome)
+              (mapAttrsToList (n: v: { n = n; v = v; }) cfg.users));
+      in
+        nglib.dag.dagEntryAnywhere ''
+          export PATH=${pkgs.busybox}/bin
 
-        ln -sf ${cfg.passwdFile} /etc/passwd
-        ln -sf ${cfg.groupFile} /etc/group
-        ${cfg.generateShadow} > /etc/shadow-generator
-      '';
+          ln -sf ${cfg.passwdFile} /etc/passwd
+          ln -sf ${cfg.groupFile} /etc/group
+          ${cfg.generateShadow} > /etc/shadow-generator 
+          ${createHomes}
+        '';
 
     users = {
       users = mkIf cfg.createDefaultUsersGroups {
@@ -204,7 +212,13 @@ in
           home = "/root";
           useDefaultShell = true;
         };
-        nobody.uid = ids.uids.nobody;
+        nobody = {
+          uid = ids.uids.nobody;
+          group = "nogroup";
+          createHome = true;
+          home = "/var/empty";
+          shell = "${pkgs.busybox}/bin/nologin";
+        };
       };
 
       groups = mkMerge [

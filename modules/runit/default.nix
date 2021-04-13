@@ -45,7 +45,7 @@ in
               file = ./stage-2.sh;
               substitutes = {
                 inherit (pkgs) runit findutils busybox;
-                inherit (cfg) serviceDir runtimeServiceDirectory;
+                inherit (cfg) runtimeServiceDirectory;
               };
             };
           };
@@ -61,7 +61,7 @@ in
         };
       };
     };
-    serviceDir = mkOption {
+    serviceDirectory = mkOption {
       description = "Generated service directory";
       type = types.path;
       readOnly = true;
@@ -69,8 +69,25 @@ in
   };
 
   config = {
+    system.activation."runit" = nglib.dag.dagEntryAnywhere
+      ''
+        export PATH=${pkgs.findutils}/bin:${pkgs.busybox}/bin
+        mkdir -p ${cfg.runtimeServiceDirectory}
+
+        function linkFarm() {
+            src="$1"
+            dst="$2"
+
+            find "$src" -mindepth 1 -type d -printf "%P\n" | xargs -I {} mkdir "$dst/{}"
+            find "$src" -mindepth 1 -type f -printf "%P\n" | xargs -I {} ln -s "$src/{}" "$dst/{}"
+            find "$src" -mindepth 1 -type l -printf "%P\n" | xargs -I {} cp "$src/{}" "$dst/{}"
+        }
+
+        linkFarm ${cfg.serviceDirectory} ${cfg.runtimeServiceDirectory}
+      '';
+
     runit = {
-      serviceDir = pkgs.runCommandNoCCLocal "service-dir" {} ''
+      serviceDirectory = pkgs.runCommandNoCCLocal "service-dir" {} ''
           mkdir $out
           ${concatStringsSep "\n" (mapAttrsToList (n: s:
             let
