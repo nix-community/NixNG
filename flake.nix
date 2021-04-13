@@ -23,10 +23,7 @@
             inherit (systemed system) callPackage;
           in
             {
-              makeInitramfs = callPackage ./lib/make-initramfs.nix {};
-              makeBundle = callPackage ./lib/make-bundle.nix;
               makeSystem = callPackage ./lib/make-system.nix;
-              makeBootloader = callPackage ./lib/make-bootloader;
               runInVm = callPackage ./lib/vm/run-in-vm.nix;
               writeSubstitutedShellScript = callPackage ./lib/write-substituted-shell-script.nix {};
               writeSubstitutedFile = callPackage ./lib/write-substituted-file.nix {};
