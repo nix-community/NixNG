@@ -13,6 +13,7 @@ let
     ../modules/system.nix
     ../modules/assertions.nix
     ../modules/bootloader
+    ../modules/nix.nix
 
     ../modules/users.nix
     ../modules/ids.nix

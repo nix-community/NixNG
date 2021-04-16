@@ -5,6 +5,7 @@ let
   cfgRunit = config.runit;
   cfgSystem = config.system;
   cfgUsers = config.users;
+  cfgNix = config.nix;
 
   userShell =
     let
@@ -75,15 +76,21 @@ in
             runit = pkgs.writeShellScript "init"
               ''
                 export PATH=${pkgs.busybox}/bin
-
-                ${cfgSystem.activationScript}
+                _system_config="@systemConfig@"
+                
+                "$_system_config/activation"                 
                 exec ${cfg.pkg}/bin/dumb-init -- ${cfgRunit.stages.stage-2} 
               '';
             shell = pkgs.writeShellScript "init"
               ''
                 export PATH=${pkgs.busybox}/bin:${pkgs.bash}/bin
+                _system_config="@systemConfig@"
 
-                ${cfgSystem.activationScript}
+                (
+                  ${cfgNix.readOnlyStore}
+                )
+
+                "$_system_config/activation"                 
                 exec ${cfg.pkg}/bin/dumb-init -- su ${cfg.type.shell.user} -c ${userShell}
               '';
           in

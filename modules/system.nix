@@ -17,6 +17,13 @@ in
       default = true;
     };
 
+    createNixRegistration = mkEnableOption
+      ''
+        Create $out/registration, which allows one to create and populate
+        the Nix database at start up, useful when building container images,
+        which must be able to use Nix themselves.
+      '';
+
     build = {
       toplevel = mkOption {
         description = ''
@@ -97,24 +104,38 @@ in
   config = {
     system.build = {
       toplevel = pkgs.runCommandNoCC "nixng"
-        { nativeBuildInputs = with pkgs; [ busybox ]; }
+        { nativeBuildInputs = with pkgs; [ busybox makeWrapper ]; }
         (with configFinal;
-          ''
-          mkdir $out
-          ln -s ${init.script} $out/init
-          ln -s ${system.activationScript} $out/activation
-        '');
+          let
+            closureInfo = pkgs.closureInfo
+              { rootPaths = [ configFinal.init.script ]; };
+          in
+            ''
+              mkdir $out
+
+              # Substitute in the path to the system closure to avoid
+              # an infinite dep cycle
+              substitute ${init.script} $out/init \
+                --subst-var-by "systemConfig" "$out"
+              substitute ${system.activationScript} $out/activation \
+                --subst-var-by "systemConfig" "$out"
+              chmod +x $out/init $out/activation
+
+              # 
+              ${optionalString system.createNixRegistration
+                "ln -s ${closureInfo}/registration $out/registration"}
+            '');
 
       ociImage =
         let
           config = {
             name = "nixng";
             tag = "latest";
-
+            
             config = {
               StopSignal = "SIGCONT";
               Entrypoint =
-                [ "${configFinal.init.script}"
+                [ "${configFinal.system.build.toplevel}/init"
                 ];
             };
           };
@@ -129,22 +150,36 @@ in
     system.activation.createEnvSh = mkIf cfg.createEnvSh
       (nglib.dag.dagEntryAnywhere
         ''
-        # Borrowed from NixOS therefore it's licensed under the MIT license
-        #### Activation script snippet usrbinenv:
-        _localstatus=0
-        mkdir -m 0755 -p /usr/bin
-        ln -sfn ${pkgs.busybox}/bin/env /usr/bin/.env.tmp
-        mv /usr/bin/.env.tmp /usr/bin/env # atomically replace /usr/bin/env
+          export PATH=${pkgs.busybox}/bin
 
-        # Create the required /bin/sh symlink; otherwise lots of things
-        # (notably the system() function) won't work.
-        mkdir -m 0755 -p /bin
-        ln -sfn "${pkgs.busybox}/bin/sh" /bin/.sh.tmp
-        mv /bin/.sh.tmp /bin/sh # atomically replace /bin/sh
-      '');
+          # Borrowed from NixOS therefore it's licensed under the MIT license
+          #### Activation script snippet usrbinenv:
+          _localstatus=0
+          mkdir -m 0755 -p /usr/bin
+          ln -sfn ${pkgs.busybox}/bin/env /usr/bin/.env.tmp
+          mv /usr/bin/.env.tmp /usr/bin/env # atomically replace /usr/bin/env
 
+          # Create the required /bin/sh symlink; otherwise lots of things
+          # (notably the system() function) won't work.
+          mkdir -m 0755 -p /bin
+          ln -sfn "${pkgs.busybox}/bin/sh" /bin/.sh.tmp
+          mv /bin/.sh.tmp /bin/sh # atomically replace /bin/sh
+        '');
+
+    system.activation.currectSystem = nglib.dag.dagEntryAnywhere
+      ''
+        export PATH=${pkgs.busybox}/bin
+
+        mkdir /run
+        ln -s $_system_config /run/current-system 
+      '';
+    
     system.activationScript = pkgs.writeShellScript "activation"
       ''
+        ## Set path to the system closure
+        ## This is substituted in from `top-level`
+        _system_config="@systemConfig@"
+
         _status=0
         trap "_status=1 _localstatus=\$?" ERR
 
@@ -153,6 +188,7 @@ in
             _localstatus=0
             echo "Running activation script ${dag.name}"
             (
+              unset PATH
               ${dag.data}
             )
             if (( _localstatus > 0 )); then

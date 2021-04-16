@@ -4,6 +4,8 @@ let
   cfg = config.runit;
   cfgSystem = config.system;
   cfgInit = config.init;
+
+  cfgNix = config.nix;
 in
 {
   options.runit = {
@@ -44,8 +46,9 @@ in
               name = "2";
               file = ./stage-2.sh;
               substitutes = {
-                inherit (pkgs) runit findutils busybox;
+                inherit (pkgs) runit findutils busybox utillinux;
                 inherit (cfg) runtimeServiceDirectory;
+                readOnlyStore = cfgNix.readOnlyStore;
               };
             };
           };
@@ -123,7 +126,9 @@ in
           '';
         script = pkgs.writeShellScript "init"
           ''
-            export PATH=${pkgs.busybox}/bin:${cfg.pkg}/bin
+            export PATH=${pkgs.busybox}/bin:${cfg.pkg}/bin \
+                   _system_config="@systemConfig@"
+         
             mkdir -p /etc/runit
 
             ln -sf ${cfg.stages.stage-1} /etc/runit/1
