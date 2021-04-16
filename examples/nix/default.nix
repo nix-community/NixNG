@@ -8,5 +8,9 @@ nglib:
       enable = true;
       type.shell = {};
     };
+    nix = {
+      enable = true;
+      readOnlyStore = false;
+    };
   });
 })
