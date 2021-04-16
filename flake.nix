@@ -35,6 +35,7 @@
         apacheSystem = import ./examples/apache self.lib;
         apacheRunitSystem = import ./examples/apache-runit self.lib;
         crondSystem = import ./examples/crond self.lib;
+        nixSystem = import ./examples/nix self.lib;
 
         overlay = import ./overlay;
         packages = nixpkgs.lib.genAttrs

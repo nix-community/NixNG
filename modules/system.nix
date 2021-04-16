@@ -114,7 +114,7 @@ in
             config = {
               StopSignal = "SIGCONT";
               Entrypoint =
-                [ "${configFinal.init.script}/init"
+                [ "${configFinal.init.script}"
                 ];
             };
           };
