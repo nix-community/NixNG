@@ -20,9 +20,17 @@ can look into `./examples` where you'll find fully working systems, mostly cater
 ### Testing out
 We've built up several functional containers, which showcase the syntax and functional of NixNG. The sources are
 locacted in `/examples/`. Currently you can either build the top-level derivation which you theoretically could activate
-(don't do it it will break) with `nix build .#<systemName>.config.system.build.top-level`, and also a OCI image which
-you can load into Docker, etc with `nix build .#<systemName>.config.system.build.ociImage.build`. You can also stream
-the image without saving it into the Nix store with `nix build .#<systemName>.config.system.build.ociImage.stream && ./result | docker load`
+(don't do it it will break) with:
+
+`nix build .#<systemName>.config.system.build.top-level`
+
+And also a OCI image which you can load into Docker, etc, with:
+
+`nix build .#<systemName>.config.system.build.ociImage.build`
+
+You can also stream the image without saving it into the Nix store with:
+
+`nix build .#<systemName>.config.system.build.ociImage.stream && ./result | docker load`.
 
 ## Contributing
 Look at the code, make changes, open a PR. There are no style guidelines as of now, but try to write readable and well
