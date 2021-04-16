@@ -17,6 +17,13 @@ NixNG cannot boot on real hardware due to missing it's own kernel and initramfs,
 lxc, or docker. Some modules are implemented but there is still a lot to be done. If you want to get a feel for it, you
 can look into `./examples` where you'll find fully working systems, mostly catered to be containers.
 
+### Testing out
+We've built up several functional containers, which showcase the syntax and functional of NixNG. The sources are
+locacted in `/examples/`. Currently you can either build the top-level derivation which you theoretically could activate
+(don't do it it will break) with `nix build .#<systemName>.config.system.build.top-level`, and also a OCI image which
+you can load into Docker, etc with `nix build .#<systemName>.config.system.build.ociImage.build`. You can also stream
+the image without saving it into the Nix store with `nix build .#<systemName>.config.system.build.ociImage.stream && ./result | docker load`
+
 ## Contributing
 Look at the code, make changes, open a PR. There are no style guidelines as of now, but try to write readable and well
 formatted Nix code, without tabs or trailing whitespace. If you need help with something please feel free to open an
