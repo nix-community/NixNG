@@ -16,13 +16,23 @@ in
       default = pkgs.nix;
     };
 
-    buildUserCound = mkOption {
+    buildUserCount = mkOption {
       description = ''
         How many build users, and groups should be created, if Nix runs out,
         increase this number.
       '';
       type = types.int;
       default = 32;
+    };
+
+    nixPath = mkOption {
+      description = ''
+        The Nix Path, basically channels.
+      '';
+      type = with types; listOf str;
+      default = [
+        "nixpkgs=${pkgs.path}"
+      ];
     };
 
     readOnlyStore = mkOption {
@@ -80,14 +90,18 @@ in
             uid = 30000 + x;
             group = "nixbld";
             home = "/var/empty";
+            createHome = false;
             description = "Nix build user ${toString x}";
             shell = "${pkgs.busybox}/bin/nologin";
           };
         })
-        [ 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21
-          22 23 24 25 26 27 28 29 30 31 32 ]);
+        (range 0 cfg.buildUserCount));
 
       groups.nixbld.gid = 30000;
+    };
+
+    environment.variables = {
+      NIX_PATH = cfg.nixPath;
     };
   };
 }
