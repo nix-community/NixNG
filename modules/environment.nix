@@ -24,6 +24,15 @@ in
         default = [];
       };
     };
+
+    createBaseEnv = mkOption {
+      description = ''
+        Create /bin/sh, /usr/bin/env, /var/empty, and /tmp.
+      '';
+      type = types.bool;
+      default = true;
+    };
+
   };
 
   config = {
@@ -40,5 +49,27 @@ in
       ln -sfn ${profileScript} /etc/.profile.tmp 
       mv /etc/.profile.tmp /etc/profile # atomically replace /etc/profile
     '';
+
+    system.activation.createBaseEnv = mkIf cfg.createBaseEnv
+      (nglib.dag.dagEntryAnywhere
+        ''
+          export PATH=${pkgs.busybox}/bin
+
+          # Borrowed from NixOS therefore it's licensed under the MIT license
+          #### Activation script snippet usrbinenv:
+          _localstatus=0
+          mkdir -m 0755 -p /usr/bin
+          ln -sfn ${pkgs.busybox}/bin/env /usr/bin/.env.tmp
+          mv /usr/bin/.env.tmp /usr/bin/env # atomically replace /usr/bin/env
+
+          # Create the required /bin/sh symlink; otherwise lots of things
+          # (notably the system() function) won't work.
+          mkdir -m 0755 -p /bin
+          ln -sfn "${pkgs.busybox}/bin/sh" /bin/.sh.tmp
+          mv /bin/.sh.tmp /bin/sh # atomically replace /bin/sh
+
+          mkdir -pm 0777 /tmp
+          mkdir -pm 0555 /var/empty
+        '');
   };
 }

@@ -7,16 +7,6 @@ let
 in
 {
   options.system = {
-    createEnvSh = mkOption {
-      description = ''
-        Automatically create /bin/sh and /usr/bin/env, without the former
-        even some system calls will fails, most notable PostreSQL will exit
-        with a cryptic error.
-      '';
-      type = types.bool;
-      default = true;
-    };
-
     createNixRegistration = mkEnableOption
       ''
         Create $out/registration, which allows one to create and populate
@@ -146,31 +136,11 @@ in
           };
     };
 
-    
-    system.activation.createEnvSh = mkIf cfg.createEnvSh
-      (nglib.dag.dagEntryAnywhere
-        ''
-          export PATH=${pkgs.busybox}/bin
-
-          # Borrowed from NixOS therefore it's licensed under the MIT license
-          #### Activation script snippet usrbinenv:
-          _localstatus=0
-          mkdir -m 0755 -p /usr/bin
-          ln -sfn ${pkgs.busybox}/bin/env /usr/bin/.env.tmp
-          mv /usr/bin/.env.tmp /usr/bin/env # atomically replace /usr/bin/env
-
-          # Create the required /bin/sh symlink; otherwise lots of things
-          # (notably the system() function) won't work.
-          mkdir -m 0755 -p /bin
-          ln -sfn "${pkgs.busybox}/bin/sh" /bin/.sh.tmp
-          mv /bin/.sh.tmp /bin/sh # atomically replace /bin/sh
-        '');
-
-    system.activation.currectSystem = nglib.dag.dagEntryAnywhere
+    system.activation.currentSystem = nglib.dag.dagEntryAnywhere
       ''
         export PATH=${pkgs.busybox}/bin
 
-        mkdir /run
+        mkdir -p /run
         ln -s $_system_config /run/current-system 
       '';
     
