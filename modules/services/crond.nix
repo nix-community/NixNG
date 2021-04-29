@@ -72,7 +72,7 @@ in
           pkgs.runCommandNoCCLocal "cron.d" {} ''
             CRONFILES="${concatStringsSep " " cronfiles}"
             mkdir -p $out
-            for cronfile in "$CRONFILES" ; do
+            for cronfile in $CRONFILES ; do
               ln -s "$cronfile" $out/$(basename "$cronfile")
             done
           '';
@@ -82,9 +82,10 @@ in
   config = mkIf cfg.enable {
     system.activation."crond" = nglib.dag.dagEntryAnywhere
       ''
+        export PATH=${pkgs.busybox}/bin
+
         mkdir -p /etc /var/run /var/spool/cron /var/cron
         ln -s ${cfg.crontabs}/ /etc/cron.d
-        ls -lahR /etc/cron.d/
       '';
 
     init.services.crond =
