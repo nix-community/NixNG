@@ -260,6 +260,29 @@ in
             type = with types; nullOr path;
             default = null;
           };
+
+          enabled = mkOption {
+            description = "Whether the service should run on startup.";
+            type = types.bool;
+            default = false;
+          };
+
+          environment = mkOption {
+            description = ''
+              The environment variables that will be added to the default ones prior to running <option>script</option>
+              and <option>finish</option>.
+            '';
+            type = with types; attrsOf (oneOf [ str int ]);
+            default = {};
+          };
+
+          pwd = mkOption {
+            description = ''
+              Directory in which both <option>script</option> and <option>finish</option> will be ran.
+            '';
+            type = types.str;
+            default = "/var/empty";
+          };
         };
       });
       description = "Service definitions.";

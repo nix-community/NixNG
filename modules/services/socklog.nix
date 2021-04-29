@@ -53,6 +53,7 @@ in
             ${inetSocklog}
             fg
           '';
+          enabled = true;
         };
 
     assertions = [

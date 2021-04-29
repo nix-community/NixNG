@@ -57,8 +57,12 @@ writeShellScript "${n}-finish" ''
     ''
   ) s.ensureSomething.create)}
 
-  ${optionalString (s.finish != null && !s.shutdownOnExit) "exec ${s.finish}"}
-  ${optionalString (s.finish != null && s.shutdownOnExit) "${s.finish}"}
+  (
+    cd ${s.pwd}
+    export ${concatStringsSep " " (mapAttrsToList (n: v: "${n}=${v}") s.environment)}
+    ${optionalString (s.finish != null && !s.shutdownOnExit) "exec ${s.finish}"}
+    ${optionalString (s.finish != null && s.shutdownOnExit) "${s.finish}"}
+  )
   
   ${optionalString (s.shutdownOnExit) ("exec ${cfgInit.shutdown}")} 
 ''

@@ -86,11 +86,8 @@ in
                 export PATH=${pkgs.busybox}/bin:${pkgs.bash}/bin
                 _system_config="@systemConfig@"
 
-                (
-                  ${cfgNix.readOnlyStore}
-                )
-
                 "$_system_config/activation"                 
+                . /etc/profile
                 exec ${cfg.pkg}/bin/dumb-init -- su ${cfg.type.shell.user} -c ${userShell}
               '';
           in

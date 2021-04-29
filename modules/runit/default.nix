@@ -20,7 +20,7 @@ in
     runtimeServiceDirectory = mkOption {
       description = "where runsvdir should create superwise and log directories for services";
       type = types.path;
-      default = "/run/sv";
+      default = "/service";
     };
     
     stages = mkOption {
@@ -48,7 +48,6 @@ in
               substitutes = {
                 inherit (pkgs) runit findutils busybox utillinux;
                 inherit (cfg) runtimeServiceDirectory;
-                readOnlyStore = cfgNix.readOnlyStore;
               };
             };
           };
@@ -105,6 +104,7 @@ in
                 ln -s ${run} $out/${n}/run
                 ln -s ${finish} $out/${n}/finish
                 ln -s ${log} $out/${n}/log/run
+                ${optionalString (!s.enabled) "touch $out/${n}/down"}
               ''
           ) cfgInit.services)}
         '';

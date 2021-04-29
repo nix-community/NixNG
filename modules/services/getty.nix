@@ -40,6 +40,7 @@ in
           ''
             exec setsid ${pkg} ${optionalString assume8BitTty "-8"} "${name}" "${toString baudRate}" "${termName}"
           '';
+        enabled = true;
       })
     cfg;
 }

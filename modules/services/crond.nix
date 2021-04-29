@@ -93,6 +93,7 @@ in
         script = ''
           ${cfg.package}/bin/crond -n -x ext,sch,misc
         '';
+        enabled = true;
       };
   };
 }

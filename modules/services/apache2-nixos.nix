@@ -60,5 +60,6 @@ in
           ''
             ${cfg.package}/bin/httpd -f ${config} -DFOREGROUND 2>&1
           '';
+        enabled = true;
       };
 }

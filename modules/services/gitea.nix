@@ -207,6 +207,8 @@ in
             export HOME=${cfg.configuration.repository.ROOT}
             chpst -u ${cfg.user}:nogroup ${cfg.package}/bin/gitea -c ${cfg.runConfig}
           '');
+
+      enabled = true;
     };
 
     users.users."gitea" = mkIf (cfg.enable && cfg.user == defaultUser) {
