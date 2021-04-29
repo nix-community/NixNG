@@ -15,6 +15,8 @@ let
     ../modules/bootloader
     ../modules/nix.nix
 
+    ../modules/security/ca.nix
+
     ../modules/environment.nix
     ../modules/users.nix
     ../modules/ids.nix
