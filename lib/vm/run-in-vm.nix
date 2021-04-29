@@ -28,48 +28,48 @@ let
               # Heavily inspired by NixOS
               text =
                 ''
-                #!${bash}/bin/bash
+                  #!${bash}/bin/bash
 
-                export PATH=${busybox}/bin:${bash}/bin
+                  export PATH=${busybox}/bin:${bash}/bin
 
-                
-                mkdir -p /proc /sys
-                mount -t proc none /proc
-                mount -t sysfs none /sys
-                
-                source /proc/cmdline  
-                
-                echo 2 > /proc/sys/vm/panic_on_oom 
+                  
+                  mkdir -p /proc /sys
+                  mount -t proc none /proc
+                  mount -t sysfs none /sys
+                  
+                  source /proc/cmdline  
+                  
+                  echo 2 > /proc/sys/vm/panic_on_oom 
 
-                mount -t devtmpfs devtmpfs /dev
+                  mount -t devtmpfs devtmpfs /dev
 
-                mkdir -p /dev/shm /dev/pts
-                mount -t tmpfs -o "mode=1777" none /dev/shm
-                mount -t devpts none /dev/pts
+                  mkdir -p /dev/shm /dev/pts
+                  mount -t tmpfs -o "mode=1777" none /dev/shm
+                  mount -t devpts none /dev/pts
 
-                mkdir -p /tmp
-                mount -t tmpfs none /tmp
+                  mkdir -p /tmp
+                  mount -t tmpfs none /tmp
 
-                echo "mounting Nix store..."
-                mkdir -p ${storeDir} /host-store
-                mount -t 9p store /host-store -o trans=virtio,version=9p2000.L,cache=loose
-                mount -t overlay overlay -o lowerdir=/host-store:${storeDir} ${storeDir}
-                echo "mounting xchg..."
-                xchg="/xchg"
-                mkdir -p $xchg
-                mount -t 9p xchg $xchg -o trans=virtio,version=9p2000.L
-                
-                mkdir -p /etc
-                ln -sf /proc/mounts /etc/mtab
-                echo "127.0.0.1 localhost" > /etc/hosts
-                # Ensures tools requiring /etc/passwd will work (e.g. nix)
-                if [ ! -e /etc/passwd ]; then
-                  echo "root:x:0:0:System administrator:/root:/bin/sh" > /etc/passwd
-                fi
-                
-                out=/xchg/out $script
-                echo $? > /xchg/exit-code
-              '';
+                  echo "mounting Nix store..."
+                  mkdir -p ${storeDir} /host-store
+                  mount -t 9p store /host-store -o trans=virtio,version=9p2000.L,cache=loose
+                  mount -t overlay overlay -o lowerdir=/host-store:${storeDir} ${storeDir}
+                  echo "mounting xchg..."
+                  xchg="/xchg"
+                  mkdir -p $xchg
+                  mount -t 9p xchg $xchg -o trans=virtio,version=9p2000.L
+                  
+                  mkdir -p /etc
+                  ln -sf /proc/mounts /etc/mtab
+                  echo "127.0.0.1 localhost" > /etc/hosts
+                  # Ensures tools requiring /etc/passwd will work (e.g. nix)
+                  if [ ! -e /etc/passwd ]; then
+                    echo "root:x:0:0:System administrator:/root:/bin/sh" > /etc/passwd
+                  fi
+                  
+                  out=/xchg/out $script
+                  echo $? > /xchg/exit-code
+                '';
               executable = true;
               destination = "/init";
             };
