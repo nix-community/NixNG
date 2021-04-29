@@ -199,7 +199,7 @@ in
 
           ln -sf ${cfg.passwdFile} /etc/passwd
           ln -sf ${cfg.groupFile} /etc/group
-          ${cfg.generateShadow} > /etc/shadow-generator 
+          ${cfg.generateShadow} > /etc/shadow 
           ${createHomes}
         '';
 
@@ -221,20 +221,18 @@ in
         };
       };
 
-      groups = mkMerge [
+      groups = mkMerge ([
         (optionalAttrs cfg.createDefaultUsersGroups {
           root.gid = ids.gids.root;
           nogroup.gid = ids.gids.nogroup;
         })
-        (
-          let
-            extraGroupsFilter = extraGroups:
-              filter (group: cfg.groups ? "${group}") extraGroups;
-            groupUsers = (filter (u: u.extraGroups != []) (mapAttrsToList (n: v: { name = n; extraGroups = extraGroupsFilter v.extraGroups; }) cfg.users));
-          in
-            genAttrs groupUsers (g: nameValuePair g { members = [ u ]; })
-        )
-      ];
+      ] ++ 
+      (let
+        filterGroups = groups:
+          filter (group: cfg.groups ? "${group}") groups;
+        members = flatten (mapAttrsToList (n: u: map (g: { "${g}".members = [n]; }) (u.extraGroups ++ singleton u.group)) cfg.users);
+      in
+        (builtins.trace (elemAt members 0) members)));
 
       passwdFile = pkgs.writeText "passwd"
         (concatStringsSep "\n" (mapAttrsToList (n: v:
