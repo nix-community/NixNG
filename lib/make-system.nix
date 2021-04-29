@@ -26,6 +26,7 @@ let
     ../modules/services/getty.nix
     ../modules/services/socklog.nix
     ../modules/services/crond.nix
+    ../modules/services/hydra.nix
   ];
 
   evaledModules = lib.evalModules
