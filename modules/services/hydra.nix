@@ -3,6 +3,11 @@ with lib;
 let
   cfg = config.services.hydra;
 
+
+  # ========================================================================
+  # -- BEGIN MIT LICENSED CODE
+  # ========================================================================
+  # For the license please refer to COPYING.NIXOS-MIT
   baseDir = "/var/lib/hydra";
 
   hydraEnv =
@@ -60,6 +65,9 @@ let
       done
    '';
     };
+  # ========================================================================
+  # -- END MIT LICENSED CODE
+  # ========================================================================
 
   parser =
     let
@@ -87,6 +95,11 @@ in
   options.services.hydra = {
     enable = mkEnableOption "Enable HydraCI";
 
+
+    # ========================================================================
+    # -- BEGIN MIT LICENSED CODE
+    # ========================================================================
+    # For the license please refer to COPYING.NIXOS-MIT
     package = mkOption {
       type = types.package;
       default = pkgs.hydra-unstable;
@@ -206,6 +219,9 @@ in
         are absolute trustworthy.
       '';
     };
+    # ========================================================================
+    # -- END MIT LICENSED CODE
+    # ========================================================================
 
     dbiFile = mkOption {
       type = with types; nullOr str;
