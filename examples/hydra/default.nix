@@ -25,6 +25,7 @@ nglib:
           notificationSender = "root@example.org";
           useSubstitutes = true;
         };
+        services.postgresql.package = pkgs.postgresql_12;
       };
     }
   );

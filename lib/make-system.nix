@@ -27,6 +27,7 @@ let
     ../modules/services/socklog.nix
     ../modules/services/crond.nix
     ../modules/services/hydra.nix
+    ../modules/services/postgresql.nix
   ];
 
   evaledModules = lib.evalModules

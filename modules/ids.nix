@@ -8,6 +8,7 @@ with lib;
       default = {
         root = 0;
         www-data = 54;
+        postgres = 71;
         hydra = 122;
         hydra-queue-runner = 235;
         hydra-www = 236;
@@ -21,6 +22,7 @@ with lib;
       default = {
         root = 0;
         www-data = 54;
+        postgres = 71;
         hydra = 122;
         hydra-queue-runner = 235;
         hydra-www = 236;
