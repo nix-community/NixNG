@@ -32,6 +32,10 @@ let
       PGPASSFILE = "${baseDir}/pgpass-www"; # grrr
     } // (optionalAttrs cfg.debugServer { DBIC_TRACE = "1"; });
 
+  localDB = "dbi:Pg:dbname=hydra;user=hydra;";
+
+  haveLocalDB = cfg.dbiFile == null;
+
   hydra-package =
     let
       makeWrapperArgs = concatStringsSep " " (mapAttrsToList (key: value: "--set \"${key}\" \"${value}\"") hydraEnv);
@@ -54,7 +58,7 @@ let
               if [ -x "$prg" ]; then
                 makeWrapper "$path/bin/$prg" "$out/bin/$prg" ${makeWrapperArgs} \
                   ${if cfg.dbiFile == null then
-                      ''--set HYDRA_DBI 'dbi:Pg:dbname=hydra;user=hydra;' ''
+                      ''--set HYDRA_DBI '${localDB}' ''
                     else
                       ''--run 'export HYDRA_DBI=$(cat "${cfg.dbiFile}")' ''
                    }
@@ -352,6 +356,8 @@ in
           chown hydra.hydra ${baseDir}
           chmod 0750 ${baseDir}
 
+          ${optionalString haveLocalDB "sv -v -w 0 up postgresql"}
+
           ln -sf ${cfg.config} ${baseDir}/hydra.conf
 
           mkdir -m 0700 -p ${baseDir}/www
@@ -363,20 +369,9 @@ in
           mkdir -pm 2775 ${cfg.gcRootsDir}
           chown hydra.hydra ${cfg.gcRootsDir}
 
-          # PostgreSQL here
-
           export PATH=${pkgs.nettools}/bin:$PATH # Hydra runs some variant of `hostname --fqdn`, which BusyBox doesn't support
           HOME=~hydra exec chpst -u hydra:hydra ${hydra-package}/bin/hydra-init
         '';
-        # Disabled due to PostgreSQL not existing in NixNG yet
-        # ${optionalString haveLocalDB ''
-        #   if ! [ -e ${baseDir}/.db-created ]; then
-        #     ${pkgs.sudo}/bin/sudo -u ${config.services.postgresql.superUser} ${config.services.postgresql.package}/bin/createuser hydra
-        #     ${pkgs.sudo}/bin/sudo -u ${config.services.postgresql.superUser} ${config.services.postgresql.package}/bin/createdb -O hydra hydra
-        #     touch ${baseDir}/.db-created
-        #   fi
-        #   echo "create extension if not exists pg_trgm" | ${pkgs.sudo}/bin/sudo -u ${config.services.postgresql.superUser} -- ${config.services.postgresql.package}/bin/psql hydra
-        # ''}
       };
 
       hydra-server =
@@ -431,5 +426,35 @@ in
           enabled = true;
         };
     };
+
+    
+    # -- BEGIN MIT LICENSED CODE
+    # For the license please refer to COPYING.NIXOS-MIT
+    services.postgresql.enable = mkIf haveLocalDB true;
+
+    services.postgresql.identMap = optionalString haveLocalDB
+      ''
+        hydra-users hydra hydra
+        hydra-users hydra-queue-runner hydra
+        hydra-users hydra-www hydra
+        hydra-users root hydra
+        # The postgres user is used to create the pg_trgm extension for the hydra database
+        hydra-users postgres postgres
+      '';
+
+    services.postgresql.authentication = optionalString haveLocalDB
+      ''
+        local hydra all ident map=hydra-users
+      '';
+    # -- END MIT LICENSED CODE
+
+    services.postgresql.ensureDatabases = mkIf haveLocalDB [ "hydra" ];
+
+    services.postgresql.ensureUsers = mkIf haveLocalDB [
+      { name = "hydra"; ensurePermissions = {
+          "DATABASE \"hydra\"" = "ALL PRIVILEGES";
+        };
+      }
+    ];
   };
 }
