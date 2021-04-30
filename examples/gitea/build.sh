@@ -2,5 +2,5 @@
 
 cd "$(dirname "$(readlink -f "$0")")"
 
-nix build --out-link ./nixng-gitea.tar.xz ../..#giteaSystem.ociImage
-docker load < ./nixng-gitea.tar.xz
+nix build ../..#giteaSystem.config.system.build.ociImage.stream
+./result | docker load
