@@ -232,7 +232,7 @@ in
           filter (group: cfg.groups ? "${group}") groups;
         members = flatten (mapAttrsToList (n: u: map (g: { "${g}".members = [n]; }) (u.extraGroups ++ singleton u.group)) cfg.users);
       in
-        (builtins.trace (elemAt members 0) members)));
+         members));
 
       passwdFile = pkgs.writeText "passwd"
         (concatStringsSep "\n" (mapAttrsToList (n: v:

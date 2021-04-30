@@ -6,6 +6,7 @@ nglib:
     {
       dumb-init = {
         enable = true;
+        type.services = {};
       };
       init.services.gitea.shutdownOnExit = true;
       services.gitea = {
