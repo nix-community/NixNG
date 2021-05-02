@@ -46,6 +46,9 @@ let
     ../modules/services/crond.nix
     ../modules/services/hydra.nix
     ../modules/services/postgresql.nix
+    ({ ... }: {
+      system.name = name;
+    })
   ];
 
   evaledModules = lib.evalModules
