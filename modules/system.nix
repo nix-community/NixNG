@@ -107,6 +107,12 @@ in
       type = types.path;
       readOnly = true;
     };
+
+    name = mkOption {
+      description = "System name, used when generating container images";
+      default = "nixng";
+      type = types.str;
+    };
   };
 
   config = {
@@ -137,7 +143,7 @@ in
       ociImage =
         let
           config = {
-            name = "nixng";
+            name = cfg.name;
             tag = "latest";
             
             config = {
