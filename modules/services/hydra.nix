@@ -450,7 +450,7 @@ in
         {
           environment = env // {
             PGPASSFILE = "${baseDir}/pgpass-queue-runner"; # grrr
-            IN_SYSTEMD = "1"; # to get log severity levels
+            IN_SYSTEMD = "0"; # to get log severity levels
           };
           pwd = "${baseDir}/queue-runner";
           script = pkgs.writeShellScript "hydra-queue-runner" ''
