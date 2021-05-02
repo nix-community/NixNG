@@ -26,6 +26,10 @@ nglib:
           useSubstitutes = true;
         };
         services.postgresql.package = pkgs.postgresql_12;
+        services.socklog = {
+          enable = true;
+          unix = "/dev/log";
+        };
       };
     }
   );

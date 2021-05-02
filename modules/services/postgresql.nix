@@ -143,6 +143,17 @@ in
         '';
       };
 
+      ensureExtensions = mkOption {
+        type = with types; attrsOf (listOf str);
+        default = {};
+        description = ''
+          Ensure that the specified extensions exist.
+        '';
+        example = {
+          "pg_trgm" = [ "hydra" ];
+        };
+      };
+
       ensureDatabases = mkOption {
         type = types.listOf types.str;
         default = [];
@@ -377,7 +388,7 @@ in
 
         PSQL="chpst -u postgres:postgres ${cfg.package}/bin/psql --port=${cfg.port}"
         while ! $PSQL -d postgres -c "" 2> /dev/null ; do
-          if ! kill -0 "$postgresql"; then echo aaaa; exit 1; fi
+          if ! kill -0 "$postgresql"; then exit 1; fi
           sleep 0.1
         done
 
@@ -388,10 +399,9 @@ in
           rm -f "${cfg.dataDir}/.first_startup"
         fi
 
-        ${optionalString (cfg.ensureDatabases != []) ''
-          ${concatMapStrings (database: ''
-            $PSQL -tAc "SELECT 1 FROM pg_database WHERE datname = '${database}'" | grep -q 1 || $PSQL -tAc 'CREATE DATABASE "${database}"'
-          '') cfg.ensureDatabases} ''}
+        ${concatMapStrings (database: ''
+          $PSQL -tAc "SELECT 1 FROM pg_database WHERE datname = '${database}'" | grep -q 1 || $PSQL -tAc 'CREATE DATABASE "${database}"'
+        '') cfg.ensureDatabases}
 
         ${concatMapStrings (user: ''
           $PSQL -tAc "SELECT 1 FROM pg_roles WHERE rolname='${user.name}'" | grep -q 1 || $PSQL -tAc 'CREATE USER "${user.name}"'
@@ -400,10 +410,16 @@ in
           '') user.ensurePermissions)}
         '') cfg.ensureUsers}
 
+        ${concatStrings (mapAttrsToList (extension: schemas:
+          concatMapStrings (schema:
+            ''
+              $PSQL -tAc "create extension if not exists ${extension}" ${schema}
+            ''
+          ) schemas
+        ) cfg.ensureExtensions)}
+
         wait $postgresql
       '';
-
-      # '' +  + ''
       # -- END MIT LICENSED CODE
 
       enabled = true;

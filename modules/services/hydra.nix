@@ -353,6 +353,9 @@ in
               hydra-update-gc-roots = pkgs.writeShellScript "hydra-update-gc-roots"
                 ''
                   sv -c -w 0 once hydra-init
+                  while [[ ! -e ${baseDir}/.init-hydra ]]; do
+                    sleep 1
+                  done
 
                   ${hydra-package}/bin/hydra-update-gc-roots hydra-update-gc-roots
                 '';
@@ -369,10 +372,16 @@ in
                   if [ $(($(stat -f -c '%a' /nix/store) * $(stat -f -c '%S' /nix/store))) -lt $((${toString cfg.minimumDiskFree} * 1024**3)) ]; then
                     echo "stopping Hydra queue runner due to lack of free space..."
                     sv stop hydra-queue-runner
+                  elif [ $(sv status hydra-queue-runner) -eq "up" ]; then
+                    echo "restarting Hydra queue runner"
+                    sv start hydra-queue-runner
                   fi
                   if [ $(($(stat -f -c '%a' /nix/store) * $(stat -f -c '%S' /nix/store))) -lt $((${toString cfg.minimumDiskFreeEvaluator} * 1024**3)) ]; then
                     echo "stopping Hydra evaluator due to lack of free space..."
                     sv stop hydra-evaluator
+                  elif [ $(sv status hydra-evaluator) -eq "up" ]; then
+                    echo "stopping Hydra evaluator"
+                    sv start hydra-evaluator
                   fi
                 '';
               hydra-compress-logs = pkgs.writeShellScript "hydra-compress-logs"
@@ -394,6 +403,8 @@ in
       hydra-init = {
         environment = env;
         script = pkgs.writeShellScript "hydra-init" ''
+          [[ -e ${baseDir}/.init-hydra ]] && exit 0
+
           mkdir -p ${baseDir}
           chown hydra.hydra ${baseDir}
           chmod 0750 ${baseDir}
@@ -412,7 +423,8 @@ in
           chown hydra.hydra ${cfg.gcRootsDir}
 
           export PATH=${pkgs.nettools}/bin:$PATH # Hydra runs some variant of `hostname --fqdn`, which BusyBox doesn't support
-          HOME=~hydra exec chpst -u hydra:hydra ${hydra-package}/bin/hydra-init
+          HOME=~hydra chpst -u hydra:hydra ${hydra-package}/bin/hydra-init || exit 1
+          touch ${baseDir}/.init-hydra
         '';
       };
 
@@ -426,6 +438,7 @@ in
           pwd = "${baseDir}/queue-runner";
           script = pkgs.writeShellScript "hydra-server" ''
             sv -v -w 0 once hydra-init
+            [[ ! -e ${baseDir}/.init-hydra ]] && exit 1
 
             export PATH=${pkgs.nettools}/bin:$PATH # Hydra runs some variant of `hostname --fqdn`, which BusyBox doesn't support
             HOME=~hydra-www exec chpst -b hydra-server -u hydra-www:hydra ${hydraCmd}
@@ -444,6 +457,7 @@ in
             export PATH=${makeBinPath [ hydra-package pkgs.nettools pkgs.openssh pkgs.bzip2 config.nix.package ]}:$PATH
 
             sv -v -w 0 once hydra-init
+            [[ ! -e ${baseDir}/.init-hydra ]] && exit 1
 
             export PATH=${pkgs.nettools}/bin:$PATH # Hydra runs some variant of `hostname --fqdn`, which BusyBox doesn't support
 
@@ -461,6 +475,7 @@ in
             export PATH=${with pkgs; makeBinPath [ hydra-package nettools jq ]}:$PATH
 
             sv -v -w 0 once hydra-init
+            [[ ! -e ${baseDir}/.init-hydra ]] && exit 1
 
             export PATH=${pkgs.nettools}/bin:$PATH # Hydra runs some variant of `hostname --fqdn`, which BusyBox doesn't support
             HOME=~hydra exec chpst -b hydra-evaluator -u hydra:hydra ${hydra-package}/bin/hydra-evaluator
@@ -491,7 +506,9 @@ in
     # -- END MIT LICENSED CODE
 
     services.postgresql.ensureDatabases = mkIf haveLocalDB [ "hydra" ];
-
+    services.postgresql.ensureExtensions = mkIf haveLocalDB {
+      "pg_trgm" = [ "hydra" ];
+    };
     services.postgresql.ensureUsers = mkIf haveLocalDB [
       { name = "hydra"; ensurePermissions = {
           "DATABASE \"hydra\"" = "ALL PRIVILEGES";
