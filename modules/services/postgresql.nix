@@ -392,13 +392,6 @@ in
           sleep 0.1
         done
 
-        if test -e "${cfg.dataDir}/.first_startup"; then
-          ${optionalString (cfg.initialScript != null) ''
-            $PSQL -f "${cfg.initialScript}" -d postgres
-          ''}
-          rm -f "${cfg.dataDir}/.first_startup"
-        fi
-
         ${concatMapStrings (database: ''
           $PSQL -tAc "SELECT 1 FROM pg_database WHERE datname = '${database}'" | grep -q 1 || $PSQL -tAc 'CREATE DATABASE "${database}"'
         '') cfg.ensureDatabases}
@@ -417,6 +410,13 @@ in
             ''
           ) schemas
         ) cfg.ensureExtensions)}
+
+        if test -e "${cfg.dataDir}/.first_startup"; then
+          ${optionalString (cfg.initialScript != null) ''
+            $PSQL -f "${cfg.initialScript}" -d postgres
+          ''}
+          rm -f "${cfg.dataDir}/.first_startup"
+        fi
 
         wait $postgresql
       '';
