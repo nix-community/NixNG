@@ -1,17 +1,22 @@
 { pkgs, lib, callPackage
 , bash, busybox
 , runCommandNoCC
-, runVmLinux
+, linux_latest
 , nglib
-, writeTextFile, writeText, writeShellScript
+, writeTextFile, writeText, writeShellScript, writeReferencesToFile
+, makeModulesClosure
 
+, kernel ? linux_latest
 , storeDir ? builtins.storeDir
 , qemu ? pkgs.qemu
 , qemuMem ? 512
+, rootModules ?
+  [ "virtio_pci" "virtio_mmio" "virtio_blk" "virtio_balloon" "virtio-rng" "ext4" "9p" "9pnet_virtio" "crc32c_generic" "overlay" ]
+  ++ pkgs.lib.optional (pkgs.stdenv.isi686 || pkgs.stdenv.isx86_64) "rtc_cmos"
 , script
 , postProcess ? writeShellScript "post-process.sh"
   ''
-    cp -r $xchg/out/* $out   
+    cp -r $xchg/out $out   
   ''
 , preProcess ? null
 }:
@@ -19,11 +24,17 @@
 # https://github.com/NixOS/nixpkgs/blob/master/pkgs/build-support/vm/default.nix
 let
   inherit (callPackage (import ./qemu-flags.nix) {}) qemuBinary qemuSerialDevice;
+
+  modulesClosure = makeModulesClosure {
+    inherit kernel rootModules;
+    firmware = kernel;
+  };
+
   initrd = nglib.makeInitramfs
     { name = "initrd.img";
-      path = nglib.makeBundle
-        { name = "init";
-          path = writeTextFile
+      path =
+        let
+          init = writeTextFile
             { name = "init";
               # Heavily inspired by NixOS
               text =
@@ -50,6 +61,11 @@ let
                   mkdir -p /tmp
                   mount -t tmpfs none /tmp
 
+                  echo "loading kernel modules..."
+                  for i in $(cat ${modulesClosure}/insmod-list); do
+                    insmod $i || echo "warning: unable to load $i"
+                  done
+
                   echo "mounting Nix store..."
                   mkdir -p ${storeDir} /host-store
                   mount -t 9p store /host-store -o trans=virtio,version=9p2000.L,cache=loose
@@ -73,7 +89,13 @@ let
               executable = true;
               destination = "/init";
             };
-        };
+        in
+          runCommandNoCC "join" {} ''
+            set -o pipefail
+            mkdir -p $out
+            ln -s ${init}/init $out/init
+            xargs tar c < ${writeReferencesToFile init} | tar -xC $out
+          '';
     };
 in
 runCommandNoCC "qemu"
@@ -113,7 +135,7 @@ runCommandNoCC "qemu"
       -device virtio-rng-pci \
       -nographic -no-reboot \
       -m ${toString qemuMem} \
-      -kernel ${runVmLinux}/bzImage \
+      -kernel ${linux_latest}/bzImage \
       -initrd ${initrd} \
       -append "panic=1 script=${script} console=${qemuSerialDevice}"
     
@@ -124,6 +146,7 @@ runCommandNoCC "qemu"
       fi
     )
                 
+    cat $_xchg/exit-code
     exit $(<$_xchg/exit-code)
   ''
 # ({ ... }: {

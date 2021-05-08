@@ -69,6 +69,12 @@ tinyLinux.override {
     CONFIG_BINFMT_ELF="y"; # general execution
     CONFIG_BINFMT_SCRIPT="y"; # bash shebang
 
+    # Required for runit
+    CONFIG_FILE_LOCKING="y";
+
+    # futex
+    CONFIG_FUTEX="y";
+
     ## Filesystems
     # proc
     CONFIG_PROC_FS="y";

@@ -42,6 +42,8 @@
           in
             {
               makeSystem = callPackage ./lib/make-system.nix;
+              makeInitramfs = callPackage ./lib/make-initramfs.nix;
+              makeBundle = callPackage ./lib/make-bundle.nix;
               runInVm = callPackage ./lib/vm/run-in-vm.nix;
               writeSubstitutedShellScript = callPackage ./lib/write-substituted-shell-script.nix {};
               writeSubstitutedFile = callPackage ./lib/write-substituted-file.nix {};
