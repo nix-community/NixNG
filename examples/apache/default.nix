@@ -18,15 +18,7 @@ nglib:
               src = "${pkgs.apacheHttpd}/htdocs";
               dst = "/var/www";
             };
-            # log.syslog = {
-            #   type = "uds";
-            #   dst = "/dev/log";
-            # };
           };
-          # services.socklog = {
-          #   enable = true;
-          #   unix = "/dev/log";
-          # };
           services.apache2 = {
             enable = true;
             envsubst = true;

@@ -69,10 +69,10 @@ in
         let
           config = pkgs.writeText "apache2.cfg" (toApache cfg.configuration);
         in
-        {
-          script = pkgs.writeShellScript "apache2-run"
-            (if cfg.envsubst then
-              ''
+          {
+            script = pkgs.writeShellScript "apache2-run"
+              (if cfg.envsubst then
+                ''
                 export PATH=${pkgs.envsubst}/bin:$PATH 
                 
                 mkdir -p /run/cfg 
@@ -82,13 +82,13 @@ in
                 HOME=~www-data ${cfg.package}/bin/httpd \
                   -f ${runtimeConfig} -DFOREGROUND 2>&1
               ''
-            else
-              ''
+               else
+                 ''
                 HOME=~www-data ${cfg.package}/bin/httpd \
                   -f ${config} -DFOREGROUND 2>&1
               '');
-          enabled = true;
-        };
+            enabled = true;
+          };
 
       users.users."www-data" = mkIf cfg.createUserGroup {
         description = "Apache HTTPD";
@@ -96,11 +96,11 @@ in
         createHome = false;
         home = "/var/empty";
         useDefaultShell = true;
-        uid = 54;
+        uid = config.ids.uids.www-data;
       };
 
       users.groups."www-data" = mkIf cfg.createUserGroup {
-        gid = 54;
+        gid = config.ids.gids.www-data;
       };
     };
 }
