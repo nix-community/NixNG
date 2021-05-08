@@ -32,6 +32,7 @@ with lib;
         hydra-www = 236;
         gitea = 399; # might change!
         nobody = 65534;
+        nginx = 60;
       };
     };
     gids = mkOption {
@@ -46,6 +47,7 @@ with lib;
         hydra-www = 236;
         log = 399;
         nogroup = 65534;
+        nginx = 60;
       };
     };
   };

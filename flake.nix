@@ -54,10 +54,41 @@
 
         giteaSystem = import ./examples/gitea self.lib;
         apacheSystem = import ./examples/apache self.lib;
+        nginxSystem = import ./examples/nginx self.lib;
         apacheRunitSystem = import ./examples/apache-runit self.lib;
         crondSystem = import ./examples/crond self.lib;
         nixSystem = import ./examples/nix self.lib;
         hydraSystem = import ./examples/hydra self.lib;
+
+        tests =
+          let
+            inherit (systemed "x86_64-linux") nglib pkgs;
+          in
+            {
+              apache = nglib.runInVm {
+                script = pkgs.writeShellScript "apache-test"
+                  ''
+                    export PATH=${pkgs.curl}/bin:$PATH
+                  
+                    ${self.apacheSystem.config.system.build.toplevel}/init &
+                    
+                    sleep 10
+                    ip addr add 127.0.0.1 dev lo
+
+                    HTTP_STATUS="$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:80/)"
+                    mkdir -p $out
+                    echo "Apache HTTPD returned: $HTTP_STATUS"
+                    curl -v 127.0.0.1:80
+                    if [[ "$HTTP_STATUS" == "200" ]] ; then
+                      exit 0
+                    else
+                      exit 1
+                    fi
+                    
+                    kill %1 ; fg
+                  '';
+              };
+            };
 
         overlay = import ./overlay;
         packages = nixpkgs.lib.genAttrs

@@ -40,6 +40,7 @@ let
     ../modules/ids.nix
 
     ../modules/services/apache2-nixos.nix
+    ../modules/services/nginx.nix
     ../modules/services/gitea.nix
     ../modules/services/getty.nix
     ../modules/services/socklog.nix

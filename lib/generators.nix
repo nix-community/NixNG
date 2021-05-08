@@ -48,21 +48,21 @@ rec {
     if isAttrs cfg then
       concatStringsSep "\n" (mapAttrsToList (name: value:
         if isString value then
-          "${name} ${value}"
+          "${name} ${value};"
         else if isInt value then
-          "${name} ${toString value}"
+          "${name} ${toString value};"
         else if isStorePath value then
-          "${name} ${toString value}"
+          "${name} ${toString value};"
         else if isList value then
           if all (x: isString x) value then
-            "${name} ${concatStringsSep " " value}"
+            "${name} ${concatStringsSep " " value};"
           else if all (x: isInt x) value then
-            "${name} ${concatStringsSep " " (toString value)}"
+            "${name} ${concatStringsSep " " (toString value)};"
           else if all (x: isStorePath x) value then
-            "${name} ${concatStringsSep " " (toString value)}"
+            "${name} ${concatStringsSep " " (toString value)};"
           else if all (x: isList x) value then
             concatStringsSep "\n"
-              (map (p: "${name} ${concatStringsSep " " p}") value)
+              (map (p: "${name} ${concatStringsSep " " p};") value)
           else
             abort "Unsupported type in Nginx configuration attrset!"
         else if isAttrs value then
