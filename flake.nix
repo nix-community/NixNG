@@ -47,6 +47,7 @@
               writeSubstitutedFile = callPackage ./lib/write-substituted-file.nix {};
               writeSubstitutedShellScriptBin = callPackage ./lib/write-substituted-shell-script-bin.nix {};
               dag = callPackage ./lib/dag.nix {};
+              generators = callPackage ./lib/generators.nix {};
             };
 
         giteaSystem = import ./examples/gitea self.lib;

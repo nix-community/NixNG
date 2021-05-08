@@ -10,6 +10,7 @@ nglib:
         config = {
           dumb-init = {
             enable = true;
+            type.services = {};
           };
           init.services.apache2 = {
             shutdownOnExit = true;
@@ -17,24 +18,18 @@ nglib:
               src = "${pkgs.apacheHttpd}/htdocs";
               dst = "/var/www";
             };
-            log.syslog = {
-              type = "uds";
-              dst = "/dev/log";
-            };
+            # log.syslog = {
+            #   type = "uds";
+            #   dst = "/dev/log";
+            # };
           };
-          users.users."www-data" = {
-            uid = ids.uids.www-data;
-            group = "www-data";
-          };
-          users.groups."www-data" = {
-            gid = ids.gids.www-data;
-          };
-          services.socklog = {
-            enable = true;
-            unix = "/dev/log";
-          };
+          # services.socklog = {
+          #   enable = true;
+          #   unix = "/dev/log";
+          # };
           services.apache2 = {
             enable = true;
+            envsubst = true;
             configuration = [
               {
                 LoadModule = [
@@ -53,10 +48,10 @@ nglib:
                 ServerName = "blowhole";
                 PidFile = "/httpd.pid";
 
+                DocumentRoot = "/var/www";
+
                 User = "www-data";
                 Group = "www-data";
-
-                DocumentRoot = "/var/www";
               }
 
               {
@@ -89,7 +84,7 @@ nglib:
                       "/var/www" = {
                         Require = [ "all" "granted" ];
                         Options = [ "-Indexes" "+FollowSymlinks" ];
-                        DirectoryIndex = "index.html";
+                        DirectoryIndex = "\${DIRECTORY_INDEX:-index.html}";
                       };
                     };
                   }; 

@@ -16,28 +16,13 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
  */
 
-{ pkgs, config, lib, ... }:
+{ pkgs, config, lib, nglib, ... }:
 with lib;
 let
   cfg = config.services.apache2;
+  runtimeConfig = "/run/cfg/apache.cfg";
 
-  nixosImport = pkgs.fetchurl {
-    url = "https://raw.githubusercontent.com/MagicRB/nixpkgs/832f37652d21d6f783ae93d1cc33cd1485fa1640/nixos/modules/services/web-servers/apache-httpd2/separate.nix";
-    sha256 = "1+ZdOqOdNt6N/dR99LuL0+WfTwgcGuDlXD89PD1YPvs=";
-  };
-  inherit (import nixosImport { inherit lib; }) configParser runtimeDir;
-  
-  functionTo = 
-    elemType: mkOptionType {
-      name = "functionTo";
-      description = "function that evaluates to a(n) ${elemType.name}";
-      check = isFunction;
-      merge = loc: defs:
-        fnArgs: (mergeDefinitions (loc ++ [ "[function body]" ]) elemType (map (fn: { inherit (fn) file; value = fn.value fnArgs; }) defs)).mergedValue;
-      getSubOptions = elemType.getSubOptions;
-      getSubModules = elemType.getSubModules;
-      substSubModules = m: functionTo (elemType.substSubModules m);
-    };
+  inherit (nglib.generators) toApache;
 in
 {
   options = {
@@ -48,6 +33,15 @@ in
         type = types.package;
         default = pkgs.apacheHttpd;
       };
+      createUserGroup = mkOption {
+        description = ''
+          Whether to create the default user <literal>www-data</literal>
+          and group <literal>www-data</literal>.
+        '';
+        type = types.bool;
+        default = true;
+      };
+      envsubst = mkEnableOption "Run envsubst on the configuration file.";
       configuration = mkOption {
         description = "Apache2 configuration";
         type = with types;
@@ -69,15 +63,44 @@ in
   };
 
 
-  config.init.services.apache2 = let
-    config = pkgs.writeText "apache.cfg" (configParser cfg.configuration);
-  in
-    mkIf cfg.enable
-      {
-        script = pkgs.writeShellScript "apache2-run"
-          ''
-            ${cfg.package}/bin/httpd -f ${config} -DFOREGROUND 2>&1
-          '';
-        enabled = true;
+  config = mkIf cfg.enable 
+    {
+      init.services.apache2 = 
+        let
+          config = pkgs.writeText "apache2.cfg" (toApache cfg.configuration);
+        in
+        {
+          script = pkgs.writeShellScript "apache2-run"
+            (if cfg.envsubst then
+              ''
+                export PATH=${pkgs.envsubst}/bin:$PATH 
+                
+                mkdir -p /run/cfg 
+                install -o www-data -g www-data -m 0440 /dev/null ${runtimeConfig}
+                envsubst < ${config} > ${runtimeConfig}
+
+                HOME=~www-data ${cfg.package}/bin/httpd \
+                  -f ${runtimeConfig} -DFOREGROUND 2>&1
+              ''
+            else
+              ''
+                HOME=~www-data ${cfg.package}/bin/httpd \
+                  -f ${config} -DFOREGROUND 2>&1
+              '');
+          enabled = true;
+        };
+
+      users.users."www-data" = mkIf cfg.createUserGroup {
+        description = "Apache HTTPD";
+        group = "www-data";
+        createHome = false;
+        home = "/var/empty";
+        useDefaultShell = true;
+        uid = 54;
       };
+
+      users.groups."www-data" = mkIf cfg.createUserGroup {
+        gid = 54;
+      };
+    };
 }
