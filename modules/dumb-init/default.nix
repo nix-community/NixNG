@@ -34,7 +34,8 @@ let
       else
         user.shell;
 
-  sigellConfig = overrides: builtins.toJSON (cfg.sigell // overrides);
+  sigellConfig = overrides:
+    pkgs.writeText "sigell.json" (builtins.toJSON (cfg.sigell // overrides));
 in
 {
   options.dumb-init = {
