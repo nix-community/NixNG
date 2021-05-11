@@ -18,10 +18,11 @@
 
 self: super:
 let
-  callPackage = super.callPackage;
+  inherit (super) haskell callPackage;
 in
 {
   tinyLinux = callPackage ./tiny-linux.nix {};
   runVmLinux = callPackage ./run-vm-linux.nix {};
   cronie = callPackage ./cronie.nix {};
+  sigell = haskell.packages."ghc884".callPackage ./sigell/cabal.nix {};
 }
