@@ -2,18 +2,21 @@ module Main where
 import System.Posix.Signals
 import Control.Concurrent.Chan
 import Foreign.C (CInt)
-import Debug.Trace (trace)
 import Control.Concurrent (putMVar)
 
 import Data.Aeson (encode, eitherDecode);
-import Data.ByteString.Lazy.Char8 as C8;
+import Data.ByteString.Lazy.Char8 (pack);
 
 import Config
+import CmdLine
+
 import Data.Functor ((<&>))
 import System.Posix.Process
 import System.Posix.Types
 import Control.Monad
 import Data.Maybe (fromMaybe)
+import System.Environment (setEnv)
+import System.Console.CmdArgs (cmdArgs)
 
 catchSignals :: [Signal] -> IO [Signal]
 catchSignals sigs = do
@@ -30,31 +33,34 @@ catchSignal child entry = do
   return ()
   where sig = entrySignal entry
         action = case entryAction entry of
-          Exec command -> actionExec command
+          Exec command env -> actionExec command env
           Signal rewrite selector -> case selector of
             Pid p -> signalProcess (fromMaybe sig rewrite) (CPid (fromIntegral p))
-            Child -> signalProcess (fromMaybe sig rewrite) (trace (show child) child)
+            Child -> signalProcess (fromMaybe sig rewrite) child
 
-        actionExec c = do
-          forkProcess $ executeFile (command c) True (args c) Nothing
-          return ()
-        command = Prelude.head
-        args = Prelude.tail
+        actionExec c env = void $ forkProcess
+          (void $ do
+            mapM_ (uncurry setEnv) (fromMaybe [] env)
+            executeFile (command c) True (args c) Nothing)
+        command = head
+        args = tail
 
 readEOF :: String -> String
-readEOF s = Prelude.unlines $ readEOF' $ Prelude.lines s
+readEOF s = unlines $ readEOF' $ lines s
   where readEOF' ("EOF":xs) = []
         readEOF' (x:xs) = x : readEOF' xs
 
 readConfig :: String -> Either String Config
-readConfig = eitherDecode . C8.pack
+readConfig = eitherDecode . pack
 
 forkedProg :: Config -> IO ()
 forkedProg c = do
   getProcessID >>= createProcessGroupFor
+  mapM_ (uncurry setEnv) (fromMaybe [] env)
   executeFile command True args Nothing
-  where command = Prelude.head $ configCommand c
-        args = Prelude.tail $ configCommand c
+  where command = head $ configCommand c
+        args = tail $ configCommand c
+        env = configEnvironment c
 
 waitForProcess :: CPid -> IO ()
 waitForProcess p = void $ getProcessStatus True False p
@@ -66,7 +72,8 @@ main = do
   -- str <- getLine :: IO String
   -- putStrLn str
   -- print $ encode ([ 1, 2, 3 ] :: [Integer])
-  mc <- Prelude.getContents <&> readEOF >>= pure . readConfig
+  opts <- cmdArgs cmdline
+  mc <- readFile (cmdLineConfigFile opts) <&> readConfig
   case mc of
     Right c -> do
       process <- forkProcess $ forkedProg c
@@ -76,7 +83,7 @@ main = do
       waitForProcess process
       return ()
     Left s -> do
-      Prelude.putStrLn ("Invalid Config: " ++ s)
-  Prelude.putStrLn "Bye..."
+      putStrLn ("Invalid Config: " ++ s)
+  putStrLn "Bye..."
   return ()
 

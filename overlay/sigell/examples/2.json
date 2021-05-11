@@ -1,0 +1,15 @@
+{
+  "command": [ "sleep", "15" ],
+  "entries": [
+    {
+      "signal": "USR1",
+      "action": {
+        "type": "signal",
+        "rewrite": "TERM",
+        "selector": {
+          "type": "child"
+        }
+      }
+    }
+  ]
+}

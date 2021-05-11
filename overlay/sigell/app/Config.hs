@@ -14,19 +14,21 @@ import Data.Aeson.Types as AT
 import Data.Vector as V
 import Data.HashMap.Strict as H
 import GHC.Base ((<|>))
+import Data.Functor
 
 data SignalSelector = Pid Int | Child
   deriving (Show)
 
 instance A.FromJSON SignalSelector where
   parseJSON (A.Object v)
-    = v .: "type" >>= s 
+    = v .: "type" >>= s
     where s :: String -> AT.Parser SignalSelector
           s "pid" = Pid <$> v .: "pid"
           s "child" = pure Child
           s _ = fail "Invalid SignalSelector type"
 
-data Action = Exec { actionExecCommand :: [String] }
+data Action = Exec { actionExecCommand :: [String],
+                     actionExecEnvironment :: Maybe [(String, String)] }
             | Signal { actionSignalRewrite :: Maybe Signal,
                        actionSignalSelector :: SignalSelector }
   deriving (Show)
@@ -35,8 +37,11 @@ instance A.FromJSON Action where
   parseJSON (A.Object v)
     = v .: "type" >>= s
     where s :: String -> AT.Parser Action
-          s "exec" = Exec <$> v .: "command"
-          s "signal" = Signal <$> (v .: "rewrite" >>= parseSignalMaybe) <*> v .: "selector"
+          s "exec" = Exec
+            <$> v .: "command"
+            <*> (v .:? "environment" <&> (=<<) (pure . H.toList))
+          s "signal" = Signal
+            <$> (v .: "rewrite" >>= parseSignalMaybe) <*> v .: "selector"
 
 data Entry = Entry { entrySignal :: Signal,
                      entryAction :: Action }
@@ -56,7 +61,7 @@ parseSignal "QUIT" = pure sigQUIT
 parseSignal "SEGV" = pure sigSEGV
 parseSignal "STOP" = pure sigSTOP
 parseSignal "TERM" = pure sigTERM
-parseSignal "TSTP" = pure sigTSTP 
+parseSignal "TSTP" = pure sigTSTP
 parseSignal "TTIN" = pure sigTTIN
 parseSignal "TTOU" = pure sigTTOU
 parseSignal "USR1" = pure sigUSR1
@@ -66,14 +71,14 @@ parseSignal "PROF" = pure sigPROF
 parseSignal "SYS" = pure sigSYS
 parseSignal "TRAP" = pure sigTRAP
 parseSignal "URG" = pure sigURG
-parseSignal "VTALRM" = pure sigVTALRM 
-parseSignal "XCPU" = pure sigXCPU 
-parseSignal "XFSZ" = pure sigXFSZ 
+parseSignal "VTALRM" = pure sigVTALRM
+parseSignal "XCPU" = pure sigXCPU
+parseSignal "XFSZ" = pure sigXFSZ
 parseSignal _ = fail "Invalid signal"
 
 parseSignalMaybe :: Maybe String -> Parser (Maybe Signal)
-parseSignalMaybe (Just s) = fmap Just (parseSignal s) 
-parseSignalMaybe Nothing = pure Nothing 
+parseSignalMaybe (Just s) = fmap Just (parseSignal s)
+parseSignalMaybe Nothing = pure Nothing
 
 instance A.FromJSON Entry where
   parseJSON (A.Object v)
@@ -82,14 +87,16 @@ instance A.FromJSON Entry where
     <*> v .: "action"
 
 data Config = Config { configEntries :: [Entry],
-                       configCommand :: [String] }
+                       configCommand :: [String],
+                       configEnvironment :: Maybe [(String, String)] }
   deriving (Show)
 
 instance A.FromJSON Config where
   parseJSON (A.Object v)
     = Config
-    <$> a 
+    <$> a
     <*> v .: "command"
+    <*> (v .:? "environment" <&> (=<<) (pure . H.toList))
     where a = entries >>= Prelude.mapM parseJSON
           entries = case v H.! "entries" of
                       A.Array v -> pure $ V.toList v

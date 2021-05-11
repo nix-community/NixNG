@@ -1,0 +1,15 @@
+{
+  "command": [ "bash", "-c", "echo $TEST ; sleep 15" ],
+  "environment": {
+    "TEST": "12"
+  },
+  "entries": [
+    {
+      "signal": "HUP",
+      "action": {
+        "type": "exec",
+        "command": [ "bash", "-c", "echo asd" ]
+      }
+    }
+  ]
+}
