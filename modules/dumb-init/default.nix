@@ -33,15 +33,26 @@ let
         config.users.defaultUserShell
       else
         user.shell;
+
+  sigellConfig = overrides: builtins.toJSON (cfg.sigell // overrides);
 in
 {
   options.dumb-init = {
     enable = mkEnableOption "Enable the dumb-init init system";
 
-    pkg = mkOption {
+    package = mkOption {
       description = "The dumb-init package to use";
       type = types.package;
       default = pkgs.dumb-init;
+    };
+
+    sigell = mkOption {
+      description = ''
+        A signal rewriting program, which allows to redirect,
+        rewrite and handle signals easily
+      '';
+      type = with types; nullOr (attrs);
+      default = null;
     };
 
     type = mkOption {
@@ -70,12 +81,6 @@ in
         };
       };
     };
-
-    runtimeServiceDirectory = mkOption {
-      description = "where runsvdir should create superwise and log directories for services";
-      type = types.path;
-      default = "/run/sv";
-    };
   };
 
   config = {
@@ -97,7 +102,8 @@ in
                 _system_config="@systemConfig@"
                 
                 "$_system_config/activation"                 
-                exec ${cfg.pkg}/bin/dumb-init -- ${cfgRunit.stages.stage-2} 
+                exec ${cfg.package}/bin/dumb-init -- \
+                  ${sigell [ "${cfgRunit.stages.stage-2}" ]}
               '';
             shell = pkgs.writeShellScript "init"
               ''
@@ -106,8 +112,14 @@ in
 
                 "$_system_config/activation"                 
                 . /etc/profile
-                exec ${cfg.pkg}/bin/dumb-init -- su ${cfg.type.shell.user} -c ${userShell}
+                exec ${cfg.package}/bin/dumb-init -- \
+                  ${sigell ["su" "${cfg.type.shell.user}" "-c" "${userShell}" ]}
               '';
+            sigell = cmd:
+              if cfg.sigell != null then
+                "${pkgs.sigell} ${sigellConfig { command = cmd; }}"
+              else
+                concatStringsSep " " cmd;
           in
             if cfg.type.services != null then
               runit
