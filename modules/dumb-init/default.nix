@@ -117,7 +117,7 @@ in
               '';
             sigell = cmd:
               if cfg.sigell != null then
-                "${pkgs.sigell} ${sigellConfig { command = cmd; }}"
+                "${pkgs.sigell}/bin/sigell ${sigellConfig { command = cmd; }}"
               else
                 concatStringsSep " " cmd;
           in
