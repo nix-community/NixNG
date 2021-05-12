@@ -333,7 +333,7 @@ in
     };
 
     services.hydra.config = {
-      using_frontend_procy = true;
+      using_frontend_proxy = true;
       base_uri = cfg.hydraURL;
       notification_sender = cfg.notificationSender;
       max_servers = 25;
