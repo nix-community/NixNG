@@ -380,7 +380,7 @@ in
                     echo "stopping Hydra evaluator due to lack of free space..."
                     sv stop hydra-evaluator
                   elif [ $(sv status hydra-evaluator) -eq "up" ]; then
-                    echo "stopping Hydra evaluator"
+                    echo "restarting Hydra evaluator"
                     sv start hydra-evaluator
                   fi
                 '';
@@ -390,7 +390,7 @@ in
                   find /var/lib/hydra/build-logs -type f -name "*.drv" -mtime +3 -size +0c | xargs -r bzip2 -v -f
                 '';
             in [
-              "0/2 * * * * root ${hydra-check-space}"
+              "*/2 * * * * root ${hydra-check-space}"
               "45 01 * * 7 root ${hydra-compress-logs}"
             ];
         };
