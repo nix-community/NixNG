@@ -403,6 +403,8 @@ in
       hydra-init = {
         environment = env;
         script = pkgs.writeShellScript "hydra-init" ''
+          ln -sf ${cfg.config} ${baseDir}/hydra.conf
+
           [[ -e ${baseDir}/.init-hydra ]] && exit 0
 
           mkdir -p ${baseDir}
@@ -410,8 +412,6 @@ in
           chmod 0750 ${baseDir}
 
           ${optionalString haveLocalDB "sv -v -w 0 up postgresql"}
-
-          ln -sf ${cfg.config} ${baseDir}/hydra.conf
 
           mkdir -m 0700 -p ${baseDir}/www
           chown hydra-www.hydra ${baseDir}/www
