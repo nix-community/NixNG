@@ -59,6 +59,14 @@ let
         type = types.nullOr types.str;
         default = null;
       };
+
+      extraOptions = mkOption {
+        description = ''
+          Extra command line options passed to certbot upon activation.
+        '';
+        type = types.nullOr types.str;
+        default = null;
+      };
     };
   };
 in
@@ -123,9 +131,11 @@ in
           ${cfg.package}/bin/certbot certonly \
             --standalone \
             -d ${n} \
+            -n \
             ${optionalString (v.server != null) ("--server" + v.server)} \
             --email ${v.email} \
             --agree-tos \
+            ${optionalString (v.extraOptions != null) v.extraOptions} \
             ${concatMapStringsSep " " (d: "-d " + d) v.extraDomains}
      
             ${optionalString (v.postScript != null) v.postScript}
