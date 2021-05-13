@@ -369,6 +369,7 @@ in
             let
               hydra-check-space = pkgs.writeShellScript "hydra-check-space"
                 ''
+                  export PATH=${makeBinPath [ pkgs.busybox pkgs.runit ]}:$PATH
                   if [ $(($(stat -f -c '%a' /nix/store) * $(stat -f -c '%S' /nix/store))) -lt $((${toString cfg.minimumDiskFree} * 1024**3)) ]; then
                     echo "stopping Hydra queue runner due to lack of free space..."
                     sv stop hydra-queue-runner
@@ -386,7 +387,7 @@ in
                 '';
               hydra-compress-logs = pkgs.writeShellScript "hydra-compress-logs"
                 ''
-                  export PATH=${makeBinPath [ pkgs.bzip2 pkgs.findutils ]}:$PATH
+                  export PATH=${makeBinPath [ pkgs.bzip2 pkgs.findutils pkgs.busybox ]}:$PATH
                   find /var/lib/hydra/build-logs -type f -name "*.drv" -mtime +3 -size +0c | xargs -r bzip2 -v -f
                 '';
             in [
