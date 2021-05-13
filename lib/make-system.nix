@@ -47,6 +47,7 @@ let
     ../modules/services/crond.nix
     ../modules/services/hydra.nix
     ../modules/services/postgresql.nix
+    ../modules/services/certbot.nix
     ({ ... }: {
       system.name = name;
     })

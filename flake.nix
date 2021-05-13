@@ -59,6 +59,7 @@
         crondSystem = import ./examples/crond self.lib;
         nixSystem = import ./examples/nix self.lib;
         hydraSystem = import ./examples/hydra self.lib;
+        certbotSystem = import ./examples/certbot self.lib;
 
         tests =
           let
