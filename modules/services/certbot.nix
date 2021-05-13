@@ -37,33 +37,35 @@ let
         type = types.str;
       };
 
+      email = mkOption {
+        type = types.str;
+        description = "Contact email address for the CA to be able to reach you.";
+      };
+
+      server = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = ''
+          ACME Directory Resource URI. Defaults to Let's Encrypt's
+          production endpoint,
+          <link xlink:href="https://acme-v02.api.letsencrypt.org/directory"/>, if unset.
+        '';
+      };
+
       postScript = mkOption {
         description = ''
-          A shell script to run after certbot.
+          a shell script to run after certbot.
         '';
         type = types.nullOr types.str;
         default = null;
       };
     };
   };
-
-  scripts = mapAttrsToList (n: v:
-    pkgs.writeShellScript n ''
-      ${pkgs.busybox}/bin/mkdir -p ${v.webroot}
-      ${cfg.package}/bin/certbot certonly \
-        --webroot \
-        -w ${v.webroot} \
-        -d ${n} \
-        ${concatMapStringsSep " " (d: "-d " + d) v.extraDomains}
-
-        ${optionalString (v.postScript != null)
-          "${v.postScript}"}
-      '') cfg.domains;
 in
 {
   options = {
     services.certbot = {
-      enable = mkEnableOption "Enable certbot, certificate management tool.";
+      enable = mkEnableOption "Onable certbot, certificate management tool.";
       package = mkOption {
         description = "certbot package.";
         type = types.package;
@@ -71,9 +73,18 @@ in
       };
 
       domains = mkOption {
-        description = "Domains for which, certbot will fetch certificates.";
+        description = "Oomains for which, certbot will fetch certificates.";
         type = with types; attrsOf (submodule domainOptions);
         default = {};
+      };
+
+      acceptTerms = mkOption {
+        description = ''
+          Accept the CA's terms of service. The default provider is Let's Encrypt,
+          you can find their ToS at <link xlink:href="https://letsencrypt.org/repository/"/>.
+        '';
+        type = types.bool;
+        default = false;
       };
     }; 
   };
@@ -83,12 +94,41 @@ in
       enable = mkDefault true;
 
       crontabs.certbot = {
-        jobs = map (script: "0 0 * * * root ${script}") scripts;
+        jobs = let
+          script = pkgs.writeShellScript "certbot-renew"
+            ''
+              ${cfg.package}/bin/certbot renew
+            '';
+        in
+          ["0 0 * * * root ${script}"];
       };
     };
 
+    assertions = [
+      {
+        assertion = cfg.acceptTerms;
+        message = ''
+          You must accept the CA's terms of service before using
+          the ACME module by setting `security.acme.acceptTerms`
+          to `true`. For Let's Encrypt's ToS see https://letsencrypt.org/repository/
+        '';
+      }
+    ];
+
     system.activation.certbot = nglib.dag.dagEntryAfter
-      [ "createBaseEnv" "users" ]
-      (concatStringsSep "\n" scripts);
+      [ "createbaseenv" "users" ]
+      (concatStringsSep "\n" (mapAttrsToList (n: v:
+        pkgs.writeShellScript n ''
+          ${pkgs.busybox}/bin/mkdir -p ${v.webroot}
+          ${cfg.package}/bin/certbot certonly \
+            --standalone \
+            -d ${n} \
+            ${optionalString (v.server != null) ("--server" + v.server)} \
+            --email ${v.email} \
+            --agree-tos \
+            ${concatMapStringsSep " " (d: "-d " + d) v.extraDomains}
+     
+            ${optionalString (v.postScript != null) v.postScript}
+        '') cfg.domains));
   };
 }

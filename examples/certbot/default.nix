@@ -13,13 +13,15 @@ nglib:
         services.certbot = {
           enable = true;
 
+          acceptTerms = true;
+
           domains = {
             "redalder.org" = {
               extraDomains = [
                 "hydra.redalder.org"
               ];
               webroot = "/var/www/acme";
-              postScript = "";
+              email = "admin@redalder.org";
             };
           };
         }; 
