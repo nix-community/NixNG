@@ -49,7 +49,8 @@ let
 
   scripts = mapAttrsToList (n: v:
     pkgs.writeShellScript n ''
-      ${cfg.package}/bin/certbot \
+      ${pkgs.busybox}/bin/mkdir -p ${v.webroot}
+      ${cfg.package}/bin/certbot certonly \
         --webroot \
         -w ${v.webroot} \
         -d ${n} \
