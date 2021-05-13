@@ -66,7 +66,7 @@ in
       package = mkOption {
         description = "certbot package.";
         type = types.package;
-        default = pkgs.nginx;
+        default = pkgs.certbot;
       };
 
       domains = mkOption {
