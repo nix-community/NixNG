@@ -97,7 +97,7 @@ in
     }; 
   };
 
-  config = {
+  config = mkIf cfg.enable {
     services.crond = {
       enable = mkDefault true;
 
@@ -117,7 +117,7 @@ in
         assertion = cfg.acceptTerms;
         message = ''
           You must accept the CA's terms of service before using
-          the ACME module by setting `security.acme.acceptTerms`
+          the ACME module by setting `services.certbot.acceptTerms`
           to `true`. For Let's Encrypt's ToS see https://letsencrypt.org/repository/
         '';
       }
