@@ -373,16 +373,10 @@ in
                   if [ $(($(stat -f -c '%a' /nix/store) * $(stat -f -c '%S' /nix/store))) -lt $((${toString cfg.minimumDiskFree} * 1024**3)) ]; then
                     echo "stopping Hydra queue runner due to lack of free space..."
                     sv stop hydra-queue-runner
-                  elif [ $(sv status hydra-queue-runner) -eq "up" ]; then
-                    echo "restarting Hydra queue runner"
-                    sv start hydra-queue-runner
                   fi
                   if [ $(($(stat -f -c '%a' /nix/store) * $(stat -f -c '%S' /nix/store))) -lt $((${toString cfg.minimumDiskFreeEvaluator} * 1024**3)) ]; then
                     echo "stopping Hydra evaluator due to lack of free space..."
                     sv stop hydra-evaluator
-                  elif [ $(sv status hydra-evaluator) -eq "up" ]; then
-                    echo "restarting Hydra evaluator"
-                    sv start hydra-evaluator
                   fi
                 '';
               hydra-compress-logs = pkgs.writeShellScript "hydra-compress-logs"
