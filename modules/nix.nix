@@ -171,6 +171,8 @@ in
       NIX_REMOTE = mkIf cfg.daemon "daemon";
     };
 
+    environment.systemPackages = [ cfg.package ];
+
     nix.config = mkDefault {
       build-users-group = "nixbld";
       max-jobs = "auto";

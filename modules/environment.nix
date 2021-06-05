@@ -51,12 +51,18 @@ in
       default = true;
     };
 
+    systemPackages = mkOption {
+      description = "Packages globally added to PATH";
+      default = [];
+      type = with types; listOf package;
+    };
   };
 
   config = {
-    environment.shell.profile =[
+    environment.shell.profile = [
       ''
         export ${cfg.variables}
+        export PATH="$PATH"':${makeBinPath cfg.systemPackages}'
       ''
     ];
 
