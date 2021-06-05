@@ -10,7 +10,11 @@ nglib:
     };
     nix = {
       enable = true;
-      readOnlyStore = false;
+      package = pkgs.nixFlakes;
+      config = {
+        experimental-features = [ "nix-command" "flakes" ]; 
+        sandbox = false;
+      };
     };
   });
 })
