@@ -60,6 +60,7 @@
         nixSystem = import ./examples/nix self.lib;
         hydraSystem = import ./examples/hydra self.lib;
         certbotSystem = import ./examples/certbot self.lib;
+        postfixSystem = import ./examples/postfix self.lib;
 
         tests =
           let

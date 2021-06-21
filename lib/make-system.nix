@@ -35,6 +35,8 @@ let
 
     ../modules/security/ca.nix
 
+    ../modules/misc/iana.nix
+
     ../modules/environment.nix
     ../modules/users.nix
     ../modules/ids.nix
@@ -48,6 +50,7 @@ let
     ../modules/services/hydra.nix
     ../modules/services/postgresql.nix
     ../modules/services/certbot.nix
+    ../modules/services/postfix.nix
     ({ ... }: {
       system.name = name;
     })

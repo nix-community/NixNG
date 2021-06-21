@@ -25,6 +25,7 @@ with lib;
       type = with types; attrsOf int;
       default = {
         root = 0;
+        postfix = 13;
         www-data = 54;
         postgres = 71;
         hydra = 122;
@@ -40,6 +41,8 @@ with lib;
       type = with types; attrsOf int;
       default = {
         root = 0;
+        postfix = 13;
+        postdrop = 14;
         www-data = 54;
         postgres = 71;
         hydra = 122;

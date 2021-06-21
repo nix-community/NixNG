@@ -86,4 +86,44 @@ rec {
       ) cfg
     else
       abort "Unsupported type in Nginx configuration attrset!";
+
+  postfix = {
+    toMainCnf = cfg:
+      if isAttrs cfg then
+        concatStringsSep "\n" (mapAttrsToList (name: value:
+          if isNull value then
+            ""
+          else if isString value then
+            "${name} = ${value}"
+          else if isInt value then
+            "${name} = ${toString value}"
+          else if isStorePath value then
+            "${name} = ${toString value}"
+          else if isBool value then
+            if value then
+              "${name} = yes"
+            else
+              "${name} = no"
+          else if isList value then
+            "${name} = " + concatMapStringsSep ", " (x:
+              if isString x then
+                x
+              else if isInt x then
+                toString x
+              else if isStorePath x then
+                toString x
+              else if isBool x then
+                if value then
+                  "yes"
+                else
+                  "no"
+              else
+                abort "Unsupported type in Postfix main configuration attrset!" 
+            ) value
+          else
+            abort "Unsupported type in Postfix main configuration attrset!"
+        ) cfg)
+      else
+        abort "Unsupported type in Postfix main configuration attrset!";
+  };
 }
