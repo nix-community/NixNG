@@ -33,13 +33,15 @@ in
         type = types.package;
         default = pkgs.nginx;
       };
-      createUserGroup = mkOption {
-        description = ''
-          Whether to create the default user <literal>www-data</literal>
-          and group <literal>www-data</literal>.
-        '';
-        type = types.bool;
-        default = true;
+      user = mkOption {
+        description = "Nginx user.";
+        type = types.str;
+        default = "nginx";
+      };
+      group = mkOption {
+        description = "Nginx group.";
+        type = types.str;
+        default = "nginx";
       };
       envsubst = mkEnableOption "Run envsubst on the configuration file.";
       configuration = mkOption {
@@ -72,7 +74,7 @@ in
             ensureSomething.create."cache" = {
               type = "directory";
               mode = "750";
-              owner = "nginx:nginx";
+              owner = "${cfg.user}:${cfg.group}";
               dst = "/var/cache/nginx/";
               persistent = false;
             };
@@ -96,16 +98,16 @@ in
             enabled = true;
           };
 
-      users.users."nginx" = mkIf cfg.createUserGroup {
+      users.users.${cfg.user} = mkDefault {
         description = "Nginx";
-        group = "nginx";
+        group = cfg.group;
         createHome = false;
         home = "/var/empty";
         useDefaultShell = true;
         uid = config.ids.uids.nginx;
       };
 
-      users.groups."nginx" = mkIf cfg.createUserGroup {
+      users.groups.${cfg.group} = mkDefault {
         gid = config.ids.gids.nginx;
       };
     };
