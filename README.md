@@ -6,8 +6,8 @@
 
 NixNG is a, as of now, GNU/Linux distribution, which may be a considered a late sibling to NixOS. It shares many of its
 designs and utilizes the Nix package manager at its core. The defining features of NixNG are:
-- a lighter and simpler design, due to the omission of SystemD
-- the possibility of multiple init system choices, like runit, OpenRC and even SystemD in the future
+- a lighter and simpler design, due to the omission of systemd
+- the possibility of multiple init system choices, like runit, OpenRC and even systemd in the future
 - a "minimal by default" package set, while `nixpkgs` and by extension NixOS takes the "full featured by default" approach
 - suitable for building containers, due to being lightweight
 - fully structured configuration for modules, no string `extraConfig`
