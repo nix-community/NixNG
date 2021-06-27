@@ -51,6 +51,7 @@ let
     ../modules/services/postgresql.nix
     ../modules/services/certbot.nix
     ../modules/services/postfix.nix
+    ../modules/services/php-fpm.nix
     ({ ... }: {
       system.name = name;
     })

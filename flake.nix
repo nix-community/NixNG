@@ -61,6 +61,7 @@
         hydraSystem = import ./examples/hydra self.lib;
         certbotSystem = import ./examples/certbot self.lib;
         postfixSystem = import ./examples/postfix self.lib;
+        php-fpmSystem = import ./examples/php-fpm self.lib;
 
         tests =
           let

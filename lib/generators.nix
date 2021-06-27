@@ -126,4 +126,23 @@ rec {
       else
         abort "Unsupported type in Postfix main configuration attrset!";
   };
+
+  php = {
+    ini = cfg: 
+    concatStringsSep "\n" (mapAttrsToList (name: value:
+      "${name} = ${toString value}"
+    ) cfg);    
+    fpm = env: cfg: header:
+      concatStringsSep "\n"
+        ([ "[${header}]" ]
+      ++ (mapAttrsToList (name: value:
+        "${name} = ${toString value}"
+      ) cfg)
+      ++ (mapAttrsToList (name: value:
+        "env[${name}] = ${toString value}"
+      ) env)
+      ++ [ "" ]);
+  };
+
+
 }
