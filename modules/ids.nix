@@ -26,14 +26,18 @@ with lib;
       default = {
         root = 0;
         postfix = 13;
+        #postdrop = 14;
+        dovecot = 46;
+        dovenull = 47;
         www-data = 54;
+        nginx = 60;
         postgres = 71;
         hydra = 122;
         hydra-queue-runner = 235;
         hydra-www = 236;
+        vmail = 398;
         gitea = 399; # might change!
         nobody = 65534;
-        nginx = 60;
       };
     };
     gids = mkOption {
@@ -43,14 +47,17 @@ with lib;
         root = 0;
         postfix = 13;
         postdrop = 14;
+        dovecot = 46;
+        dovenull = 47;
         www-data = 54;
+        nginx = 60;
         postgres = 71;
         hydra = 122;
         hydra-queue-runner = 235;
         hydra-www = 236;
+        vmail = 398;
         log = 399;
         nogroup = 65534;
-        nginx = 60;
       };
     };
   };

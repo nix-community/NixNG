@@ -87,6 +87,66 @@ rec {
     else
       abort "Unsupported type in Nginx configuration attrset!";
 
+  toDovecot = cfg:
+    if isAttrs cfg then
+      concatStringsSep "\n" (mapAttrsToList (name: value:
+        if isNull value then
+          ""
+        else if isString value then
+          "${name} = ${value}"
+        else if isInt value then
+          "${name} = ${toString value}"
+        else if isStorePath value then
+          "${name} = ${toString value}"
+        else if isBool value then
+          if value then
+            "${name} = yes"
+          else
+            "${name} = no"
+
+        else if isAttrs value then
+          concatStringsSep "\n" (mapAttrsToList (n: v:
+            ''
+              ${name} "${n}" {
+            ''
+            +
+            toDovecot v
+            +
+            ''
+
+              }
+            ''
+          ) value)
+        else if isList value && name != "include'" && name != "include_try'" then
+          "${name} = " + concatMapStringsSep ", " (x:
+            if isString x then
+              x
+            else if isInt x then
+              toString x
+            else if isStorePath x then
+              toString x
+            else if isBool x then
+              if value then
+                "yes"
+              else
+                "no"
+            else
+              abort "Unsupported type in Dovecot configuration attrset!" 
+          ) value
+        else if isList value && name == "include'" then
+          concatMapStringsSep "\n" (x:
+            "include! " + x
+          ) value
+        else if isList value && name == "include_try'" then
+          concatMapStringsSep "\n" (x:
+            "include_try! " + x
+          ) value
+        else
+          abort "Unsupported type in Dovecot configuration attrset!"
+      ) cfg)
+    else
+      abort "Unsupported type in Dovecot configuration attrset!";
+
   postfix = {
     toMainCnf = cfg:
       if isAttrs cfg then
