@@ -136,7 +136,7 @@ in
       };
 
       initialScript = mkOption {
-        type = types.nullOr types.str;
+        type = with types; nullOr (oneOf [ package str ]);
         default = null;
         description = ''
           A file containing SQL statements to execute on first startup.
