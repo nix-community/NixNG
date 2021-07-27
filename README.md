@@ -30,9 +30,6 @@ Alternatively, you can stream the image without saving it into the Nix store wit
 ## Contributing
 Look at the code, make changes, open a PR. There are no style guidelines as of now, but try to write readable and well formatted Nix code, without tabs or trailing whitespace. If you need help with something please feel free to open an issue or contact me on Discord `Magic_RB#6785`.
 
-### I would, but I don't want to create an account on your Gitea
-Don't worry, you can login using GitHub or GitLab and your password never touches my server. Login is handled by GH or GL, my server is only told that it is you.
-
 ## License
 This project is licensed under the GNU GPLv3, as per [COPYING](COPYING). I also give explicit permission to the NixOS project to re-license any part of this repository (that is covered by [COPYING](COPYING) and doesn't have it's own licensing) under the MIT license and to include it in [nixpkgs](https://github.com/NixOS/nixpkgs).
 
@@ -40,3 +37,7 @@ I also state that using this project as a flake or `import`ing it after using an
 
 ### Contributing
 By contributing, you agree to the terms of the GNU GPLv3 license plus the exceptions laid out in the section [License](#license). You also give up all rights to the code contributed, in exchange for a legally binding promise that this repository (excluding any separately licensed parts) will always be licensed under a GPL-compatible license as per the [GNU GPL compatible license list](https://www.gnu.org/licenses/license-list.html).
+
+## Relation to nixpkgs/NixOS
+
+As already stated in the [License](#license) section, the NixOS organization can freely relicense all code (owned by me) in this repository under MIT and include it in [nixpkgs](https://github.com/NixOS/nixpkgs). Therefore I encourage upstreaming as much as possible from NixNG to NixOS so that as many people as possible can benefit from my work. I currently see NixNG as a container specific distribution and a playground for new ways of structuring modules. NixNG is to NixOS as Alpine is to Debian, Alpine is seldom used on bare metal and I doubt NixNG will catch on as a bare metal distro, but it's perfect for containers.
