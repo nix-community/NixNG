@@ -54,7 +54,7 @@ in
                   (listOf (oneOf [ str int (listOf (oneOf [ str int ])) ]))
                   (attrsOf self)
                 ]))
-                (listOf (oneOf [ str self]))
+                (listOf (oneOf [ str self ]))
               ];
           in
             self // { description = "loop breaker"; };
