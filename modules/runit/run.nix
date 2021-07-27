@@ -89,7 +89,7 @@ writeShellScript "${n}-run" ''
 
   (
     cd ${s.pwd}
-    export ${concatStringsSep " " (mapAttrsToList (n: v: "${n}=${v}") s.environment)}
+    ${optionalString (s.environment != {}) "export ${concatStringsSep " " (mapAttrsToList (n: v: "${n}=${v}") s.environment)}"}
     exec ${s.script}
   )
 ''
