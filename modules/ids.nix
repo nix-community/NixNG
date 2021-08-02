@@ -35,7 +35,7 @@ with lib;
         hydra = 122;
         hydra-queue-runner = 235;
         hydra-www = 236;
-        vmail = 398;
+        vmail = 5000;
         gitea = 399; # might change!
         nobody = 65534;
       };
@@ -55,7 +55,7 @@ with lib;
         hydra = 122;
         hydra-queue-runner = 235;
         hydra-www = 236;
-        vmail = 398;
+        vmail = 5000;
         log = 399;
         nogroup = 65534;
       };

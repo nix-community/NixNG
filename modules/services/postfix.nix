@@ -224,16 +224,16 @@ in
           queue_directory      = mkDefault "/var/lib/postfix/queue";
 
           # Default location of everything in package
-          meta_directory       = "${pkgs.postfix}/etc/postfix";
-          command_directory    = "${pkgs.postfix}/bin";
+          meta_directory       = "${cfg.package}/etc/postfix";
+          command_directory    = "${cfg.package}/bin";
           sample_directory     = mkDefault "/etc/postfix";
-          newaliases_path      = "${pkgs.postfix}/bin/newaliases";
-          mailq_path           = "${pkgs.postfix}/bin/mailq";
+          newaliases_path      = "${cfg.package}/bin/newaliases";
+          mailq_path           = "${cfg.package}/bin/mailq";
           readme_directory     = mkDefault false;
-          sendmail_path        = "${pkgs.postfix}/bin/sendmail";
-          daemon_directory     = "${pkgs.postfix}/libexec/postfix";
-          manpage_directory    = "${pkgs.postfix}/share/man";
-          html_directory       = "${pkgs.postfix}/share/postfix/doc/html";
+          sendmail_path        = "${cfg.package}/bin/sendmail";
+          daemon_directory     = "${cfg.package}/libexec/postfix";
+          manpage_directory    = "${cfg.package}/share/man";
+          html_directory       = "${cfg.package}/share/postfix/doc/html";
           shlib_directory      = mkDefault false;
           mail_spool_directory = mkDefault "/var/spool/mail/";
           setgid_group         = mkDefault cfg.setgidGroup;
@@ -316,6 +316,8 @@ in
 
             script = pkgs.writeShellScript "postfix-run"
               ''
+                echo asd
+
                 mkdir -p /etc/postfix/
                 ${cfg.package}/bin/postfix -c ${configDir} set-permissions 
                 ${cfg.package}/libexec/postfix/master -c ${configDir}

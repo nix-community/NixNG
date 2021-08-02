@@ -107,7 +107,7 @@ rec {
         else if isAttrs value then
           concatStringsSep "\n" (mapAttrsToList (n: v:
             ''
-              ${name} "${n}" {
+              ${name} ${if n == "" then n else "\"" + n + "\""} {
             ''
             +
             toDovecot v
@@ -131,7 +131,7 @@ rec {
               else
                 "no"
             else
-              abort "Unsupported type in Dovecot configuration attrset!" 
+              abort "Unsupported type in Dovecot configuration attrset!"
           ) value
         else if isList value && name == "include'" then
           concatMapStringsSep "\n" (x:
@@ -178,12 +178,29 @@ rec {
                 else
                   "no"
               else
-                abort "Unsupported type in Postfix main configuration attrset!" 
+                abort "Unsupported type in Postfix main configuration attrset!"
             ) value
           else
             abort "Unsupported type in Postfix main configuration attrset!"
         ) cfg)
       else
         abort "Unsupported type in Postfix main configuration attrset!";
+  };
+
+  php = {
+    ini = cfg:
+      concatStringsSep "\n" (mapAttrsToList (name: value:
+        "${name} = ${toString value}"
+      ) cfg);
+    fpm = env: cfg: header:
+      concatStringsSep "\n"
+        ([ "[${header}]" ]
+      ++ (mapAttrsToList (name: value:
+        "${name} = ${toString value}"
+      ) cfg)
+      ++ (mapAttrsToList (name: value:
+        "env[${name}] = ${toString value}"
+      ) env)
+      ++ [ "" ]);
   };
 }

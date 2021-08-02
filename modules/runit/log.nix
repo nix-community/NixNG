@@ -57,6 +57,6 @@ writeShellScript "${n}-log" ''
             ${optionalString (priority != null) "-t ${priority}"} \
         ''
     else
-      "cat"
+      "cat | sed 's/^/${n} => /'"
    }
 ''
