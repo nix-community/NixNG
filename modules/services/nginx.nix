@@ -107,8 +107,8 @@ in
         uid = config.ids.uids.nginx;
       };
 
-      users.groups.${cfg.group} = mkDefault {
-        gid = config.ids.gids.nginx;
+      users.groups.${cfg.group} = {
+        gid = mkDefault config.ids.gids.nginx;
       };
     };
 }

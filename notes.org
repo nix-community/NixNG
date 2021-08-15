@@ -1,0 +1,6 @@
+* Tasks
+** TODO 
+  [2021-08-15 Sun]
+  [[file:~/NixNG/modules/services/nginx.nix::gid = mkDefault config.ids.gids.nginx;]]
+  It seems that when one sets =users.groups.name= with mkDefault, the whole attribute set is overwritten
+  by the [[file:modules/users.nix][users.nix]] module, because it creates the =members= attribute automatically.
