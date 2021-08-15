@@ -52,6 +52,7 @@ let
     ../modules/services/certbot.nix
     ../modules/services/postfix.nix
     ../modules/services/dovecot.nix
+    ../modules/services/pantalaimon.nix
     ({ ... }: {
       system.name = name;
     })

@@ -36,6 +36,7 @@ with lib;
         hydra-queue-runner = 235;
         hydra-www = 236;
         vmail = 5000;
+        pantalaimon = 398; # might change!
         gitea = 399; # might change!
         nobody = 65534;
       };
@@ -56,6 +57,7 @@ with lib;
         hydra-queue-runner = 235;
         hydra-www = 236;
         vmail = 5000;
+        pantalaimon = 398; # might change!
         log = 399;
         nogroup = 65534;
       };
