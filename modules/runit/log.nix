@@ -57,6 +57,6 @@ writeShellScript "${n}-log" ''
             ${optionalString (priority != null) "-t ${priority}"} \
         ''
     else
-      "cat | sed 's/^/${n} => /'"
+      "cat" #  | sed -u 's/^/${n} => /' - busybox sed doesnt support unbuffered
    }
 ''
