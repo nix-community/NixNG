@@ -280,6 +280,16 @@ in
       '';
     };
 
+    adjustNiceness = mkOption {
+      type = with types; bool;
+      default = false;
+      description = ''
+        Whether to adjust the process priority of the Hydra evaluator and queue
+        runner in order for the web UI to always stay responsive. This will also
+        help other parts of your system.
+      '';
+    };
+
     config = mkOption {
       type = with types; attrsOf (oneOf [ int bool str (listOf (oneOf [int bool str]))]);
       description = ''
@@ -459,8 +469,8 @@ in
 
             export PATH=${pkgs.nettools}/bin:$PATH # Hydra runs some variant of `hostname --fqdn`, which BusyBox doesn't support
 
-            HOME=~hydra-queue-runner LOGNAME=hydra-queue-runner chpst -b hydra-queue-runner -u hydra-queue-runner:hydra ${hydra-package}/bin/hydra-queue-runner -v
-            HOME=~hydra-queue-runner LOGNAME=hydra-queue-runner chpst -u hydra-queue-runner:hydra ${hydra-package}/bin/hydra-queue-runner --unlock
+            HOME=~hydra-queue-runner LOGNAME=hydra-queue-runner chpst ${optionalString cfg.adjustNiceness "-n +5"} -b hydra-queue-runner -u hydra-queue-runner:hydra ${hydra-package}/bin/hydra-queue-runner -v
+            HOME=~hydra-queue-runner LOGNAME=hydra-queue-runner chpst ${optionalString cfg.adjustNiceness "-n +5"} -u hydra-queue-runner:hydra ${hydra-package}/bin/hydra-queue-runner --unlock
           '';
           enabled = true;
         };
@@ -476,7 +486,7 @@ in
             [[ ! -e ${baseDir}/.init-hydra ]] && exit 1
 
             export PATH=${pkgs.nettools}/bin:$PATH # Hydra runs some variant of `hostname --fqdn`, which BusyBox doesn't support
-            HOME=~hydra exec chpst -b hydra-evaluator -u hydra:hydra ${hydra-package}/bin/hydra-evaluator
+            HOME=~hydra exec chpst ${optionalString cfg.adjustNiceness "-n +5"} -b hydra-evaluator -u hydra:hydra ${hydra-package}/bin/hydra-evaluator
           '';
           enabled = true;
         };
