@@ -352,6 +352,8 @@ in
             let
               hydra-update-gc-roots = pkgs.writeShellScript "hydra-update-gc-roots"
                 ''
+                  export PATH=${makeBinPath [ pkgs.busybox pkgs.runit ]}:$PATH
+
                   sv -c -w 0 once hydra-init
                   while [[ ! -e ${baseDir}/.init-hydra ]]; do
                     sleep 1
@@ -370,6 +372,7 @@ in
               hydra-check-space = pkgs.writeShellScript "hydra-check-space"
                 ''
                   export PATH=${makeBinPath [ pkgs.busybox pkgs.runit ]}:$PATH
+
                   if [ $(($(stat -f -c '%a' /nix/store) * $(stat -f -c '%S' /nix/store))) -lt $((${toString cfg.minimumDiskFree} * 1024**3)) ]; then
                     echo "stopping Hydra queue runner due to lack of free space..."
                     sv stop hydra-queue-runner
