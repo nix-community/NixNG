@@ -118,7 +118,8 @@ in
       };
     };
   };
-  config =
+
+  config = mkIf cfg.enable
     {
       users.users."dovecot" = mkIf (cfg.user == "dovecot") {
         uid = ids.uids.dovecot;
