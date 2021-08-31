@@ -1,6 +1,14 @@
 * Tasks
-** TODO 
+** TODO
   [2021-08-15 Sun]
   [[file:~/NixNG/modules/services/nginx.nix::gid = mkDefault config.ids.gids.nginx;]]
   It seems that when one sets =users.groups.name= with mkDefault, the whole attribute set is overwritten
   by the [[file:modules/users.nix][users.nix]] module, because it creates the =members= attribute automatically.
+** TODO Having nologin as the shell breaks cd and chpst
+  [2021-08-31 Tue]
+** TODO Formalize handling of user groups, such that the user can easily override the service defined user group
+  [2021-08-31 Tue]
+** TODO Formalize envsubst handling such that the user can override its usage per service or globally and also change the envsubst binary globally
+  [2021-08-31 Tue]
+** TODO allow overriding the default packages, in ~nix.nixPath~, by creating ~nixpkgs.pkgs~
+  [2021-08-31 Tue]
