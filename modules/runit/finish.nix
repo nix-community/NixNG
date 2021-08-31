@@ -77,7 +77,7 @@ writeShellScript "${n}-finish" ''
 
   (
     cd ${s.pwd}
-    export ${concatStringsSep " " (mapAttrsToList (n: v: "${n}=${v}") s.environment)}
+    ${optionalString (s.environment != {}) "export ${concatStringsSep " " (mapAttrsToList (n: v: "${n}=${v}") s.environment)}"}
     ${optionalString (s.finish != null && !s.shutdownOnExit) "exec ${s.finish}"}
     ${optionalString (s.finish != null && s.shutdownOnExit) "${s.finish}"}
   )
