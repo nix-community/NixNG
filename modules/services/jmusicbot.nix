@@ -71,7 +71,7 @@ in
   };
 
   config = mkIf cfg.enable {
-    users.users.${cfg.user} = mkDefault {
+    users.users.${cfg.user} = mapAttrs (_: mkDefault) {
       description = "JMusicBot";
       group = cfg.group;
       home = "/var/empty";

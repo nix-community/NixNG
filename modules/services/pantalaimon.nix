@@ -56,7 +56,7 @@ in
   };
 
   config = mkIf cfg.enable {
-    users.users.${cfg.user} = mkDefault {
+    users.users.${cfg.user} = mapAttrs (_: mkDefault) {
       description = "Pantalaimon";
       group = cfg.group;
       home = "/var/empty";
