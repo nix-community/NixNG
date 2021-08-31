@@ -53,6 +53,7 @@ let
     ../modules/services/postfix.nix
     ../modules/services/dovecot.nix
     ../modules/services/pantalaimon.nix
+    ../modules/services/jmusicbot.nix
     ({ ... }: {
       system.name = name;
     })

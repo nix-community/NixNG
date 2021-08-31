@@ -62,6 +62,7 @@
         certbotSystem = import ./examples/certbot self.lib;
         postfixSystem = import ./examples/postfix self.lib;
         pantalaimonSystem = import ./examples/pantalaimon self.lib;
+        jmusicbotSystem = import ./examples/jmusicbot self.lib;
 
         tests =
           let

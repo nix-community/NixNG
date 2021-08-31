@@ -38,6 +38,7 @@ with lib;
         vmail = 5000;
         pantalaimon = 398; # might change!
         gitea = 399; # might change!
+        jmusicbot = 400;
         nobody = 65534;
       };
     };
@@ -59,6 +60,7 @@ with lib;
         vmail = 5000;
         pantalaimon = 398; # might change!
         log = 399;
+        jmusicbot = 400;
         nogroup = 65534;
       };
     };
