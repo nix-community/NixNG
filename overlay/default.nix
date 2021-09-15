@@ -16,9 +16,9 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
  */
 
-self: super:
+final: prev:
 let
-  inherit (super) haskell callPackage;
+  inherit (final) haskell callPackage makeSetupHook;
 in
 {
   tinyLinux = callPackage ./tiny-linux.nix {};

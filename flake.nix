@@ -97,6 +97,11 @@
         overlay = import ./overlay;
         packages = nixpkgs.lib.genAttrs
           supportedSystems
-          (s: import nixpkgs { system = s; overlays = [ self.overlay ]; });
+          (s: let
+            pkgs = import nixpkgs { system = s; };
+            final = self.overlay finalWithPkgs pkgs;
+            finalWithPkgs = final // pkgs // { callPackage = pkgs.newScope (final // pkgs); };
+          in
+            final);
       };
 }
