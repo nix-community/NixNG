@@ -94,6 +94,8 @@
               };
             };
 
+        nixngModules = { all = ({ ... }: { imports = import ./modules; }); };
+
         overlay = import ./overlay;
         packages = nixpkgs.lib.genAttrs
           supportedSystems
