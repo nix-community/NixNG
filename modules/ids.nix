@@ -23,7 +23,15 @@ with lib;
     uids = mkOption {
       description = "A username to uid map, used for keeping track of assigned uids.";
       type = with types; attrsOf int;
-      default = {
+    };
+    gids = mkOption {
+      description = "A groupname to gid map, used for keeping track of assigned gids.";
+      type = with types; attrsOf int;
+    };
+  };
+
+  config = {
+    ids.uids = {
         root = 0;
         postfix = 13;
         #postdrop = 14;
@@ -35,17 +43,14 @@ with lib;
         hydra = 122;
         hydra-queue-runner = 235;
         hydra-www = 236;
-        vmail = 5000;
         pantalaimon = 398; # might change!
         gitea = 399; # might change!
         jmusicbot = 400;
+        vmail = 5000;
         nobody = 65534;
       };
-    };
-    gids = mkOption {
-      description = "A groupname to gid map, used for keeping track of assigned gids.";
-      type = with types; attrsOf int;
-      default = {
+
+    ids.gids = {
         root = 0;
         postfix = 13;
         postdrop = 14;
@@ -57,12 +62,11 @@ with lib;
         hydra = 122;
         hydra-queue-runner = 235;
         hydra-www = 236;
-        vmail = 5000;
         pantalaimon = 398; # might change!
         log = 399;
         jmusicbot = 400;
+        vmail = 5000;
         nogroup = 65534;
       };
-    };
   };
 }
