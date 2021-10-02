@@ -15,11 +15,11 @@
   *  You should have received a copy of the GNU General Public License
   *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
   *
-  * This file incorporates work covered by the following copyright and  
-  * permission notice:  
-  *  
+  * This file incorporates work covered by the following copyright and
+  * permission notice:
+  *
   *     Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
-  *     
+  *
   *     Permission is hereby granted, free of charge, to any person obtaining
   *     a copy of this software and associated documentation files (the
   *     "Software"), to deal in the Software without restriction, including
@@ -27,10 +27,10 @@
   *     distribute, sublicense, and/or sell copies of the Software, and to
   *     permit persons to whom the Software is furnished to do so, subject to
   *     the following conditions:
-  *     
+  *
   *     The above copyright notice and this permission notice shall be
   *     included in all copies or substantial portions of the Software.
-  *     
+  *
   *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
   *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
   *     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -55,7 +55,7 @@ let
       preferLocalBuild = true;
     }
     ''
-      cat ${package}/etc/php.ini $phpGlobalSettingsPath $phpSettingsPath > $out 
+      cat ${package}/etc/php.ini $phpGlobalSettingsPath $phpSettingsPath > $out
     '';
 
   genFpmConfFile = { settings }: pkgs.runCommandNoCC "php-fpm.conf"
@@ -66,7 +66,7 @@ let
       preferLocalBuild = true;
     }
     ''
-      cat $fpmGlobalSettingsPath $fpmSettingsPath > $out 
+      cat $fpmGlobalSettingsPath $fpmSettingsPath > $out
     '';
 
   poolOpts = { name, ... }: {

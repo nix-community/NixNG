@@ -1,19 +1,19 @@
 /*
   * NixNG
-  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
-  *  
-  *  This file is free software: you may copy, redistribute and/or modify it  
-  *  under the terms of the GNU General Public License as published by the  
-  *  Free Software Foundation, either version 3 of the License, or (at your  
-  *  option) any later version.  
-  *  
-  *  This file is distributed in the hope that it will be useful, but  
-  *  WITHOUT ANY WARRANTY; without even the implied warranty of  
-  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
-  *  General Public License for more details.  
-  *  
-  *  You should have received a copy of the GNU General Public License  
-  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
+  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>
+  *
+  *  This file is free software: you may copy, redistribute and/or modify it
+  *  under the terms of the GNU General Public License as published by the
+  *  Free Software Foundation, either version 3 of the License, or (at your
+  *  option) any later version.
+  *
+  *  This file is distributed in the hope that it will be useful, but
+  *  WITHOUT ANY WARRANTY; without even the implied warranty of
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  *  General Public License for more details.
+  *
+  *  You should have received a copy of the GNU General Public License
+  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 { pkgs, config, lib, nglib, ... }:
@@ -73,9 +73,9 @@ in
           script = pkgs.writeShellScript "apache2-run"
             (if cfg.envsubst then
               ''
-                export PATH=${pkgs.envsubst}/bin:$PATH 
-                
-                mkdir -p /run/cfg 
+                export PATH=${pkgs.envsubst}/bin:$PATH
+
+                mkdir -p /run/cfg
                 install -o www-data -g www-data -m 0440 /dev/null ${runtimeConfig}
                 envsubst < ${config} > ${runtimeConfig}
 

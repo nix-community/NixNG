@@ -1,19 +1,19 @@
 /*
   * NixNG
-  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
-  *  
-  *  This file is free software: you may copy, redistribute and/or modify it  
-  *  under the terms of the GNU General Public License as published by the  
-  *  Free Software Foundation, either version 3 of the License, or (at your  
-  *  option) any later version.  
-  *  
-  *  This file is distributed in the hope that it will be useful, but  
-  *  WITHOUT ANY WARRANTY; without even the implied warranty of  
-  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
-  *  General Public License for more details.  
-  *  
-  *  You should have received a copy of the GNU General Public License  
-  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
+  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>
+  *
+  *  This file is free software: you may copy, redistribute and/or modify it
+  *  under the terms of the GNU General Public License as published by the
+  *  Free Software Foundation, either version 3 of the License, or (at your
+  *  option) any later version.
+  *
+  *  This file is distributed in the hope that it will be useful, but
+  *  WITHOUT ANY WARRANTY; without even the implied warranty of
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  *  General Public License for more details.
+  *
+  *  You should have received a copy of the GNU General Public License
+  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 { pkgs, lib, nglib, config, ... }:
@@ -67,7 +67,7 @@ in
     activation = mkOption {
       description = ''
         A set of shell script fragments that are executed when a NixNG system
-        configuration is activated. You can update /etc, 
+        configuration is activated. You can update /etc,
         create accounts, and so on. For creating service related directories or file,
         please use <option>init.services.<service>.ensureSomething</option>.
         These fragments are isolated and can't effect each other's environment.
@@ -102,7 +102,7 @@ in
     };
     activationScript = mkOption {
       description = ''
-        Script generated from <option>system.activation</option>, used to setup the environment. 
+        Script generated from <option>system.activation</option>, used to setup the environment.
       '';
       type = types.path;
       readOnly = true;
@@ -135,7 +135,7 @@ in
             --subst-var-by "systemConfig" "$out"
           chmod +x $out/init $out/activation
 
-          # 
+          #
           ${optionalString system.createNixRegistration
             "ln -s ${closureInfo}/registration $out/registration"}
         '');
@@ -166,7 +166,7 @@ in
         export PATH=${pkgs.busybox}/bin
 
         mkdir -p /run
-        ln -s $_system_config /run/current-system 
+        ln -s $_system_config /run/current-system
       '';
 
     system.activationScript = pkgs.writeShellScript "activation"
@@ -191,7 +191,7 @@ in
             fi
           ''
         ) cfg.activation.result)}
-        
+
         exit $_status
       '';
 
@@ -200,7 +200,7 @@ in
         assertion = !(cfg.activation ? "cycle" || cfg.activation ? "loops");
         message = ''
           `cfg.activation` has one or more cycles and/or loops.
-          - cycles: 
+          - cycles:
             ${(map (x: "{ after = [ ${concatSepStrings " " x.after} ]; data = ${x.data}; name = ${x.name} }") cfg.activation.loops or []) or ""}
           - loops:
             ${(map (x: "{ after = [ ${concatSepStrings " " x.after} ]; data = ${x.data}; name = ${x.name} }") cfg.activation.loops or [])}

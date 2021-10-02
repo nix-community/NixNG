@@ -1,19 +1,19 @@
 /*
   * NixNG
-  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
-  *  
-  *  This file is free software: you may copy, redistribute and/or modify it  
-  *  under the terms of the GNU General Public License as published by the  
-  *  Free Software Foundation, either version 3 of the License, or (at your  
-  *  option) any later version.  
-  *  
-  *  This file is distributed in the hope that it will be useful, but  
-  *  WITHOUT ANY WARRANTY; without even the implied warranty of  
-  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
-  *  General Public License for more details.  
-  *  
-  *  You should have received a copy of the GNU General Public License  
-  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
+  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>
+  *
+  *  This file is free software: you may copy, redistribute and/or modify it
+  *  under the terms of the GNU General Public License as published by the
+  *  Free Software Foundation, either version 3 of the License, or (at your
+  *  option) any later version.
+  *
+  *  This file is distributed in the hope that it will be useful, but
+  *  WITHOUT ANY WARRANTY; without even the implied warranty of
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  *  General Public License for more details.
+  *
+  *  You should have received a copy of the GNU General Public License
+  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 { nglib, lib, pkgs, config, ... }:
@@ -87,7 +87,7 @@ let
           and <option>hashedPasswordFile</option> are mutually exclusive and can't be set both
           at the same time. Use <literal>mkpasswd -m sha-512</literal> to create a suitable hash.
 
-          Be careful, the hash isn't checked for format errors and therefore by 
+          Be careful, the hash isn't checked for format errors and therefore by
           inputing a wrongly formatted hash you can yourself out!!
         '';
         type = types.nullOr types.str;
@@ -98,10 +98,10 @@ let
           Specifies the file containing the user's hashed password, options
           <option>hashedPassword</option> and <option>hashedPasswordFile</option> are mutually exclusive
           and can't be set both at the same time. Use <literal>mkPasswd -m sha-512</literal>
-          to create a suitable hash. The file should contain one line on 
+          to create a suitable hash. The file should contain one line on
           which the password hash is specified.
 
-          Be careful, the hash isn't checked for format errors and therefore by 
+          Be careful, the hash isn't checked for format errors and therefore by
           inputing a wrongly formatted hash you can yourself out!!
         '';
         type = types.nullOr types.str;
@@ -176,7 +176,7 @@ in
     generateShadow = mkOption {
       description = ''
         An executable, which when run generates <literal>/etc/shadow</literal>
-        to stdout. Used during activation to avoid the inclusion of the 
+        to stdout. Used during activation to avoid the inclusion of the
         <literal>/etc/shadow</literal> file in the world readable Nix store.
       '';
       type = types.path;
@@ -221,7 +221,7 @@ in
 
         ln -sf ${cfg.passwdFile} /etc/passwd
         ln -sf ${cfg.groupFile} /etc/group
-        ${cfg.generateShadow} > /etc/shadow 
+        ${cfg.generateShadow} > /etc/shadow
         ${createHomes}
       '';
 

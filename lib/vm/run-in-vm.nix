@@ -1,3 +1,21 @@
+/*
+  * NixNG
+  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>
+  *
+  *  This file is free software: you may copy, redistribute and/or modify it
+  *  under the terms of the GNU General Public License as published by the
+  *  Free Software Foundation, either version 3 of the License, or (at your
+  *  option) any later version.
+  *
+  *  This file is distributed in the hope that it will be useful, but
+  *  WITHOUT ANY WARRANTY; without even the implied warranty of
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  *  General Public License for more details.
+  *
+  *  You should have received a copy of the GNU General Public License
+  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 { pkgs
 , lib
 , callPackage
@@ -21,7 +39,7 @@
 , script
 , postProcess ? writeShellScript "post-process.sh"
     ''
-      cp -r $xchg/out $out   
+      cp -r $xchg/out $out
     ''
 , preProcess ? null
 }:
@@ -50,14 +68,14 @@ let
 
                   export PATH=${busybox}/bin:${bash}/bin
 
-                  
+
                   mkdir -p /proc /sys
                   mount -t proc none /proc
                   mount -t sysfs none /sys
-                  
-                  source /proc/cmdline  
-                  
-                  echo 2 > /proc/sys/vm/panic_on_oom 
+
+                  source /proc/cmdline
+
+                  echo 2 > /proc/sys/vm/panic_on_oom
 
                   mount -t devtmpfs devtmpfs /dev
 
@@ -81,7 +99,7 @@ let
                   xchg="/xchg"
                   mkdir -p $xchg
                   mount -t 9p xchg $xchg -o trans=virtio,version=9p2000.L
-                  
+
                   mkdir -p /etc
                   ln -sf /proc/mounts /etc/mtab
                   echo "127.0.0.1 localhost" > /etc/hosts
@@ -89,7 +107,7 @@ let
                   if [ ! -e /etc/passwd ]; then
                     echo "root:x:0:0:System administrator:/root:/bin/sh" > /etc/passwd
                   fi
-                  
+
                   out=/xchg/out $script
                   echo $? > /xchg/exit-code
                 '';
@@ -145,14 +163,14 @@ runCommandNoCC "qemu"
       -kernel ${linux_latest}/bzImage \
       -initrd ${initrd} \
       -append "panic=1 script=${script} console=${qemuSerialDevice}"
-    
+
     (
       export xchg=$_xchg
       if ! ${postProcess} ; then
         exit 1
       fi
     )
-                
+
     cat $_xchg/exit-code
     exit $(<$_xchg/exit-code)
   ''

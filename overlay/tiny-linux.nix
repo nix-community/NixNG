@@ -1,19 +1,19 @@
 /*
   * NixNG
-  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
-  *  
-  *  This file is free software: you may copy, redistribute and/or modify it  
-  *  under the terms of the GNU General Public License as published by the  
-  *  Free Software Foundation, either version 3 of the License, or (at your  
-  *  option) any later version.  
-  *  
-  *  This file is distributed in the hope that it will be useful, but  
-  *  WITHOUT ANY WARRANTY; without even the implied warranty of  
-  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
-  *  General Public License for more details.  
-  *  
-  *  You should have received a copy of the GNU General Public License  
-  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
+  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>
+  *
+  *  This file is free software: you may copy, redistribute and/or modify it
+  *  under the terms of the GNU General Public License as published by the
+  *  Free Software Foundation, either version 3 of the License, or (at your
+  *  option) any later version.
+  *
+  *  This file is distributed in the hope that it will be useful, but
+  *  WITHOUT ANY WARRANTY; without even the implied warranty of
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  *  General Public License for more details.
+  *
+  *  You should have received a copy of the GNU General Public License
+  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 # TODO use linuxManualConfig instead of buildLinux
@@ -70,8 +70,8 @@ let
         # make $makeFlags "''${makeFlagsArray[@]}" prepare
 
         # Note: https://github.com/NixOS/nixpkgs/blob/9c213398b312e0f0bb9cdf05090fd20223a82ad0/pkgs/os-specific/linux/kernel/manual-config.nix#L166
-        buildFlagsArray+=("KBUILD_BUILD_TIMESTAMP=$(date -u -d @$SOURCE_DATE_EPOCH)")      
-      
+        buildFlagsArray+=("KBUILD_BUILD_TIMESTAMP=$(date -u -d @$SOURCE_DATE_EPOCH)")
+
         ls build
       '';
 
