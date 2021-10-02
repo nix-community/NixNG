@@ -28,7 +28,7 @@ Alternatively, you can stream the image without saving it into the Nix store wit
 `nix build .#<systemName>.config.system.build.ociImage.stream && ./result | docker load`.
 
 ## Contributing
-Look at the code, make changes, open a PR. There are no style guidelines as of now, but try to write readable and well formatted Nix code, without tabs or trailing whitespace. If you need help with something please feel free to open an issue or contact me on Discord `Magic_RB#6785`.
+Look at the code, make changes, open a PR. Be sure to use the provided pre-commit hook in `dev-utils/hooks/pre-commit`, which formats everything and checks for trailing whitespace. You can set it up by running `dev-utils/setup-hooks.sh`. If you need help with something please feel free to open an issue or contact me on Discord `Magic_RB#6785`.
 
 ## License
 This project is licensed under the GNU GPLv3, as per [COPYING](COPYING). I also give explicit permission to the NixOS project to re-license any part of this repository (that is covered by [COPYING](COPYING) and doesn't have it's own licensing) under the MIT license and to include it in [nixpkgs](https://github.com/NixOS/nixpkgs).
