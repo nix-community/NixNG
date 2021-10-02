@@ -43,14 +43,6 @@ let
                     default = 0; # 1 MB
                   };
                 };
-                config = {
-                  assertions = [
-                    {
-                      assertion = cfg.fle.rotate >= 0;
-                      message = "init.service.<name>.log.file.rotate can't be less than 0";
-                    }
-                  ];
-                };
               });
               default = null;
             };
@@ -311,15 +303,19 @@ in
   config = {
     # TODO add assertions for this module
     assertions = mapAttrsToList (n: v:
-      {
-        assertion =
-          let
-            selectedCount =
-              (count (x: x) (mapAttrsToList (n: v: if v == null then false else true) v.log));
-          in
-            if selectedCount == 1 || selectedCount == 0 then true else false;
-        message = "You can only select one log type, in service ${n}.";
-      }
+      [ { assertion =
+            let
+              selectedCount =
+                (count (x: x) (mapAttrsToList (n: v: if v == null then false else true) v.log));
+            in
+              selectedCount == 1 || selectedCount == 0;
+          message = "You can only select one log type, in service ${n}.";
+        }
+        {
+          assertion = (v.log.file.rotate.rotate or 0) >= 0;
+          message = "init.service.<name>.log.file.rotate can't be less than 0";
+        }
+      ]
     ) cfg.services;
   };
 }
