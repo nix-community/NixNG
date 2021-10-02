@@ -63,6 +63,7 @@
         postfixSystem = import ./examples/postfix self.lib;
         pantalaimonSystem = import ./examples/pantalaimon self.lib;
         jmusicbotSystem = import ./examples/jmusicbot self.lib;
+        php-fpmSystem = import ./examples/php-fpm self.lib;
 
         tests =
           let

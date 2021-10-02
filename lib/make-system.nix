@@ -54,6 +54,7 @@ let
     ../modules/services/dovecot.nix
     ../modules/services/pantalaimon.nix
     ../modules/services/jmusicbot.nix
+    ../modules/services/php-fpm.nix
     ({ ... }: {
       system.name = name;
     })
