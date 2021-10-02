@@ -7,7 +7,7 @@ nglib:
       config = {
         dumb-init = {
           enable = true;
-          type.services = {};
+          type.services = { };
         };
         init.services.nginx = {
           shutdownOnExit = true;

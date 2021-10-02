@@ -6,13 +6,13 @@ nglib:
   config = ({ pkgs, ... }: {
     dumb-init = {
       enable = true;
-      type.shell = {};
+      type.shell = { };
     };
     nix = {
       enable = true;
       package = pkgs.nixFlakes;
       config = {
-        experimental-features = [ "nix-command" "flakes" ]; 
+        experimental-features = [ "nix-command" "flakes" ];
         sandbox = false;
       };
     };

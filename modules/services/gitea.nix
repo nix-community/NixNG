@@ -1,20 +1,20 @@
 /*
- * NixNG
- * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
- *  
- *  This file is free software: you may copy, redistribute and/or modify it  
- *  under the terms of the GNU General Public License as published by the  
- *  Free Software Foundation, either version 3 of the License, or (at your  
- *  option) any later version.  
- *  
- *  This file is distributed in the hope that it will be useful, but  
- *  WITHOUT ANY WARRANTY; without even the implied warranty of  
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
- *  General Public License for more details.  
- *  
- *  You should have received a copy of the GNU General Public License  
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
- */
+  * NixNG
+  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
+  *  
+  *  This file is free software: you may copy, redistribute and/or modify it  
+  *  under the terms of the GNU General Public License as published by the  
+  *  Free Software Foundation, either version 3 of the License, or (at your  
+  *  option) any later version.  
+  *  
+  *  This file is distributed in the hope that it will be useful, but  
+  *  WITHOUT ANY WARRANTY; without even the implied warranty of  
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
+  *  General Public License for more details.  
+  *  
+  *  You should have received a copy of the GNU General Public License  
+  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
+*/
 
 { pkgs, lib, config, ... }:
 with lib;
@@ -114,7 +114,7 @@ in
     secrets = mkOption {
       description = "Gitea secrets.";
       type = types.submodule giteaSecrets;
-      default = {};
+      default = { };
     };
 
     configuration = mkOption {
@@ -188,27 +188,28 @@ in
       };
 
       script = pkgs.writeShellScript "gitea-run"
-        (let
-          appIni = pkgs.writeText "app.ini"
-            ''
+        (
+          let
+            appIni = pkgs.writeText "app.ini"
+              ''
                 APP_NAME = ${cfg.appName}
                 RUN_MODE = ${cfg.runMode}
                 RUN_USER = ${cfg.user}
 
                 ${generators.toINI {} cfg.configuration}
               '';
-          inherit (cfg.secrets) secretKeyFile internalTokenFile jwtSecretFile lfsJwtSecretFile databaseUserFile databasePasswordFile databaseHostFile;
+            inherit (cfg.secrets) secretKeyFile internalTokenFile jwtSecretFile lfsJwtSecretFile databaseUserFile databasePasswordFile databaseHostFile;
 
-          subsSecret = source: key:
-            optionalString (source != null)
-              ''
+            subsSecret = source: key:
+              optionalString (source != null)
+                ''
                   if [[ -f '${source}' ]] ; then
                     SECRET="$(head -n1 ${source})"
                     sed -i "s,#${key}#,$SECRET,g" ${cfg.runConfig}
                     echo 'Substituted contents of `${source}` in place of `#${key}#`'
                   fi
                 '';
-        in
+          in
           ''
             export PATH=${pkgs.busybox}/bin
 
@@ -224,7 +225,8 @@ in
 
             export HOME=${cfg.configuration.repository.ROOT}
             chpst -u ${cfg.user}:nogroup ${cfg.package}/bin/gitea -c ${cfg.runConfig}
-          '');
+          ''
+        );
 
       enabled = true;
     };

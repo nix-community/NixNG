@@ -1,10 +1,12 @@
 { system
-, runCommandNoCC, writeReferencesToFile
-, path, name
+, runCommandNoCC
+, writeReferencesToFile
+, path
+, name
 }:
 
 runCommandNoCC name
-  {}
+{ }
   ''
     set -o pipefail
     mkdir -p $out

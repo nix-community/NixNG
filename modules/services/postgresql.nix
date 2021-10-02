@@ -1,44 +1,44 @@
 /*  
- * NixNG
- * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
- *  
- *  This file is free software: you may copy, redistribute and/or modify it  
- *  under the terms of the GNU General Public License as published by the  
- *  Free Software Foundation, either version 3 of the License, or (at your  
- *  option) any later version.  
- *  
- *  This file is distributed in the hope that it will be useful, but  
- *  WITHOUT ANY WARRANTY; without even the implied warranty of  
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
- *  General Public License for more details.  
- *  
- *  You should have received a copy of the GNU General Public License  
- *  along with this program.  If not, see .  
- *  
- * This file incorporates work covered by the following copyright and  
- * permission notice:  
- *  
- *     Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
- *     
- *     Permission is hereby granted, free of charge, to any person obtaining
- *     a copy of this software and associated documentation files (the
- *     "Software"), to deal in the Software without restriction, including
- *     without limitation the rights to use, copy, modify, merge, publish,
- *     distribute, sublicense, and/or sell copies of the Software, and to
- *     permit persons to whom the Software is furnished to do so, subject to
- *     the following conditions:
- *     
- *     The above copyright notice and this permission notice shall be
- *     included in all copies or substantial portions of the Software.
- *     
- *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- *     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
- *     LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
- *     OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
- *     WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+  * NixNG
+  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
+  *  
+  *  This file is free software: you may copy, redistribute and/or modify it  
+  *  under the terms of the GNU General Public License as published by the  
+  *  Free Software Foundation, either version 3 of the License, or (at your  
+  *  option) any later version.  
+  *  
+  *  This file is distributed in the hope that it will be useful, but  
+  *  WITHOUT ANY WARRANTY; without even the implied warranty of  
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
+  *  General Public License for more details.  
+  *  
+  *  You should have received a copy of the GNU General Public License  
+  *  along with this program.  If not, see .  
+  *  
+  * This file incorporates work covered by the following copyright and  
+  * permission notice:  
+  *  
+  *     Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
+  *     
+  *     Permission is hereby granted, free of charge, to any person obtaining
+  *     a copy of this software and associated documentation files (the
+  *     "Software"), to deal in the Software without restriction, including
+  *     without limitation the rights to use, copy, modify, merge, publish,
+  *     distribute, sublicense, and/or sell copies of the Software, and to
+  *     permit persons to whom the Software is furnished to do so, subject to
+  *     the following conditions:
+  *     
+  *     The above copyright notice and this permission notice shall be
+  *     included in all copies or substantial portions of the Software.
+  *     
+  *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  *     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+  *     LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+  *     OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+  *     WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
 
 { pkgs, lib, config, ... }:
 with lib;
@@ -127,7 +127,7 @@ in
 
       initdbArgs = mkOption {
         type = with types; listOf str;
-        default = [];
+        default = [ ];
         example = [ "--data-checksums" "--allow-group-access" ];
         description = ''
           Additional arguments passed to <literal>initdb</literal> during data dir
@@ -145,7 +145,7 @@ in
 
       ensureExtensions = mkOption {
         type = with types; attrsOf (listOf str);
-        default = {};
+        default = { };
         description = ''
           Ensure that the specified extensions exist.
         '';
@@ -156,7 +156,7 @@ in
 
       ensureDatabases = mkOption {
         type = types.listOf types.str;
-        default = [];
+        default = [ ];
         description = ''
           Ensures that the specified databases exist.
           This option will never delete existing databases, especially not when the value of this
@@ -180,7 +180,7 @@ in
             };
             ensurePermissions = mkOption {
               type = types.attrsOf types.str;
-              default = {};
+              default = { };
               description = ''
                 Permissions to ensure for the user, specified as an attribute set.
                 The attribute names specify the database and tables to grant the permissions for.
@@ -200,7 +200,7 @@ in
             };
           };
         });
-        default = [];
+        default = [ ];
         description = ''
           Ensures that the specified users exist and have at least the ensured permissions.
           The PostgreSQL users will be identified using peer authentication. This authenticates the Unix user with the
@@ -250,7 +250,7 @@ in
 
       extraPlugins = mkOption {
         type = types.listOf types.path;
-        default = [];
+        default = [ ];
         example = literalExample "with pkgs.postgresql_11.pkgs; [ postgis pg_repack ]";
         description = ''
           List of PostgreSQL plugins. PostgreSQL version for each plugin should
@@ -260,7 +260,7 @@ in
 
       config = mkOption {
         type = with types; attrsOf (oneOf [ bool float int str ]);
-        default = {};
+        default = { };
         description = ''
           PostgreSQL configuration. Refer to
           <link xlink:href="https://www.postgresql.org/docs/11/config-setting.html#CONFIG-SETTING-CONFIGURATION-FILE"/>
@@ -298,7 +298,7 @@ in
           PostgreSQL superuser account to use for various operations. Internal since changing
           this value would lead to breakage while setting up databases.
         '';
-        };
+      };
     };
   };
   # =======================================================================
@@ -327,7 +327,8 @@ in
       '';
 
     users.users.postgres =
-      { uid = config.ids.uids.postgres;
+      {
+        uid = config.ids.uids.postgres;
         group = "postgres";
         description = "PostgreSQL server user";
         createHome = false;

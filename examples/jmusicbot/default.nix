@@ -6,7 +6,7 @@ nglib:
     {
       dumb-init = {
         enable = true;
-        type.services = {};
+        type.services = { };
       };
       init.services.jmusicbot = {
         shutdownOnExit = true;

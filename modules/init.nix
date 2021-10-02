@@ -1,20 +1,20 @@
 /*
- * NixNG
- * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
- *  
- *  This file is free software: you may copy, redistribute and/or modify it  
- *  under the terms of the GNU General Public License as published by the  
- *  Free Software Foundation, either version 3 of the License, or (at your  
- *  option) any later version.  
- *  
- *  This file is distributed in the hope that it will be useful, but  
- *  WITHOUT ANY WARRANTY; without even the implied warranty of  
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
- *  General Public License for more details.  
- *  
- *  You should have received a copy of the GNU General Public License  
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
- */
+  * NixNG
+  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
+  *  
+  *  This file is free software: you may copy, redistribute and/or modify it  
+  *  under the terms of the GNU General Public License as published by the  
+  *  Free Software Foundation, either version 3 of the License, or (at your  
+  *  option) any later version.  
+  *  
+  *  This file is distributed in the hope that it will be useful, but  
+  *  WITHOUT ANY WARRANTY; without even the implied warranty of  
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
+  *  General Public License for more details.  
+  *  
+  *  You should have received a copy of the GNU General Public License  
+  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
+*/
 
 { pkgs, lib, config, ... }:
 with lib;
@@ -27,87 +27,88 @@ let
       let
         cfg = config;
       in
-        {
-          options = {
-            file = mkOption {
-              description = "Log to a plain file, without rotation.";
-              type = nullOr (submodule {
+      {
+        options = {
+          file = mkOption {
+            description = "Log to a plain file, without rotation.";
+            type = nullOr (submodule {
+              options = {
+                dst = mkOption {
+                  description = "The file to which to log to.";
+                  type = path;
+                };
+                rotate = mkOption {
+                  description = "The size after which the file should rotated in kilo bytes.";
+                  type = int;
+                  default = 0; # 1 MB
+                };
+              };
+            });
+            default = null;
+          };
+          syslog = mkOption {
+            description = "Log via syslog, either to a UDS or over TCP/UDP.";
+            type = nullOr (submodule ({ config, ... }:
+              let
+                cfg = config;
+              in
+              {
                 options = {
-                  dst = mkOption {
-                    description = "The file to which to log to.";
-                    type = path;
+                  type = mkOption {
+                    description = "Syslog type, UDS, TCP, or UDP.";
+                    type = enum [ "uds" "tcp" "udp" ];
                   };
-                  rotate = mkOption {
-                    description = "The size after which the file should rotated in kilo bytes.";                  
-                    type = int;
-                    default = 0; # 1 MB
+                  dst = mkOption {
+                    description = "The endpoint to log to, format depends on the type.";
+                    type = str;
+                  };
+                  time = mkOption {
+                    description = "Whether the complete sender timestamp should be included in log messages";
+                    type = bool;
+                    default = false;
+                  };
+                  host = mkOption {
+                    description = "Whether the hostname should be included in log messages.";
+                    type = bool;
+                    default = true;
+                  };
+                  timeQuality = mkOption {
+                    description = "Whether time quality information should be included in the log messages.";
+                    type = bool;
+                    default = false;
+                  };
+                  tag = mkOption {
+                    description = "Every message will be marked with this tag.";
+                    type = nullOr str;
+                    default = null;
+                  };
+                  priority = mkOption {
+                    description = "Mark every message with a priority.";
+                    type = nullOr str;
+                    default = null;
                   };
                 };
-              });
-              default = null;
-            };
-            syslog = mkOption {
-              description = "Log via syslog, either to a UDS or over TCP/UDP.";
-              type = nullOr (submodule ({ config, ... }:
-                let
-                  cfg = config;
-                in {
-                  options = {
-                    type = mkOption {
-                      description = "Syslog type, UDS, TCP, or UDP.";
-                      type = enum [ "uds" "tcp" "udp" ];
-                    };
-                    dst = mkOption {
-                      description = "The endpoint to log to, format depends on the type.";
-                      type = str;
-                    };
-                    time = mkOption {
-                      description = "Whether the complete sender timestamp should be included in log messages";
-                      type = bool;
-                      default = false;
-                    };
-                    host = mkOption {
-                      description = "Whether the hostname should be included in log messages.";
-                      type = bool;
-                      default = true;
-                    };
-                    timeQuality = mkOption {
-                      description = "Whether time quality information should be included in the log messages.";
-                      type = bool;
-                      default = false;
-                    };
-                    tag = mkOption {
-                      description = "Every message will be marked with this tag.";
-                      type = nullOr str;
-                      default = null;
-                    };
-                    priority = mkOption {
-                      description = "Mark every message with a priority.";
-                      type = nullOr str;
-                      default = null;
-                    };
-                  };
 
-                  config = {
-                    dst =
-                      if cfg.type == "uds" then
-                        mkDefault "/dev/log"
-                      else if cfg.type == "tcp" || cfg.type == "udp" then
-                        mkDefault "127.0.0.1:514"
-                      else
-                        abort "Unknown syslog type, this should have been caught by the module system!";
-                  };
-                }));
-              default = null;
-            };
+                config = {
+                  dst =
+                    if cfg.type == "uds" then
+                      mkDefault "/dev/log"
+                    else if cfg.type == "tcp" || cfg.type == "udp" then
+                      mkDefault "127.0.0.1:514"
+                    else
+                      abort "Unknown syslog type, this should have been caught by the module system!";
+                };
+              }));
+            default = null;
           };
-          config = {};
-        }));
-    default = {};
+        };
+        config = { };
+      }));
+    default = { };
   };
   ensureSomething = mkOption {
     description = "Files or directories which need to exist before service is started, no overwriting though.";
-    default = {};
+    default = { };
     type = with types;
       submodule {
         options = {
@@ -128,8 +129,8 @@ let
                   default = false;
                 };
               };
-            }); 
-            default = {};
+            });
+            default = { };
           };
           copy = mkOption {
             type = attrsOf (submodule {
@@ -149,8 +150,8 @@ let
                 };
                 # TODO add mode?
               };
-            }); 
-            default = {};
+            });
+            default = { };
           };
           linkFarm = mkOption {
             type = attrsOf (submodule {
@@ -169,8 +170,8 @@ let
                   default = false;
                 };
               };
-            }); 
-            default = {};
+            });
+            default = { };
           };
           exec = mkOption {
             description = "Execute file to create a file or directory.";
@@ -190,8 +191,8 @@ let
                   default = false;
                 };
               };
-            }); 
-            default = {};
+            });
+            default = { };
           };
           create = mkOption {
             description = "Creates either an empty file or directory.";
@@ -221,8 +222,8 @@ let
                   default = false;
                 };
               };
-            }); 
-            default = {};
+            });
+            default = { };
           };
         };
       };
@@ -252,7 +253,7 @@ in
           dependencies = mkOption {
             description = "Service dependencies";
             type = types.listOf (types.str);
-            default = [];
+            default = [ ];
           };
 
           inherit ensureSomething log;
@@ -283,7 +284,7 @@ in
               and <option>finish</option>.
             '';
             type = with types; attrsOf (oneOf [ str int ]);
-            default = {};
+            default = { };
           };
 
           pwd = mkOption {
@@ -296,26 +297,28 @@ in
         };
       });
       description = "Service definitions.";
-      default = {};
+      default = { };
     };
   };
 
   config = {
     # TODO add assertions for this module
-    assertions = mapAttrsToList (n: v:
-      [ { assertion =
+    assertions = mapAttrsToList
+      (n: v:
+        [{
+          assertion =
             let
               selectedCount =
                 (count (x: x) (mapAttrsToList (n: v: if v == null then false else true) v.log));
             in
-              selectedCount == 1 || selectedCount == 0;
+            selectedCount == 1 || selectedCount == 0;
           message = "You can only select one log type, in service ${n}.";
         }
-        {
-          assertion = (v.log.file.rotate.rotate or 0) >= 0;
-          message = "init.service.<name>.log.file.rotate can't be less than 0";
-        }
-      ]
-    ) cfg.services;
+          {
+            assertion = (v.log.file.rotate.rotate or 0) >= 0;
+            message = "init.service.<name>.log.file.rotate can't be less than 0";
+          }]
+      )
+      cfg.services;
   };
 }

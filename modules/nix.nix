@@ -1,20 +1,20 @@
 /*
- * NixNG
- * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
- *  
- *  This file is free software: you may copy, redistribute and/or modify it  
- *  under the terms of the GNU General Public License as published by the  
- *  Free Software Foundation, either version 3 of the License, or (at your  
- *  option) any later version.  
- *  
- *  This file is distributed in the hope that it will be useful, but  
- *  WITHOUT ANY WARRANTY; without even the implied warranty of  
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
- *  General Public License for more details.  
- *  
- *  You should have received a copy of the GNU General Public License  
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
- */
+  * NixNG
+  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
+  *  
+  *  This file is free software: you may copy, redistribute and/or modify it  
+  *  under the terms of the GNU General Public License as published by the  
+  *  Free Software Foundation, either version 3 of the License, or (at your  
+  *  option) any later version.  
+  *  
+  *  This file is distributed in the hope that it will be useful, but  
+  *  WITHOUT ANY WARRANTY; without even the implied warranty of  
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
+  *  General Public License for more details.  
+  *  
+  *  You should have received a copy of the GNU General Public License  
+  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
+*/
 
 { pkgs, lib, config, nglib, ... }:
 with lib;
@@ -44,10 +44,12 @@ let
         else
           abort "Invalid config, module system should have caught this!";
     in
-      config:
-      concatStringsSep "\n" (mapAttrsToList (n: v:
+    config:
+    concatStringsSep "\n" (mapAttrsToList
+      (n: v:
         "${n} = ${valToString v}"
-      ) config);
+      )
+      config);
 in
 {
   options.nix = {
@@ -75,14 +77,14 @@ in
       description = ''
         Contents of <literal>nix.conf</literal>, represented using an attrset containing strings, bools, ints, or lists of strings, bools, or ints.
       '';
-      type = with types; attrsOf (oneOf [ str int bool (listOf (oneOf [ str int bool ]))]);
+      type = with types; attrsOf (oneOf [ str int bool (listOf (oneOf [ str int bool ])) ]);
       example =
         {
           sandbox = true;
           require-sigs = true;
           cores = 0;
         };
-      default = {};
+      default = { };
       apply = x:
         builtins.toFile "nix.conf" (parser x);
     };
@@ -95,7 +97,7 @@ in
       type = types.bool;
       default = false;
     };
-    
+
     nixPath = mkOption {
       description = ''
         The Nix Path, basically channels.
@@ -147,20 +149,21 @@ in
           chmod 000 ${cfg.overlayNix}/work
           ${pkgs.fuse-overlayfs}/bin/fuse-overlayfs -o lowerdir=/nix,upperdir=${cfg.overlayNix}/upper,workdir=${cfg.overlayNix}/work /nix
         '');
-      
+
 
     users = {
-      users = mkMerge (map (x:
-        {
-          "nixbld${toString x}" = {
-            uid = 30000 + x;
-            group = "nixbld";
-            home = "/var/empty";
-            createHome = false;
-            description = "Nix build user ${toString x}";
-            shell = "${pkgs.busybox}/bin/nologin";
-          };
-        })
+      users = mkMerge (map
+        (x:
+          {
+            "nixbld${toString x}" = {
+              uid = 30000 + x;
+              group = "nixbld";
+              home = "/var/empty";
+              createHome = false;
+              description = "Nix build user ${toString x}";
+              shell = "${pkgs.busybox}/bin/nologin";
+            };
+          })
         (range 0 cfg.buildUserCount));
 
       groups.nixbld.gid = 30000;
@@ -178,17 +181,17 @@ in
       max-jobs = "auto";
       cores = 0;
       sandbox = true;
-      extra-sandbox-paths = [];
+      extra-sandbox-paths = [ ];
       substituters = [ "https://cache.nixos.org/" ];
-      trusted-substituters = [];
+      trusted-substituters = [ ];
       trusted-public-keys =
         [ "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" ];
       auto-optimise-store = false;
       require-sigs = true;
       allowed-users = "*";
-      builders = [];
+      builders = [ ];
 
-      system-features =  mkDefault (
+      system-features = mkDefault (
         [ "nixos-test" "benchmark" "big-parallel" "kvm" ] ++
         optionals (pkgs.hostPlatform.platform ? gcc.arch) (
           # a builder can run code for `platform.gcc.arch` and inferior architectures

@@ -10,7 +10,8 @@
     x86_64-darwin = "${qemu}/bin/qemu-kvm -cpu max";
   }."${pkgs.stdenv.hostPlatform.system}" or "${qemu}/bin/qemu-kvm";
 
-  qemuSerialDevice = if pkgs.stdenv.isi686 || pkgs.stdenv.isx86_64 then "ttyS0"
-                     else if (with pkgs.stdenv.hostPlatform; isAarch32 || isAarch64 || isPower) then "ttyAMA0"
-                     else throw "Unknown QEMU serial device for system '${pkgs.stdenv.hostPlatform.system}'";
+  qemuSerialDevice =
+    if pkgs.stdenv.isi686 || pkgs.stdenv.isx86_64 then "ttyS0"
+    else if (with pkgs.stdenv.hostPlatform; isAarch32 || isAarch64 || isPower) then "ttyAMA0"
+    else throw "Unknown QEMU serial device for system '${pkgs.stdenv.hostPlatform.system}'";
 }

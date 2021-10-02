@@ -1,44 +1,44 @@
 /*  
- * NixNG
- * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
- *  
- *  This file is free software: you may copy, redistribute and/or modify it  
- *  under the terms of the GNU General Public License as published by the  
- *  Free Software Foundation, either version 3 of the License, or (at your  
- *  option) any later version.  
- *  
- *  This file is distributed in the hope that it will be useful, but  
- *  WITHOUT ANY WARRANTY; without even the implied warranty of  
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
- *  General Public License for more details.  
- *  
- *  You should have received a copy of the GNU General Public License  
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
- *  
- * This file incorporates work covered by the following copyright and  
- * permission notice:  
- *  
- *     Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
- *     
- *     Permission is hereby granted, free of charge, to any person obtaining
- *     a copy of this software and associated documentation files (the
- *     "Software"), to deal in the Software without restriction, including
- *     without limitation the rights to use, copy, modify, merge, publish,
- *     distribute, sublicense, and/or sell copies of the Software, and to
- *     permit persons to whom the Software is furnished to do so, subject to
- *     the following conditions:
- *     
- *     The above copyright notice and this permission notice shall be
- *     included in all copies or substantial portions of the Software.
- *     
- *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- *     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
- *     LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
- *     OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
- *     WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+  * NixNG
+  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
+  *  
+  *  This file is free software: you may copy, redistribute and/or modify it  
+  *  under the terms of the GNU General Public License as published by the  
+  *  Free Software Foundation, either version 3 of the License, or (at your  
+  *  option) any later version.  
+  *  
+  *  This file is distributed in the hope that it will be useful, but  
+  *  WITHOUT ANY WARRANTY; without even the implied warranty of  
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
+  *  General Public License for more details.  
+  *  
+  *  You should have received a copy of the GNU General Public License  
+  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
+  *  
+  * This file incorporates work covered by the following copyright and  
+  * permission notice:  
+  *  
+  *     Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
+  *     
+  *     Permission is hereby granted, free of charge, to any person obtaining
+  *     a copy of this software and associated documentation files (the
+  *     "Software"), to deal in the Software without restriction, including
+  *     without limitation the rights to use, copy, modify, merge, publish,
+  *     distribute, sublicense, and/or sell copies of the Software, and to
+  *     permit persons to whom the Software is furnished to do so, subject to
+  *     the following conditions:
+  *     
+  *     The above copyright notice and this permission notice shall be
+  *     included in all copies or substantial portions of the Software.
+  *     
+  *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  *     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+  *     LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+  *     OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+  *     WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
 
 { pkgs, lib, config, ... }:
 with lib;
@@ -53,12 +53,14 @@ let
   baseDir = "/var/lib/hydra";
 
   hydraEnv =
-    { HYDRA_CONFIG = "${baseDir}/hydra.conf";
+    {
+      HYDRA_CONFIG = "${baseDir}/hydra.conf";
       HYDRA_DATA = "${baseDir}";
     };
 
   env =
-    { NIX_REMOTE = "daemon";
+    {
+      NIX_REMOTE = "daemon";
       SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt";
       PGPASSFILE = "${baseDir}/pgpass";
       # NIX_REMOTE_SYSTEMS = concatStringsSep ":" cfg.buildMachinesFiles;
@@ -68,7 +70,8 @@ let
     } // hydraEnv // cfg.extraEnv;
 
   serverEnv = env //
-    { HYDRA_TRACKER = cfg.tracker;
+    {
+      HYDRA_TRACKER = cfg.tracker;
       XDG_CACHE_HOME = "${baseDir}/www/.cache";
       COLUMNS = "80";
       PGPASSFILE = "${baseDir}/pgpass-www"; # grrr
@@ -81,35 +84,36 @@ let
   hydra-package =
     let
       makeWrapperArgs = concatStringsSep " " (mapAttrsToList (key: value: "--set \"${key}\" \"${value}\"") hydraEnv);
-    in pkgs.buildEnv rec {
+    in
+    pkgs.buildEnv rec {
       name = "hydra-env";
       buildInputs = [ pkgs.makeWrapper ];
       paths = [ cfg.package ];
 
       postBuild = ''
-      if [ -L "$out/bin" ]; then
-          unlink "$out/bin"
-      fi
-      mkdir -p "$out/bin"
-      for path in ${concatStringsSep " " paths}; do
-        if [ -d "$path/bin" ]; then
-          cd "$path/bin"
-          for prg in *; do
-            if [ -f "$prg" ]; then
-              rm -f "$out/bin/$prg"
-              if [ -x "$prg" ]; then
-                makeWrapper "$path/bin/$prg" "$out/bin/$prg" ${makeWrapperArgs} \
-                  ${if cfg.dbiFile == null then
-                      ''--set HYDRA_DBI '${localDB}' ''
-                    else
-                      ''--run 'export HYDRA_DBI=$(cat "${cfg.dbiFile}")' ''
-                   }
-              fi
-            fi
-          done
+        if [ -L "$out/bin" ]; then
+            unlink "$out/bin"
         fi
-      done
-   '';
+        mkdir -p "$out/bin"
+        for path in ${concatStringsSep " " paths}; do
+          if [ -d "$path/bin" ]; then
+            cd "$path/bin"
+            for prg in *; do
+              if [ -f "$prg" ]; then
+                rm -f "$out/bin/$prg"
+                if [ -x "$prg" ]; then
+                  makeWrapper "$path/bin/$prg" "$out/bin/$prg" ${makeWrapperArgs} \
+                    ${if cfg.dbiFile == null then
+                        ''--set HYDRA_DBI '${localDB}' ''
+                      else
+                        ''--run 'export HYDRA_DBI=$(cat "${cfg.dbiFile}")' ''
+                     }
+                fi
+              fi
+            done
+          fi
+        done
+      '';
     };
   # ========================================================================
   # -- END MIT LICENSED CODE
@@ -132,10 +136,12 @@ let
         else
           abort "Invalid config, module system should have caught this!";
     in
-      config:
-      concatStringsSep "\n" (mapAttrsToList (n: v:
+    config:
+    concatStringsSep "\n" (mapAttrsToList
+      (n: v:
         "${n} = ${valToString v}"
-      ) config);
+      )
+      config);
 in
 {
   options.services.hydra = {
@@ -205,7 +211,7 @@ in
     smtpHost = mkOption {
       type = types.nullOr types.str;
       default = null;
-      example = ["localhost"];
+      example = [ "localhost" ];
       description = ''
         Hostname of the SMTP server to use to send email.
       '';
@@ -235,7 +241,7 @@ in
 
     extraEnv = mkOption {
       type = types.attrsOf types.str;
-      default = {};
+      default = { };
       description = "Extra environment variables for Hydra.";
     };
 
@@ -247,7 +253,7 @@ in
 
     buildMachinesFiles = mkOption {
       type = types.listOf types.path;
-      default =  "/etc/nix/machines"; # optional (config.nix.buildMachines != [])
+      default = "/etc/nix/machines"; # optional (config.nix.buildMachines != [])
       example = [ "/etc/nix/machines" "/var/lib/hydra/provisioner/machines" ];
       description = "List of files containing build machines.";
     };
@@ -291,12 +297,12 @@ in
     };
 
     config = mkOption {
-      type = with types; attrsOf (oneOf [ int bool str (listOf (oneOf [int bool str]))]);
+      type = with types; attrsOf (oneOf [ int bool str (listOf (oneOf [ int bool str ])) ]);
       description = ''
         Hydra configuration
       '';
       apply = x: pkgs.writeScript "hydra.conf" (parser x);
-      default = {};
+      default = { };
     };
   };
 
@@ -306,7 +312,8 @@ in
     };
 
     users.users.hydra =
-      { description = "Hydra";
+      {
+        description = "Hydra";
         group = "hydra";
         createHome = true;
         home = baseDir;
@@ -315,7 +322,8 @@ in
       };
 
     users.users.hydra-queue-runner =
-      { description = "Hydra queue runner";
+      {
+        description = "Hydra queue runner";
         group = "hydra";
         useDefaultShell = true;
         home = "${baseDir}/queue-runner"; # really only to keep SSH happy
@@ -323,7 +331,8 @@ in
       };
 
     users.users.hydra-www =
-      { description = "Hydra web server";
+      {
+        description = "Hydra web server";
         group = "hydra";
         useDefaultShell = true;
         uid = config.ids.uids.hydra-www;
@@ -371,7 +380,8 @@ in
 
                   ${hydra-package}/bin/hydra-update-gc-roots hydra-update-gc-roots
                 '';
-            in [
+            in
+            [
               "15 2,14 * * * hydra ${hydra-update-gc-roots}"
             ];
         };
@@ -397,7 +407,8 @@ in
                   export PATH=${makeBinPath [ pkgs.bzip2 pkgs.findutils pkgs.busybox ]}:$PATH
                   find /var/lib/hydra/build-logs -type f -name "*.drv" -mtime +3 -size +0c | xargs -r bzip2 -v -f
                 '';
-            in [
+            in
+            [
               "*/2 * * * * root ${hydra-check-space}"
               "45 01 * * 7 root ${hydra-compress-logs}"
             ];
@@ -439,9 +450,10 @@ in
       hydra-server =
         let
           hydraCmd = "${hydra-package}/bin/hydra-server hydra-server -f -h '${cfg.listenHost}' "
-                     + "-p ${toString cfg.port} --max_spare_servers 5 --max_servers 25 "
-                     + "--max_requests 100 ${optionalString cfg.debugServer "-d"}";
-        in {
+            + "-p ${toString cfg.port} --max_spare_servers 5 --max_servers 25 "
+            + "--max_requests 100 ${optionalString cfg.debugServer "-d"}";
+        in
+        {
           environment = serverEnv;
           pwd = "${baseDir}/queue-runner";
           script = pkgs.writeShellScript "hydra-server" ''
@@ -452,7 +464,7 @@ in
             HOME=~hydra-www exec chpst -b hydra-server -u hydra-www:hydra ${hydraCmd}
           '';
           enabled = true;
-      };
+        };
 
       hydra-queue-runner =
         {
@@ -492,7 +504,7 @@ in
         };
     };
 
-    
+
     # -- BEGIN MIT LICENSED CODE
     # For the license please refer to COPYING.NIXOS-MIT
     services.postgresql.enable = mkIf haveLocalDB true;
@@ -518,7 +530,9 @@ in
       "pg_trgm" = [ "hydra" ];
     };
     services.postgresql.ensureUsers = mkIf haveLocalDB [
-      { name = "hydra"; ensurePermissions = {
+      {
+        name = "hydra";
+        ensurePermissions = {
           "DATABASE \"hydra\"" = "ALL PRIVILEGES";
         };
       }

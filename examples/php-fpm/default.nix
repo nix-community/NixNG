@@ -7,7 +7,7 @@ nglib:
       config = {
         dumb-init = {
           enable = true;
-          type.services = {};
+          type.services = { };
         };
 
         init.services.apache2 = {
@@ -40,14 +40,14 @@ nglib:
           configuration = [
             {
               LoadModule = [
-                  [ "mpm_event_module" "modules/mod_mpm_event.so" ]
-                  [ "log_config_module" "modules/mod_log_config.so" ]
-                  [ "unixd_module" "modules/mod_unixd.so" ]
-                  [ "authz_core_module" "modules/mod_authz_core.so" ]
-                  [ "dir_module" "modules/mod_dir.so" ]
-                  [ "mime_module" "modules/mod_mime.so" ]
-                  [ "proxy_module" "modules/mod_proxy.so" ]
-                  [ "proxy_fcgi_module" "modules/mod_proxy_fcgi.so" ]
+                [ "mpm_event_module" "modules/mod_mpm_event.so" ]
+                [ "log_config_module" "modules/mod_log_config.so" ]
+                [ "unixd_module" "modules/mod_unixd.so" ]
+                [ "authz_core_module" "modules/mod_authz_core.so" ]
+                [ "dir_module" "modules/mod_dir.so" ]
+                [ "mime_module" "modules/mod_mime.so" ]
+                [ "proxy_module" "modules/mod_proxy.so" ]
+                [ "proxy_fcgi_module" "modules/mod_proxy_fcgi.so" ]
               ];
             }
             {
@@ -90,7 +90,8 @@ nglib:
               VirtualHost = {
                 "*:80" = {
                   ProxyPassMatch =
-                    [ "^/(.*\.php(/.*)?)$"
+                    [
+                      "^/(.*\.php(/.*)?)$"
                       "unix:${config.services.php-fpm.pools.main.socket}|fcgi://localhost/var/www/"
                     ];
 
@@ -101,7 +102,7 @@ nglib:
                       DirectoryIndex = "\${DIRECTORY_INDEX:-index.html}";
                     };
                   };
-                }; 
+                };
               };
             }
           ];

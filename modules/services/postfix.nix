@@ -1,20 +1,20 @@
 /*
- * NixNG
- * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
- *  
- *  This file is free software: you may copy, redistribute and/or modify it  
- *  under the terms of the GNU General Public License as published by the  
- *  Free Software Foundation, either version 3 of the License, or (at your  
- *  option) any later version.  
- *  
- *  This file is distributed in the hope that it will be useful, but  
- *  WITHOUT ANY WARRANTY; without even the implied warranty of  
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
- *  General Public License for more details.  
- *  
- *  You should have received a copy of the GNU General Public License  
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
- */
+  * NixNG
+  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
+  *  
+  *  This file is free software: you may copy, redistribute and/or modify it  
+  *  under the terms of the GNU General Public License as published by the  
+  *  Free Software Foundation, either version 3 of the License, or (at your  
+  *  option) any later version.  
+  *  
+  *  This file is distributed in the hope that it will be useful, but  
+  *  WITHOUT ANY WARRANTY; without even the implied warranty of  
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
+  *  General Public License for more details.  
+  *  
+  *  You should have received a copy of the GNU General Public License  
+  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
+*/
 
 { pkgs, config, lib, nglib, ... }:
 with lib;
@@ -169,27 +169,31 @@ in
             bool
             (listOf (oneOf [ str int package bool ]))
           ]));
-        default = {};
+        default = { };
       };
 
       masterConfig = mkOption {
         description = "Postfix master.cfg.";
         type = with types;
           attrsOf (nullOr (either masterCfModule (listOf masterCfModule)));
-        default = {};
+        default = { };
         apply = x:
-          concatStringsSep "\n" (mapAttrsToList (n: v:
-            if isNull v then
-              ""
-            else if isAttrs v then
-              with v;
-              "${n} ${type} ${private} ${unpriv} ${chroot} ${wakeup} ${maxproc} ${command}"
-            else
-              concatMapStringsSep "\n" (y:
-                with y;
+          concatStringsSep "\n" (mapAttrsToList
+            (n: v:
+              if isNull v then
+                ""
+              else if isAttrs v then
+                with v;
                 "${n} ${type} ${private} ${unpriv} ${chroot} ${wakeup} ${maxproc} ${command}"
-              ) v
-          ) x);
+              else
+                concatMapStringsSep "\n"
+                  (y:
+                    with y;
+                    "${n} ${type} ${private} ${unpriv} ${chroot} ${wakeup} ${maxproc} ${command}"
+                  )
+                  v
+            )
+            x);
       };
     };
   };
@@ -215,28 +219,28 @@ in
 
       services.postfix = {
         mainConfig = {
-          compatibility_level  = mkDefault cfg.package.version;
-          mail_owner           = mkDefault cfg.user;
-          default_privs        = mkDefault "nobody";
+          compatibility_level = mkDefault cfg.package.version;
+          mail_owner = mkDefault cfg.user;
+          default_privs = mkDefault "nobody";
 
           # NixOS specific locations
-          data_directory       = mkDefault "/var/lib/postfix/data";
-          queue_directory      = mkDefault "/var/lib/postfix/queue";
+          data_directory = mkDefault "/var/lib/postfix/data";
+          queue_directory = mkDefault "/var/lib/postfix/queue";
 
           # Default location of everything in package
-          meta_directory       = "${cfg.package}/etc/postfix";
-          command_directory    = "${cfg.package}/bin";
-          sample_directory     = mkDefault "/etc/postfix";
-          newaliases_path      = "${cfg.package}/bin/newaliases";
-          mailq_path           = "${cfg.package}/bin/mailq";
-          readme_directory     = mkDefault false;
-          sendmail_path        = "${cfg.package}/bin/sendmail";
-          daemon_directory     = "${cfg.package}/libexec/postfix";
-          manpage_directory    = "${cfg.package}/share/man";
-          html_directory       = "${cfg.package}/share/postfix/doc/html";
-          shlib_directory      = mkDefault false;
+          meta_directory = "${cfg.package}/etc/postfix";
+          command_directory = "${cfg.package}/bin";
+          sample_directory = mkDefault "/etc/postfix";
+          newaliases_path = "${cfg.package}/bin/newaliases";
+          mailq_path = "${cfg.package}/bin/mailq";
+          readme_directory = mkDefault false;
+          sendmail_path = "${cfg.package}/bin/sendmail";
+          daemon_directory = "${cfg.package}/libexec/postfix";
+          manpage_directory = "${cfg.package}/share/man";
+          html_directory = "${cfg.package}/share/postfix/doc/html";
+          shlib_directory = mkDefault false;
           mail_spool_directory = mkDefault "/var/spool/mail/";
-          setgid_group         = mkDefault cfg.setgidGroup;
+          setgid_group = mkDefault cfg.setgidGroup;
         };
 
         masterConfig = mapAttrs (_: v: mkDefault v) {
@@ -248,41 +252,69 @@ in
             maxproc = "1";
             command = "pickup";
           };
-          cleanup = { type = "unix"; private = "n"; chroot = "n"; maxproc = "0";
-                      command = "cleanup"; };
-          qmgr = { type = "unix"; private = "n"; chroot = "n"; wakeup = "300";
-                   maxproc = "1"; command = "qmgr"; };
+          cleanup = {
+            type = "unix";
+            private = "n";
+            chroot = "n";
+            maxproc = "0";
+            command = "cleanup";
+          };
+          qmgr = {
+            type = "unix";
+            private = "n";
+            chroot = "n";
+            wakeup = "300";
+            maxproc = "1";
+            command = "qmgr";
+          };
           tlsmgr = { type = "unix"; wakeup = "1000?"; maxproc = 1; command = "tlsmgr"; };
           rewrite = { type = "unix"; chroot = "n"; command = "trivial-rewrite"; };
-          bounce = { type = "unix"; chroot = "n";  maxproc = 0; command = "bounce"; };
+          bounce = { type = "unix"; chroot = "n"; maxproc = 0; command = "bounce"; };
           defer = { type = "unix"; chroot = "n"; maxproc = 0; command = "bounce"; };
           trace = { type = "unix"; chroot = "n"; maxproc = 0; command = "bounce"; };
           verify = { type = "unix"; chroot = "n"; maxproc = 1; command = "verify"; };
-          flush = { type = "unix"; chroot = "n"; wakeup = "1000?"; maxproc = "0";
-                    command = "flush"; };
+          flush = {
+            type = "unix";
+            chroot = "n";
+            wakeup = "1000?";
+            maxproc = "0";
+            command = "flush";
+          };
           proxymap = { type = "unix"; chroot = "n"; command = "proxymap"; };
-          proxywrite = { type = "unix"; chroot = "n"; maxproc = "1";
-                         command = "proxymap"; };
-          smtp = [ { type = "unix"; chroot = "n"; command = "smtp"; }
-                   { type = "inet"; private = "n"; chroot = "n"; command = "smtpd"; }
-                 ];
-          relay = { type = "unix"; chroot = "n"; command = ''
+          proxywrite = {
+            type = "unix";
+            chroot = "n";
+            maxproc = "1";
+            command = "proxymap";
+          };
+          smtp = [{ type = "unix"; chroot = "n"; command = "smtp"; }
+            { type = "inet"; private = "n"; chroot = "n"; command = "smtpd"; }];
+          relay = {
+            type = "unix";
+            chroot = "n";
+            command = ''
               smtp
                       -o syslog_name=postfix/$service_name
               #       -o smtp_helo_timeout=5 -o smtp_connect_timeout=5
-            ''; };
+            '';
+          };
           showq = { type = "unix"; private = "n"; chroot = "n"; command = "showq"; };
           error = { type = "unix"; chroot = "n"; command = "error"; };
           retry = { type = "unix"; chroot = "n"; command = "error"; };
           discard = { type = "unix"; chroot = "n"; command = "discard"; };
-          local = { type = "unix";  unpriv = "n"; chroot = "n"; command = "local"; };
+          local = { type = "unix"; unpriv = "n"; chroot = "n"; command = "local"; };
           virtual = { type = "unix"; unpriv = "n"; chroot = "n"; command = "virtual"; };
           lmtp = { type = "unix"; chroot = "n"; command = "lmtp"; };
           anvil = { type = "unix"; chroot = "n"; maxproc = 1; command = "anvil"; };
           scache = { type = "unix"; chroot = "n"; maxproc = 1; command = "scache"; };
           postlog =
-            { type = "unix-dgram"; private = "n"; chroot = "n"; maxproc = "1";
-              command = "postlogd"; };
+            {
+              type = "unix-dgram";
+              private = "n";
+              chroot = "n";
+              maxproc = "1";
+              command = "postlogd";
+            };
         };
       };
 
@@ -290,40 +322,40 @@ in
         let
           mainCnf = pkgs.writeText "main.cf" (toMainCnf cfg.mainConfig);
           masterCnf = pkgs.writeText "master.cf" cfg.masterConfig;
-          configDir = pkgs.runCommandNoCCLocal "postfix-config-dir" {}
+          configDir = pkgs.runCommandNoCCLocal "postfix-config-dir" { }
             ''
               mkdir -p $out
               ln -s ${mainCnf} $out/main.cf
               ln -s ${masterCnf} $out/master.cf
             '';
         in
-          {
-            ensureSomething.create."data" = mkDefault {
-              type = "directory";
-              mode = "750";
-              owner = "${cfg.user}:${cfg.group}";
-              dst = cfg.mainConfig.data_directory;
-              persistent = true;
-            };
-
-            ensureSomething.create."queue" = mkDefault {
-              type = "directory";
-              mode = "750";
-              owner = "${cfg.user}:root";
-              dst = cfg.mainConfig.queue_directory;
-              persistent = false;
-            };
-
-            script = pkgs.writeShellScript "postfix-run"
-              ''
-                echo asd
-
-                mkdir -p /etc/postfix/
-                ${cfg.package}/bin/postfix -c ${configDir} set-permissions 
-                ${cfg.package}/libexec/postfix/master -c ${configDir}
-              '';      
-            enabled = true;
+        {
+          ensureSomething.create."data" = mkDefault {
+            type = "directory";
+            mode = "750";
+            owner = "${cfg.user}:${cfg.group}";
+            dst = cfg.mainConfig.data_directory;
+            persistent = true;
           };
+
+          ensureSomething.create."queue" = mkDefault {
+            type = "directory";
+            mode = "750";
+            owner = "${cfg.user}:root";
+            dst = cfg.mainConfig.queue_directory;
+            persistent = false;
+          };
+
+          script = pkgs.writeShellScript "postfix-run"
+            ''
+              echo asd
+
+              mkdir -p /etc/postfix/
+              ${cfg.package}/bin/postfix -c ${configDir} set-permissions 
+              ${cfg.package}/libexec/postfix/master -c ${configDir}
+            '';
+          enabled = true;
+        };
       assertions = [
         {
           assertion = createDefaultUsersGroups;

@@ -1,20 +1,20 @@
 /*
- * NixNG
- * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
- *  
- *  This file is free software: you may copy, redistribute and/or modify it  
- *  under the terms of the GNU General Public License as published by the  
- *  Free Software Foundation, either version 3 of the License, or (at your  
- *  option) any later version.  
- *  
- *  This file is distributed in the hope that it will be useful, but  
- *  WITHOUT ANY WARRANTY; without even the implied warranty of  
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
- *  General Public License for more details.  
- *  
- *  You should have received a copy of the GNU General Public License  
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
- */
+  * NixNG
+  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
+  *  
+  *  This file is free software: you may copy, redistribute and/or modify it  
+  *  under the terms of the GNU General Public License as published by the  
+  *  Free Software Foundation, either version 3 of the License, or (at your  
+  *  option) any later version.  
+  *  
+  *  This file is distributed in the hope that it will be useful, but  
+  *  WITHOUT ANY WARRANTY; without even the implied warranty of  
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
+  *  General Public License for more details.  
+  *  
+  *  You should have received a copy of the GNU General Public License  
+  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
+*/
 
 { config, nglib, lib, pkgs, ... }:
 with lib;
@@ -43,7 +43,7 @@ in
                 MAILTO="root";
               }
             '';
-            default = {};
+            default = { };
           };
           jobs = mkOption {
             type = listOf str;
@@ -55,14 +55,14 @@ in
                 "5 0 * * * www-data rm /var/log/{httpd.access,httpd.error}"
               ]
             '';
-            default = [];
+            default = [ ];
           };
         };
       });
       description = ''
         Defines cron jobs, allows for the creation of multiple files and entries.
       '';
-      default = {};
+      default = { };
       example = ''
         {
           "delete-log" = {
@@ -87,16 +87,16 @@ in
                 '')
               x);
         in
-          pkgs.runCommandNoCCLocal "cron.d" {} ''
-            CRONFILES="${concatStringsSep " " cronfiles}"
-            mkdir -p $out
-            for cronfile in $CRONFILES ; do
-              ln -s "$cronfile" $out/$(basename "$cronfile")
-            done
-          '';
+        pkgs.runCommandNoCCLocal "cron.d" { } ''
+          CRONFILES="${concatStringsSep " " cronfiles}"
+          mkdir -p $out
+          for cronfile in $CRONFILES ; do
+            ln -s "$cronfile" $out/$(basename "$cronfile")
+          done
+        '';
     };
   };
-  
+
   config = mkIf cfg.enable {
     system.activation."crond" = nglib.dag.dagEntryAnywhere
       ''

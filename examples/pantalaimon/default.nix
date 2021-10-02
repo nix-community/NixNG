@@ -6,7 +6,7 @@ nglib:
     {
       dumb-init = {
         enable = true;
-        type.services = {};
+        type.services = { };
       };
       init.services.pantalaimon = {
         shutdownOnExit = true;
@@ -17,15 +17,15 @@ nglib:
 
         package = (pkgs.pantalaimon.override
           { enableDbusUi = false; }).overrideAttrs (old: {
-              version = "0.10.2";
-              src = pkgs.fetchFromGitHub {
-                owner = "matrix-org";
-                repo = "pantalaimon";
-                rev = "0.10.2";
-                sha256 = "sha256-sjaJomKMKSZqLlKWTG7Oa87dXa5SnGQlVnrdS707A1w=";
-              };
-              patches = [];
-            });
+          version = "0.10.2";
+          src = pkgs.fetchFromGitHub {
+            owner = "matrix-org";
+            repo = "pantalaimon";
+            rev = "0.10.2";
+            sha256 = "sha256-sjaJomKMKSZqLlKWTG7Oa87dXa5SnGQlVnrdS707A1w=";
+          };
+          patches = [ ];
+        });
 
         config = {
           Default =

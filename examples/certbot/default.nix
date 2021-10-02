@@ -7,7 +7,7 @@ nglib:
       config = {
         dumb-init = {
           enable = true;
-          type.services = {};
+          type.services = { };
         };
 
         services.certbot = {
@@ -24,7 +24,7 @@ nglib:
               email = "admin@redalder.org";
             };
           };
-        }; 
+        };
       };
     }
   );

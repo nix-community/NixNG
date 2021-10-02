@@ -1,29 +1,34 @@
-{ pkgs, lib, callPackage
-, bash, busybox
+{ pkgs
+, lib
+, callPackage
+, bash
+, busybox
 , runCommandNoCC
 , linux_latest
 , nglib
-, writeTextFile, writeText, writeShellScript, writeReferencesToFile
+, writeTextFile
+, writeText
+, writeShellScript
+, writeReferencesToFile
 , makeModulesClosure
 
 , kernel ? linux_latest
 , storeDir ? builtins.storeDir
 , qemu ? pkgs.qemu
 , qemuMem ? 512
-, rootModules ?
-  [ "virtio_pci" "virtio_mmio" "virtio_blk" "virtio_balloon" "virtio-rng" "ext4" "9p" "9pnet_virtio" "crc32c_generic" "overlay" ]
-  ++ pkgs.lib.optional (pkgs.stdenv.isi686 || pkgs.stdenv.isx86_64) "rtc_cmos"
+, rootModules ? [ "virtio_pci" "virtio_mmio" "virtio_blk" "virtio_balloon" "virtio-rng" "ext4" "9p" "9pnet_virtio" "crc32c_generic" "overlay" ]
+    ++ pkgs.lib.optional (pkgs.stdenv.isi686 || pkgs.stdenv.isx86_64) "rtc_cmos"
 , script
 , postProcess ? writeShellScript "post-process.sh"
-  ''
-    cp -r $xchg/out $out   
-  ''
+    ''
+      cp -r $xchg/out $out   
+    ''
 , preProcess ? null
 }:
 # TODO NixOS really complicated this, I'd love to know why
 # https://github.com/NixOS/nixpkgs/blob/master/pkgs/build-support/vm/default.nix
 let
-  inherit (callPackage (import ./qemu-flags.nix) {}) qemuBinary qemuSerialDevice;
+  inherit (callPackage (import ./qemu-flags.nix) { }) qemuBinary qemuSerialDevice;
 
   modulesClosure = makeModulesClosure {
     inherit kernel rootModules;
@@ -31,11 +36,13 @@ let
   };
 
   initrd = nglib.makeInitramfs
-    { name = "initrd.img";
+    {
+      name = "initrd.img";
       path =
         let
           init = writeTextFile
-            { name = "init";
+            {
+              name = "init";
               # Heavily inspired by NixOS
               text =
                 ''
@@ -90,20 +97,20 @@ let
               destination = "/init";
             };
         in
-          runCommandNoCC "join" {} ''
-            set -o pipefail
-            mkdir -p $out
-            ln -s ${init}/init $out/init
-            xargs tar c < ${writeReferencesToFile init} | tar -xC $out
-          '';
+        runCommandNoCC "join" { } ''
+          set -o pipefail
+          mkdir -p $out
+          ln -s ${init}/init $out/init
+          xargs tar c < ${writeReferencesToFile init} | tar -xC $out
+        '';
     };
 in
 runCommandNoCC "qemu"
-  {
-    requiredSystemFeatures = [ "kvm" ];
-    passAsFile = []; # HACK fix - see https://github.com/NixOS/nixpkgs/issues/16742
-  }
-# lib.overrideDerivation (writeText "qemu"
+{
+  requiredSystemFeatures = [ "kvm" ];
+  passAsFile = [ ]; # HACK fix - see https://github.com/NixOS/nixpkgs/issues/16742
+}
+  # lib.overrideDerivation (writeText "qemu"
   # TODO add rng driver to the kernel
   ''
     mkdir -p $out

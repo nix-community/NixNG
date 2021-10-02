@@ -32,29 +32,31 @@ in
       type = with types; attrsOf (oneOf [ str int bool (attrsOf (listOf str)) ]);
       apply = x:
         pkgs.writeText "jmusicbot-config.txt"
-        (concatMapStringsSep "\n" (
-          { name, value }:
-          if isString value then
-            "${name} = \"${value}\""
-          else if isInt value then
-            "${name} = ${toString value}"
-          else if isBool value then
-            if value then
-              "${name} = true"
-            else
-              "${name} = false"
-          else if isAttrs value then
-            "${name} {"
-            +
-            concatMapStringsSep "\n" (
+          (concatMapStringsSep "\n"
+            (
               { name, value }:
-              "${name} = [ ${concatStringsSep ", " value} ]"
+              if isString value then
+                "${name} = \"${value}\""
+              else if isInt value then
+                "${name} = ${toString value}"
+              else if isBool value then
+                if value then
+                  "${name} = true"
+                else
+                  "${name} = false"
+              else if isAttrs value then
+                "${name} {"
+                +
+                concatMapStringsSep "\n" (
+                  { name, value }:
+                  "${name} = [ ${concatStringsSep ", " value} ]"
+                )
+                +
+                "}"
+              else
+                throw "Type error"
             )
-            +
-            "}"
-          else
-            throw "Type error"
-        ) (mapAttrsToList nameValuePair x));
+            (mapAttrsToList nameValuePair x));
     };
 
     user = mkOption {

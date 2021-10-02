@@ -1,5 +1,12 @@
-{ mkDerivation, aeson, base, bytestring, lib, unix
-, unordered-containers, vector, cmdargs
+{ mkDerivation
+, aeson
+, base
+, bytestring
+, lib
+, unix
+, unordered-containers
+, vector
+, cmdargs
 }:
 mkDerivation {
   pname = "sigell";
@@ -8,7 +15,13 @@ mkDerivation {
   isLibrary = false;
   isExecutable = true;
   executableHaskellDepends = [
-    aeson base bytestring unix unordered-containers vector cmdargs
+    aeson
+    base
+    bytestring
+    unix
+    unordered-containers
+    vector
+    cmdargs
   ];
   license = "unknown";
   hydraPlatforms = lib.platforms.none;

@@ -1,20 +1,20 @@
 /*
- * NixNG
- * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
- *  
- *  This file is free software: you may copy, redistribute and/or modify it  
- *  under the terms of the GNU General Public License as published by the  
- *  Free Software Foundation, either version 3 of the License, or (at your  
- *  option) any later version.  
- *  
- *  This file is distributed in the hope that it will be useful, but  
- *  WITHOUT ANY WARRANTY; without even the implied warranty of  
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
- *  General Public License for more details.  
- *  
- *  You should have received a copy of the GNU General Public License  
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
- */
+  * NixNG
+  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
+  *  
+  *  This file is free software: you may copy, redistribute and/or modify it  
+  *  under the terms of the GNU General Public License as published by the  
+  *  Free Software Foundation, either version 3 of the License, or (at your  
+  *  option) any later version.  
+  *  
+  *  This file is distributed in the hope that it will be useful, but  
+  *  WITHOUT ANY WARRANTY; without even the implied warranty of  
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
+  *  General Public License for more details.  
+  *  
+  *  You should have received a copy of the GNU General Public License  
+  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
+*/
 
 { pkgs, config, lib, nglib, ... }:
 with lib;
@@ -48,7 +48,7 @@ in
         description = "Nginx configuration";
         type = with types;
           let
-            self = 
+            self =
               oneOf [
                 (attrsOf (oneOf [
                   str
@@ -56,10 +56,10 @@ in
                   (listOf (oneOf [ str int (listOf (oneOf [ str int ])) ]))
                   (attrsOf self)
                 ]))
-                (listOf (oneOf [ str self]))
+                (listOf (oneOf [ str self ]))
               ];
           in
-            self // { description = "loop breaker"; };
+          self // { description = "loop breaker"; };
       };
     };
   };
@@ -70,17 +70,17 @@ in
         let
           config = pkgs.writeText "nginx.cfg" (toNginx cfg.configuration);
         in
-          {
-            ensureSomething.create."cache" = {
-              type = "directory";
-              mode = "750";
-              owner = "${cfg.user}:${cfg.group}";
-              dst = "/var/cache/nginx/";
-              persistent = false;
-            };
-            script = pkgs.writeShellScript "nginx-run"
-              (if cfg.envsubst then
-                ''
+        {
+          ensureSomething.create."cache" = {
+            type = "directory";
+            mode = "750";
+            owner = "${cfg.user}:${cfg.group}";
+            dst = "/var/cache/nginx/";
+            persistent = false;
+          };
+          script = pkgs.writeShellScript "nginx-run"
+            (if cfg.envsubst then
+              ''
                 export PATH=${pkgs.envsubst}/bin:$PATH 
                 
                 mkdir -p /run/cfg 
@@ -90,13 +90,13 @@ in
                 HOME=~nginx ${cfg.package}/bin/nginx \
                   -c ${runtimeConfig}
               ''
-               else
-                 ''
+            else
+              ''
                 HOME=~nginx ${cfg.package}/bin/nginx \
                   -c ${config}
               '');
-            enabled = true;
-          };
+          enabled = true;
+        };
 
       users.users.${cfg.user} = mkDefault {
         description = "Nginx";

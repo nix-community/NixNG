@@ -1,20 +1,20 @@
 /*
- * NixNG
- * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
- *  
- *  This file is free software: you may copy, redistribute and/or modify it  
- *  under the terms of the GNU General Public License as published by the  
- *  Free Software Foundation, either version 3 of the License, or (at your  
- *  option) any later version.  
- *  
- *  This file is distributed in the hope that it will be useful, but  
- *  WITHOUT ANY WARRANTY; without even the implied warranty of  
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
- *  General Public License for more details.  
- *  
- *  You should have received a copy of the GNU General Public License  
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
- */
+  * NixNG
+  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
+  *  
+  *  This file is free software: you may copy, redistribute and/or modify it  
+  *  under the terms of the GNU General Public License as published by the  
+  *  Free Software Foundation, either version 3 of the License, or (at your  
+  *  option) any later version.  
+  *  
+  *  This file is distributed in the hope that it will be useful, but  
+  *  WITHOUT ANY WARRANTY; without even the implied warranty of  
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
+  *  General Public License for more details.  
+  *  
+  *  You should have received a copy of the GNU General Public License  
+  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
+*/
 
 { pkgs, lib, config, nglib, ... }:
 with lib;
@@ -40,10 +40,10 @@ in
       type = types.path;
       default = "/service";
     };
-    
+
     stages = mkOption {
       description = "runit stages";
-      default = {};
+      default = { };
       type = types.submodule {
         options = {
           stage-1 = mkOption {
@@ -75,7 +75,7 @@ in
             default = nglib.writeSubstitutedShellScript {
               name = "3";
               file = ./stage-3.sh;
-              substitutes = {};
+              substitutes = { };
             };
           };
         };
@@ -107,26 +107,26 @@ in
       '';
 
     runit = {
-      serviceDirectory = pkgs.runCommandNoCCLocal "service-dir" {} ''
-          mkdir $out
-          ${concatStringsSep "\n" (mapAttrsToList (n: s:
-            let
-              run = pkgs.callPackage ./run.nix {} { inherit n s; };
-              finish = pkgs.callPackage ./finish.nix {} { inherit n s cfgInit; };
-              log = pkgs.callPackage ./log.nix {} { inherit n s; };
-            in
-              assert s.dependencies == [];
+      serviceDirectory = pkgs.runCommandNoCCLocal "service-dir" { } ''
+        mkdir $out
+        ${concatStringsSep "\n" (mapAttrsToList (n: s:
+          let
+            run = pkgs.callPackage ./run.nix {} { inherit n s; };
+            finish = pkgs.callPackage ./finish.nix {} { inherit n s cfgInit; };
+            log = pkgs.callPackage ./log.nix {} { inherit n s; };
+          in
+            assert s.dependencies == [];
 
-              ''
-                mkdir -p $out/${n}/log
-                ln -s ${run} $out/${n}/run
-                ln -s ${finish} $out/${n}/finish
-                ln -s ${log} $out/${n}/log/run
-                ${optionalString (!s.enabled) "touch $out/${n}/down"}
-              ''
-          ) cfgInit.services)}
-        '';
-      };
+            ''
+              mkdir -p $out/${n}/log
+              ln -s ${run} $out/${n}/run
+              ln -s ${finish} $out/${n}/finish
+              ln -s ${log} $out/${n}/log/run
+              ${optionalString (!s.enabled) "touch $out/${n}/down"}
+            ''
+        ) cfgInit.services)}
+      '';
+    };
 
     init = mkMerge [
       {

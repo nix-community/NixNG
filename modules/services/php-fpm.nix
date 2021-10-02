@@ -1,44 +1,44 @@
 /*
- * NixNG
- * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>
- *
- *  This file is free software: you may copy, redistribute and/or modify it
- *  under the terms of the GNU General Public License as published by the
- *  Free Software Foundation, either version 3 of the License, or (at your
- *  option) any later version.
- *
- *  This file is distributed in the hope that it will be useful, but
- *  WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- * This file incorporates work covered by the following copyright and  
- * permission notice:  
- *  
- *     Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
- *     
- *     Permission is hereby granted, free of charge, to any person obtaining
- *     a copy of this software and associated documentation files (the
- *     "Software"), to deal in the Software without restriction, including
- *     without limitation the rights to use, copy, modify, merge, publish,
- *     distribute, sublicense, and/or sell copies of the Software, and to
- *     permit persons to whom the Software is furnished to do so, subject to
- *     the following conditions:
- *     
- *     The above copyright notice and this permission notice shall be
- *     included in all copies or substantial portions of the Software.
- *     
- *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- *     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
- *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
- *     LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
- *     OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
- *     WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+  * NixNG
+  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>
+  *
+  *  This file is free software: you may copy, redistribute and/or modify it
+  *  under the terms of the GNU General Public License as published by the
+  *  Free Software Foundation, either version 3 of the License, or (at your
+  *  option) any later version.
+  *
+  *  This file is distributed in the hope that it will be useful, but
+  *  WITHOUT ANY WARRANTY; without even the implied warranty of
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  *  General Public License for more details.
+  *
+  *  You should have received a copy of the GNU General Public License
+  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  *
+  * This file incorporates work covered by the following copyright and  
+  * permission notice:  
+  *  
+  *     Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
+  *     
+  *     Permission is hereby granted, free of charge, to any person obtaining
+  *     a copy of this software and associated documentation files (the
+  *     "Software"), to deal in the Software without restriction, including
+  *     without limitation the rights to use, copy, modify, merge, publish,
+  *     distribute, sublicense, and/or sell copies of the Software, and to
+  *     permit persons to whom the Software is furnished to do so, subject to
+  *     the following conditions:
+  *     
+  *     The above copyright notice and this permission notice shall be
+  *     included in all copies or substantial portions of the Software.
+  *     
+  *     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+  *     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+  *     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+  *     NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+  *     LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+  *     OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+  *     WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
 
 { pkgs, config, lib, nglib, ... }:
 with lib;
@@ -92,7 +92,7 @@ let
 
       fpmSettings = mkOption {
         type = with types; attrsOf (oneOf [ str int bool ]);
-        default = {};
+        default = { };
         description = ''
           PHP-FPM global directives. Refer to the "List of global php-fpm.conf directives" section of
           <link xlink:href="https://www.php.net/manual/en/install.fpm.configuration.php"/>
@@ -105,7 +105,7 @@ let
 
       phpSettings = mkOption {
         type = with types; attrsOf (oneOf [ str int bool ]);
-        default = {};
+        default = { };
         example = literalExample ''
           {
             "date.timezone" = "CET";
@@ -126,7 +126,7 @@ let
 
       environment = mkOption {
         type = with types; attrsOf (oneOf [ str int bool ]);
-        default = {};
+        default = { };
         description = ''
           Environment variables used for this PHP-FPM pool.
         '';
@@ -158,8 +158,8 @@ in
   options.services.php-fpm = {
     fpmSettings = mkOption {
       type = with types; attrsOf (oneOf [ str int bool ]);
-      default = {};
-      apply = x: nglib.generators.php.fpm {} x "global";
+      default = { };
+      apply = x: nglib.generators.php.fpm { } x "global";
       description = ''
         PHP-FPM global directives. Refer to the "List of global php-fpm.conf directives" section of
         <link xlink:href="https://www.php.net/manual/en/install.fpm.configuration.php"/>
@@ -173,7 +173,7 @@ in
 
     phpSettings = mkOption {
       type = with types; attrsOf (oneOf [ str int bool ]);
-      default = {};
+      default = { };
       apply = nglib.generators.php.ini;
       example = literalExample ''
         {
@@ -188,7 +188,7 @@ in
 
     pools = mkOption {
       type = with types; attrsOf (submodule poolOpts);
-      default = {};
+      default = { };
       description = ''
         PHP-FPM "pools", think of each pool as a separate php-fpm instance.
         If none are defined, the php-fpm service module does nothing.
@@ -196,46 +196,51 @@ in
     };
   };
 
-  config = 
-    mkIf (cfg.pools != {}) {
+  config =
+    mkIf (cfg.pools != { }) {
       services.php-fpm.fpmSettings = {
         daemonize = false;
       };
 
-      init.services = mapAttrs' (pool: opts:
-        nameValuePair "php-fpm-${pool}" {
-          enabled = true;
-          ensureSomething.create."runtimeDir" = {
-            type = "directory";
-            dst = runtimeDir;
-            # TODO: shouldn't be persistent but we could delete a socket
-            # from another pool
-            persistent = true;
-          };
-          script =
-            let
-              phpIniFile = genPhpIniFile
-                { settings = nglib.generators.php.ini opts.phpSettings;
-                  package = opts.package;
-                };
+      init.services = mapAttrs'
+        (pool: opts:
+          nameValuePair "php-fpm-${pool}" {
+            enabled = true;
+            ensureSomething.create."runtimeDir" = {
+              type = "directory";
+              dst = runtimeDir;
+              # TODO: shouldn't be persistent but we could delete a socket
+              # from another pool
+              persistent = true;
+            };
+            script =
+              let
+                phpIniFile = genPhpIniFile
+                  {
+                    settings = nglib.generators.php.ini opts.phpSettings;
+                    package = opts.package;
+                  };
 
-              phpFpmConfFile = genFpmConfFile
-                { settings = nglib.generators.php.fpm opts.environment opts.fpmSettings pool;
-                };
-            in
+                phpFpmConfFile = genFpmConfFile
+                  {
+                    settings = nglib.generators.php.fpm opts.environment opts.fpmSettings pool;
+                  };
+              in
               pkgs.writeShellScript "php-fpm-${pool}-run"
                 ''
                   echo HELLO
                   ${opts.package}/bin/php-fpm -y ${phpFpmConfFile} -c ${phpIniFile}
                 '';
-        }
-      ) cfg.pools;
+          }
+        )
+        cfg.pools;
 
       users.users = builtins.listToAttrs (filter (x: x.value != null)
-        (mapAttrsToList (pool: opts:
-          let
-            user = opts.phpSettings.user;
-          in
+        (mapAttrsToList
+          (pool: opts:
+            let
+              user = opts.phpSettings.user;
+            in
             nameValuePair user
               (if opts.createUserGroup then
                 {
@@ -246,22 +251,25 @@ in
                   useDefaultShell = true;
                   uid = config.ids.uids.${user};
                 }
-               else
-                 null)
-        ) cfg.pools));
+              else
+                null)
+          )
+          cfg.pools));
 
       users.groups = builtins.listToAttrs (filter (x: x.value != null)
-        (mapAttrsToList (pool: opts:
-          let
-            group = opts.phpSettings.group;
-          in
+        (mapAttrsToList
+          (pool: opts:
+            let
+              group = opts.phpSettings.group;
+            in
             nameValuePair group
               (if opts.createUserGroup then
                 {
                   gid = config.ids.gids.${group};
                 }
-               else
-                 null)
-        ) cfg.pools));
+              else
+                null)
+          )
+          cfg.pools));
     };
 }

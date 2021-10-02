@@ -1,20 +1,20 @@
 /*
- * NixNG
- * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
- *  
- *  This file is free software: you may copy, redistribute and/or modify it  
- *  under the terms of the GNU General Public License as published by the  
- *  Free Software Foundation, either version 3 of the License, or (at your  
- *  option) any later version.  
- *  
- *  This file is distributed in the hope that it will be useful, but  
- *  WITHOUT ANY WARRANTY; without even the implied warranty of  
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
- *  General Public License for more details.  
- *  
- *  You should have received a copy of the GNU General Public License  
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
- */
+  * NixNG
+  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>   
+  *  
+  *  This file is free software: you may copy, redistribute and/or modify it  
+  *  under the terms of the GNU General Public License as published by the  
+  *  Free Software Foundation, either version 3 of the License, or (at your  
+  *  option) any later version.  
+  *  
+  *  This file is distributed in the hope that it will be useful, but  
+  *  WITHOUT ANY WARRANTY; without even the implied warranty of  
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  
+  *  General Public License for more details.  
+  *  
+  *  You should have received a copy of the GNU General Public License  
+  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.  
+*/
 
 { pkgs, lib, nglib, config, ... }:
 with lib;
@@ -98,7 +98,7 @@ in
         };
       });
       apply = x: nglib.dag.dagTopoSort x;
-      default = {};
+      default = { };
     };
     activationScript = mkOption {
       description = ''
@@ -120,44 +120,45 @@ in
       toplevel = pkgs.runCommandNoCC "nixng"
         { nativeBuildInputs = with pkgs; [ busybox makeWrapper ]; }
         (with configFinal;
-          let
-            closureInfo = pkgs.closureInfo
-              { rootPaths = [ configFinal.init.script ]; };
-          in
-            ''
-              mkdir $out
+        let
+          closureInfo = pkgs.closureInfo
+            { rootPaths = [ configFinal.init.script ]; };
+        in
+        ''
+          mkdir $out
 
-              # Substitute in the path to the system closure to avoid
-              # an infinite dep cycle
-              substitute ${init.script} $out/init \
-                --subst-var-by "systemConfig" "$out"
-              substitute ${system.activationScript} $out/activation \
-                --subst-var-by "systemConfig" "$out"
-              chmod +x $out/init $out/activation
+          # Substitute in the path to the system closure to avoid
+          # an infinite dep cycle
+          substitute ${init.script} $out/init \
+            --subst-var-by "systemConfig" "$out"
+          substitute ${system.activationScript} $out/activation \
+            --subst-var-by "systemConfig" "$out"
+          chmod +x $out/init $out/activation
 
-              # 
-              ${optionalString system.createNixRegistration
-                "ln -s ${closureInfo}/registration $out/registration"}
-            '');
+          # 
+          ${optionalString system.createNixRegistration
+            "ln -s ${closureInfo}/registration $out/registration"}
+        '');
 
       ociImage =
         let
           config = {
             name = cfg.name;
             tag = "latest";
-            
+
             config = {
               StopSignal = "SIGCONT";
               Entrypoint =
-                [ "${configFinal.system.build.toplevel}/init"
+                [
+                  "${configFinal.system.build.toplevel}/init"
                 ];
             };
           };
         in
-          with pkgs; {
-            build = dockerTools.buildLayeredImage config;
-            stream = dockerTools.streamLayeredImage config;
-          };
+        with pkgs; {
+          build = dockerTools.buildLayeredImage config;
+          stream = dockerTools.streamLayeredImage config;
+        };
     };
 
     system.activation.currentSystem = nglib.dag.dagEntryAnywhere
@@ -167,7 +168,7 @@ in
         mkdir -p /run
         ln -s $_system_config /run/current-system 
       '';
-    
+
     system.activationScript = pkgs.writeShellScript "activation"
       ''
         ## Set path to the system closure

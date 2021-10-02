@@ -11,7 +11,7 @@ nglib:
           crontabs = {
             hydra = {
               environment = {
-                PATH="${pkgs.busybox}/bin";
+                PATH = "${pkgs.busybox}/bin";
               };
               jobs = [
                 ''*/2 * * * * root echo "asd"''
