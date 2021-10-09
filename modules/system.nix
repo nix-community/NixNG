@@ -122,7 +122,7 @@ in
         (with configFinal;
         let
           closureInfo = pkgs.closureInfo
-            { rootPaths = [ configFinal.init.script ]; };
+            { rootPaths = [ configFinal.init.script system.activationScript ]; };
         in
         ''
           mkdir $out

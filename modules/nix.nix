@@ -108,11 +108,12 @@ in
       ];
     };
 
-    overlayNix = mkOption {
+    persistNix = mkOption {
       description = ''
-        Will overlay the included <literal>/nix</literal> and the one at the
-        path in this option, with the second one being the upper dir. Can be
-        used to persist <literal>/nix</literal> across container restarts.
+        Will copy the contents of the the included <literal>/nix</literal> to
+        <literal>''${persistNix}/nix/store</literal>. Then bind mount
+        <literal>''${persistNix}/nix/store</literal> over <literal>/nix</literal>.
+        Can be used to persist <literal>/nix</literal> across container restarts.
       '';
       type = with types; nullOr str;
       default = null;
@@ -137,17 +138,18 @@ in
           if [[ ! -d /nix/var/nix/db ]] ; then
             nix-store --init
             nix-store --load-db < /run/current-system/registration
+            ls /nix/var/nix
           fi
         '');
 
-    system.activation.overlayNix = mkIf (cfg.overlayNix != null)
-      (nglib.dag.dagEntryBefore [ "loadNixDb" ]
+    system.activation.persistNix = mkIf (cfg.persistNix != null)
+      (nglib.dag.dagEntryAfter [ "loadNixDb" ]
         ''
-          export PATH=${pkgs.busybox}/bin
+          export PATH=${pkgs.busybox}/bin:${cfg.package}/bin:${pkgs.utillinux}/bin
 
-          mkdir -p ${cfg.overlayNix}/upper ${cfg.overlayNix}/work
-          chmod 000 ${cfg.overlayNix}/work
-          ${pkgs.fuse-overlayfs}/bin/fuse-overlayfs -o lowerdir=/nix,upperdir=${cfg.overlayNix}/upper,workdir=${cfg.overlayNix}/work /nix
+          mkdir -p ${cfg.persistNix}
+          USER=root GROUP=root nix copy --no-check-sigs --all --to local?root=${cfg.persistNix}
+          mount -o bind ${cfg.persistNix}/nix /nix
         '');
 
 
