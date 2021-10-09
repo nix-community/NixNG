@@ -33,7 +33,6 @@ let
     ../modules/runit
     ../modules/dumb-init
     ../modules/initrd
-    ../modules/initramfs
     ../modules/init.nix
     ../modules/system.nix
     ../modules/assertions.nix

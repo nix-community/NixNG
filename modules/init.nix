@@ -303,7 +303,7 @@ in
 
   config = {
     # TODO add assertions for this module
-    assertions = mapAttrsToList
+    assertions = flatten (mapAttrsToList
       (n: v:
         [{
           assertion =
@@ -319,6 +319,6 @@ in
             message = "init.service.<name>.log.file.rotate can't be less than 0";
           }]
       )
-      cfg.services;
+      cfg.services);
   };
 }
