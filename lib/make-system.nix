@@ -55,6 +55,7 @@ let
     ../modules/services/crond.nix
     ../modules/services/hydra.nix
     ../modules/services/postgresql.nix
+    ../modules/services/mysql.nix
     ../modules/services/certbot.nix
     ../modules/services/postfix.nix
     ../modules/services/dovecot.nix
