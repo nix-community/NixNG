@@ -211,7 +211,7 @@ in
                 '';
           in
           ''
-            export PATH=${pkgs.busybox}/bin
+            export PATH=${pkgs.busybox}/bin:${pkgs.bash}/bin
 
             cp ${appIni} ${cfg.runConfig}
 
