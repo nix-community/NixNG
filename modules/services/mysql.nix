@@ -240,7 +240,7 @@ in
           mode = "755";
           owner = "${cfg.user}:${cfg.group}";
           persistent = false;
-          dst = "/run/mysql/";
+          dst = "/run/mysqld/";
         };
 
         script = pkgs.writeShellScript "mysql" ''
