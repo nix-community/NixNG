@@ -441,7 +441,7 @@ in
           mkdir -pm 2775 ${cfg.gcRootsDir}
           chown hydra.hydra ${cfg.gcRootsDir}
 
-          export PATH=${pkgs.nettools}/bin:$PATH # Hydra runs some variant of `hostname --fqdn`, which BusyBox doesn't support
+          export PATH=${pkgs.coreutils}/bin:$PATH
           HOME=~hydra chpst -u hydra:hydra ${hydra-package}/bin/hydra-init || exit 1
           touch ${baseDir}/.init-hydra
         '';
@@ -460,7 +460,7 @@ in
             sv -v -w 0 once hydra-init
             [[ ! -e ${baseDir}/.init-hydra ]] && exit 1
 
-            export PATH=${pkgs.nettools}/bin:$PATH # Hydra runs some variant of `hostname --fqdn`, which BusyBox doesn't support
+            export PATH=${pkgs.coreutils}/bin:$PATH
             HOME=~hydra-www exec chpst -b hydra-server -u hydra-www:hydra ${hydraCmd}
           '';
           enabled = true;
@@ -474,12 +474,11 @@ in
           };
           pwd = "${baseDir}/queue-runner";
           script = pkgs.writeShellScript "hydra-queue-runner" ''
-            export PATH=${makeBinPath [ hydra-package pkgs.nettools pkgs.openssh pkgs.bzip2 config.nix.package ]}:$PATH
+            export PATH=${with pkgs; makeBinPath [ coreutils hydra-package nettools openssh bzip2 config.nix.package ]}:$PATH
 
             sv -v -w 0 once hydra-init
             [[ ! -e ${baseDir}/.init-hydra ]] && exit 1
 
-            export PATH=${pkgs.nettools}/bin:$PATH # Hydra runs some variant of `hostname --fqdn`, which BusyBox doesn't support
 
             HOME=~hydra-queue-runner LOGNAME=hydra-queue-runner chpst ${optionalString cfg.adjustNiceness "-n +5"} -b hydra-queue-runner -u hydra-queue-runner:hydra ${hydra-package}/bin/hydra-queue-runner -v
             HOME=~hydra-queue-runner LOGNAME=hydra-queue-runner chpst ${optionalString cfg.adjustNiceness "-n +5"} -u hydra-queue-runner:hydra ${hydra-package}/bin/hydra-queue-runner --unlock
@@ -492,12 +491,11 @@ in
           environment = env;
           pwd = baseDir;
           script = pkgs.writeShellScript "hydra-evaluator" ''
-            export PATH=${with pkgs; makeBinPath [ hydra-package nettools jq ]}:$PATH
+            export PATH=${with pkgs; makeBinPath [ coreutils hydra-package nettools jq config.nix.package openssh ]}:$PATH
 
             sv -v -w 0 once hydra-init
             [[ ! -e ${baseDir}/.init-hydra ]] && exit 1
 
-            export PATH=${pkgs.nettools}/bin:$PATH # Hydra runs some variant of `hostname --fqdn`, which BusyBox doesn't support
             HOME=~hydra exec chpst ${optionalString cfg.adjustNiceness "-n +5"} -b hydra-evaluator -u hydra:hydra ${hydra-package}/bin/hydra-evaluator
           '';
           enabled = true;
