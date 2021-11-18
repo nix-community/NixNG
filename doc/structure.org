@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText:  2021 Richard Brežák and NixNG contributors
+
+# SPDX-License-Identifier: MPL-2.0
+
+#   This Source Code Form is subject to the terms of the Mozilla Public
+#   License, v. 2.0. If a copy of the MPL was not distributed with this
+#   file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+* Repository Structure
+
+This repository is split into 4 main parts, each of them has a clearly defined
+purpose, more may be and will be added later.
+
+** ~/overlay~
+This directory only contains new packages, introduced by NixNG. These packages
+are developed with NixNG or specifically needed to make NixNG work. Examples
+include: ~sigell~ - our signal dispatching binary.
+
+** ~/doc~
+This is the directory you're currently in. It contains all of manually written
+NixNG documentation. Please visit [[file:writing_documentation.org][Writing Documentation]] to learn how to
+contribute to this doc.
+
+** ~/modules~
+This directory contains all the NixOS modules making NixNG possible. They're
+structured into directories, which make sense somewhat, a proper structuring
+guide hasn't yet been made.
+
+** ~/lib~
+This directory contains the NixNG Nix library, it's the the ~nixpkgs.lib~
+attribute set we're all familiar with. The one rule that it shares with its
+nixpgks counterpart is that it must be system independent. System dependent
+stuff should go into ~/overlay~.
+
+** ~/examples~
+This directory holds examples utilising NixNG to build container images. This
+closesly relates to a test framework and is one of the areas that needs
+work. You can find an issue related to this on the issue tracker.

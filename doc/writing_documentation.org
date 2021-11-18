@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText:  2021 Richard Brežák and NixNG contributors
+
+# SPDX-License-Identifier: MPL-2.0
+
+#   This Source Code Form is subject to the terms of the Mozilla Public
+#   License, v. 2.0. If a copy of the MPL was not distributed with this
+#   file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+* Writing Documentation
+
+This documentation uses a format called [[https://orgmode.org/][Org]]. It's native to Emacs but the subset
+of it that is used here is small enough and simple enoug that it can be written
+in any text editor. To familiarize yourself with Org, take a look at this [[https://nhigham.com/2017/11/02/org-mode-syntax-cheat-sheet/][Org
+Mode Syntax Cheat Sheet]].
+
+** Editor Support
+*** GNU Emacs
+Org is native to Emacs, so if you have Emacs, you already have Org setup and
+ready.
+*** Vim/NVim
+Vim/NVim doesn't have full support for all of Orgs features, but the subset used
+here is supported. You can get support by installing [[https://github.com/axvr/org.vim][org.vim]].
+*** VSCode/VSCodium
+VSCode/VSCodium doesn't have full support for all of Orgs features, but the
+subset used here is supported. You can get support by installing
+[[https://marketplace.visualstudio.com/items?itemName=vscode-org-mode.org-mode][vscode-org-mode.org-mode]].

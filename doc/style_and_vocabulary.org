@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText:  2021 Richard Brežák and NixNG contributors
+
+# SPDX-License-Identifier: MPL-2.0
+
+#   This Source Code Form is subject to the terms of the Mozilla Public
+#   License, v. 2.0. If a copy of the MPL was not distributed with this
+#   file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+* Style and Vocabulary
+** Style
+*** 80 Columns
+Stick to 80 columns in these documents. Org mode has
+visual line wrapping (~visual-line-mode~ in Emacs), but we cannot assume
+everyone has access to Emacs.
+*** Nix Library Imports
+It's preferred to just ~with lib;~ and ~with nglib;~ when either is needed, the
+function names are well known and not ambigous so they can't be mistaken with
+packages or other such things.
+
+** Vocabulary
+These are basic term definitions, mostly common variable names which help in
+writing understandable and uniform code.
+
+- *nixpkgs* - a "raw" nixpkgs attribute set, as from a flake input, requires
+  importing with ~system~, generally refers to the stable branch of nixpkgs
+- *nixpkgs-unstable/master* - a more specific version of nixpkgs
+- *pkgs* - already imported nixpkgs, specific to a system
+- *lib* - the Nix library from nixpkgs
+- *nglib* - NixNG's own Nix library
+- *NixOS module* - TBD
+- *NixNG module* - a module specific to NixNG
+- *home-manager module* - a module specific to home-manager

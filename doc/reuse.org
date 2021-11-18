@@ -1,0 +1,53 @@
+# SPDX-FileCopyrightText:  2021 Richard Brežák and NixNG contributors
+
+# SPDX-License-Identifier: MPL-2.0
+ 
+#   This Source Code Form is subject to the terms of the Mozilla Public
+#   License, v. 2.0. If a copy of the MPL was not distributed with this
+#   file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+* REUSE
+
+NixNG utilizes [[https://github.com/fsfe/reuse-tool][~reuse-tool~]] to specify the licenses for all files in the
+project.  We utilize several licenses, described below each in it's own section.
+When creating new files please utilize the commands below to add a proper
+license header to all files. \\
+\\
+To check for REUSE compliance run:
+#+BEGIN_SRC shell-script
+  reuse link
+#+END_SRC
+
+** CC-BY-SA
+This license is used for all documentation and related documents.
+
+- SPDX: [[https://spdx.org/licenses/CC-BY-SA-4.0.html][CC-BY-SA-4.0]]
+
+*** Command
+
+#+BEGIN_SRC shell-script :noweb yes
+  reuse addheader --copyright "Richard Brežák and NixNG contributors" --license CC-BY-SA-4.0 <filename>
+#+END_SRC
+
+** MPL-2.0
+This license is used for all files containing primarly code.
+
+- SPDX: [[https://spdx.org/licenses/MPL-2.0.html][MPL-2.0]]
+
+*** Command
+
+#+BEGIN_SRC shell-script
+  reuse addheader --copyright "Richard Brežák and NixNG contributors" --license MPL-2.0 --template mpl-2-0 <filename>
+#+END_SRC
+
+** CC0
+This license is used for minor files and machine generated files such as:
+=flake.lock=, =.gitignore=.
+
+- SPDX: [[https://spdx.org/licenses/CC0-1.0.html][CC0-1.0]]
+
+*** Command
+
+#+BEGIN_SRC shell-script
+  reuse addheader --copyright "Richard Brežák and NixNG contributors" --license CC0 <filename>
+#+END_SRC
