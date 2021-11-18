@@ -1,2 +1,0 @@
-* TODO allow overriding the default packages, in ~nix.nixPath~, by creating ~nixpkgs.pkgs~
-  

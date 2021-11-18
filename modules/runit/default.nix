@@ -1,20 +1,10 @@
-/*
-  * NixNG
-  * Copyright (c) 2021  GPL Magic_RB <magic_rb@redalder.org>
-  *
-  *  This file is free software: you may copy, redistribute and/or modify it
-  *  under the terms of the GNU General Public License as published by the
-  *  Free Software Foundation, either version 3 of the License, or (at your
-  *  option) any later version.
-  *
-  *  This file is distributed in the hope that it will be useful, but
-  *  WITHOUT ANY WARRANTY; without even the implied warranty of
-  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  *  General Public License for more details.
-  *
-  *  You should have received a copy of the GNU General Public License
-  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+# SPDX-FileCopyrightText:  2021 Richard Brežák and NixNG contributors
+#
+# SPDX-License-Identifier: MPL-2.0
+#
+#   This Source Code Form is subject to the terms of the Mozilla Public
+#   License, v. 2.0. If a copy of the MPL was not distributed with this
+#   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, lib, config, nglib, ... }:
 with lib;
@@ -49,7 +39,7 @@ in
           stage-1 = mkOption {
             type = types.path;
             description = "runit stage 1";
-            default = nglib.writeSubstitutedShellScript {
+            default = pkgs.writeSubstitutedShellScript {
               name = "1";
               file = ./stage-1.sh;
               substitutes = {
@@ -60,7 +50,7 @@ in
           stage-2 = mkOption {
             type = types.path;
             description = "runit stage 2";
-            default = nglib.writeSubstitutedShellScript {
+            default = pkgs.writeSubstitutedShellScript {
               name = "2";
               file = ./stage-2.sh;
               substitutes = {
@@ -72,7 +62,7 @@ in
           stage-3 = mkOption {
             type = types.path;
             description = "runit stage 3";
-            default = nglib.writeSubstitutedShellScript {
+            default = pkgs.writeSubstitutedShellScript {
               name = "3";
               file = ./stage-3.sh;
               substitutes = { };
