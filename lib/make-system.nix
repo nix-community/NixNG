@@ -51,6 +51,7 @@ let
     ../modules/services/pantalaimon.nix
     ../modules/services/jmusicbot.nix
     ../modules/services/php-fpm.nix
+    ../modules/services/minecraft.nix
     ({ ... }: {
       system.name = name;
     })
@@ -74,7 +75,7 @@ let
   failedAssertions = map (x: x.message) (filter (x: !x.assertion) evaledModules.config.assertions);
   configValid =
     if failedAssertions != [ ] then
-      throw "\nFailed assertions:\n${lib.concatStringsSep "\n" (map (x: "- ${x}") failedAssertions)}"
+      throw "\nFailed assertions:\n${concatStringsSep "\n" (map (x: "- ${x}") failedAssertions)}"
     else
       evaledModules.config;
 in

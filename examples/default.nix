@@ -20,6 +20,7 @@ let
       "pantalaimon" = ./pantalaimon;
       "jmusicbot" = ./jmusicbot;
       "php-fpm" = ./php-fpm;
+      "minecraft" = ./minecraft;
     };
 in
   nixpkgs.lib.mapAttrs (_: v: import v { nglib = nglib nixpkgs.lib; inherit nixpkgs; }) examples
