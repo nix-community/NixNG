@@ -48,7 +48,7 @@
         });
 
       hydraJobs = {
-        examples = self.examples;
+        examples = nixpkgs.lib.mapAttrs (n: v: v.config.system.build.toplevel) self.examples;
       };
     };
 }
