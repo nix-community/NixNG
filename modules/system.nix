@@ -135,6 +135,7 @@ in
           config = {
             name = cfg.name;
             tag = "latest";
+            maxLayers = 125;
 
             config = {
               StopSignal = "SIGCONT";
