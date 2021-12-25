@@ -45,7 +45,7 @@ in
         http.server_port = "8123";
       };
 
-    init.services.zigbee2mqtt = {
+    init.services.zigbee2mqtt = mkIf cfg.enable {
       script = pkgs.writeShellScript "zigbee2mqtt-run"
         ''
           mkdir -p /run/zigbee2mqtt/ /var/zigbee2mqtt/

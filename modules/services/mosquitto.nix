@@ -76,7 +76,7 @@ in
           ];
       };
 
-    init.services.mosquitto = {
+    init.services.mosquitto = mkIf cfg.enable {
       script = pkgs.writeShellScript "mosquitto-run"
         ''
           mkdir -p /var/mosquitto/

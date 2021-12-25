@@ -53,7 +53,7 @@ in
         http.server_port = "8123";
       };
 
-    init.services.home-assistant = {
+    init.services.home-assistant = mkIf cfg.enable {
       script = pkgs.writeShellScript "home-assistant-run"
         ''
           mkdir -p /run/home-assistant/ /var/home-assistant/
