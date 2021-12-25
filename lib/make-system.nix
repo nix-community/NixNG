@@ -52,6 +52,9 @@ let
     ../modules/services/jmusicbot.nix
     ../modules/services/php-fpm.nix
     ../modules/services/minecraft.nix
+    ../modules/services/home-assistant.nix
+    ../modules/services/zigbee2mqtt.nix
+    ../modules/services/mosquitto.nix
     ({ ... }: {
       system.name = name;
     })
