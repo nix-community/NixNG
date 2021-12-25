@@ -6,8 +6,8 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, config, lib, ... }:
-with lib;
+{ pkgs, config, lib, nglib, ... }:
+with nglib; with lib;
 let
   cfg = config.services.zigbee2mqtt;
   format = pkgs.formats.yaml {};
@@ -37,23 +37,61 @@ in
         Home Assistant configuration, <link>https://www.home-assistant.io/docs/configuration/</link>.
       '';
     };
+
+    user = mkOption {
+      description = "zigbee2mqtt user.";
+      type = types.str;
+      default = "zigbee2mqtt";
+    };
+
+    group = mkOption {
+      description = "zigbee2mqtt group.";
+      type = types.str;
+      default = "zigbee2mqtt";
+    };
+
+    envsubst = mkEnableOption "Run envsubst on the configuration file.";
   };
 
-  config = {
-    services.zigbee2mqtt.config = mapAttrsRecursive (_: v: mkDefault v)
+  config = mkIf cfg.enable {
+    services.zigbee2mqtt.config = mkDefaultRec
       {
         http.server_port = "8123";
       };
 
-    init.services.zigbee2mqtt = mkIf cfg.enable {
+    init.services.zigbee2mqtt = {
       script = pkgs.writeShellScript "zigbee2mqtt-run"
         ''
-          mkdir -p /run/zigbee2mqtt/ /var/zigbee2mqtt/
-          cp '${configDir}'/* /run/zigbee2mqtt/
+          mkdir -p /var/zigbee2mqtt/
+          cp '${configDir}'/* /var/zigbee2mqtt/
+          ${optionalString cfg.envsubst
+            ''
+              rm /var/zigbee2mqtt/configuration.yaml
+              ${pkgs.envsubst}/bin/envsubst \
+                < '${configDir}/configuration.yaml' \
+                > /var/zigbee2mqtt/configuration.yaml
+            ''
+          }
 
-          ZIGBEE2MQTT_DATA="/run/zigbee2mqtt" ${cfg.package}/bin/zigbee2mqtt
+          chown -R ${cfg.user}:${cfg.group} /var/zigbee2mqtt/
+          chmod -R u=rwX,g=r-X,o= /var/zigbee2mqtt/
+
+          ZIGBEE2MQTT_DATA="/var/zigbee2mqtt/" chpst -u ${cfg.user}:${cfg.group} -b zigbee2mqtt ${cfg.package}/bin/zigbee2mqtt
         '';
       enabled = true;
+    };
+
+    users.users.${cfg.user} = mkDefaultRec {
+      description = "zigbee2mqtt";
+      group = cfg.group;
+      createHome = false;
+      home = "/var/empty";
+      useDefaultShell = true;
+      uid = config.ids.uids.zigbee2mqtt;
+    };
+
+    users.groups.${cfg.group} = mkDefaultRec {
+      gid = config.ids.gids.zigbee2mqtt;
     };
   };
 }

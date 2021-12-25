@@ -6,8 +6,8 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, config, lib, ... }:
-with lib;
+{ pkgs, config, lib, nglib, ... }:
+with nglib; with lib;
 let
   cfg = config.services.mosquitto;
 
@@ -38,7 +38,7 @@ let
                     else
                       throw "unreachable"
                   )
-                  (traceValSeq config);
+                  config;
               in self config;
           };
     };
@@ -62,10 +62,24 @@ in
         Mosquitto configuration, <link>https://mosquitto.org/man/mosquitto-conf-5.html</link>.
       '';
     };
+
+    user = mkOption {
+      description = "mosquitto user.";
+      type = types.str;
+      default = "mosquitto";
+    };
+
+    group = mkOption {
+      description = "mosquitto group.";
+      type = types.str;
+      default = "mosquitto";
+    };
+
+    envsubst = mkEnableOption "Run envsubst on the configuration file.";
   };
 
-  config = {
-    services.mosquitto.config = mapAttrsRecursive (_: v: mkDefault v)
+  config = mkIf cfg.enable {
+    services.mosquitto.config = mkDefaultRec
       {
         persistence = true;
         persistence_location = "/var/mosquitto";
@@ -76,13 +90,39 @@ in
           ];
       };
 
-    init.services.mosquitto = mkIf cfg.enable {
+    init.services.mosquitto = {
       script = pkgs.writeShellScript "mosquitto-run"
         ''
-          mkdir -p /var/mosquitto/
-          ${cfg.package}/bin/mosquitto -c ${format.generate cfg.config}
+          mkdir -p /var/mosquitto/ /run/mosquitto
+          cp ${format.generate cfg.config} /run/mosquitto/configuration.yaml
+          ${optionalString cfg.envsubst
+            ''
+              rm /run/mosquitto/configuration.yaml
+              ${pkgs.envsubst}/bin/envsubst \
+                < '${format.generate cfg.config}' \
+                > /run/mosquitto/configuration.yaml
+            ''
+          }
+
+          chown -R ${cfg.user}:${cfg.group} /var/mosquitto/
+          chmod -R u=rwX,g=r-X,o= /var/mosquitto/
+
+          chpst -u ${cfg.user}:${cfg.group} -b mosquitto ${cfg.package}/bin/mosquitto -c /run/mosquitto/configuration.yaml
         '';
       enabled = true;
+    };
+
+    users.users.${cfg.user} = mkDefaultRec {
+      description = "mosquitto";
+      group = cfg.group;
+      createHome = false;
+      home = "/var/empty";
+      useDefaultShell = true;
+      uid = config.ids.uids.mosquitto;
+    };
+
+    users.groups.${cfg.group} = mkDefaultRec {
+      gid = config.ids.gids.mosquitto;
     };
   };
 }

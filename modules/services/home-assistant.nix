@@ -6,8 +6,8 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, config, lib, ... }:
-with lib;
+{ pkgs, config, lib, nglib, ... }:
+with nglib; with lib;
 let
   cfg = config.services.home-assistant;
   format = pkgs.formats.yaml {};
@@ -45,29 +45,64 @@ in
         Home Assistant configuration, <link>https://www.home-assistant.io/docs/configuration/</link>.
       '';
     };
+
+    user = mkOption {
+      description = "Home Assistant user.";
+      type = types.str;
+      default = "home-assistant";
+    };
+
+    group = mkOption {
+      description = "Home Assistant group.";
+      type = types.str;
+      default = "home-assistant";
+    };
+
+    envsubst = mkEnableOption "Run envsubst on the configuration file.";
   };
 
-  config = {
-    services.home-assistant.config = mapAttrsRecursive (_: v: mkDefault v)
+  config = mkIf cfg.enable {
+    services.home-assistant.config = mkDefaultRec
       {
         http.server_port = "8123";
       };
 
-    init.services.home-assistant = mkIf cfg.enable {
+    init.services.home-assistant = {
       script = pkgs.writeShellScript "home-assistant-run"
         ''
-          mkdir -p /run/home-assistant/ /var/home-assistant/
-          cp '${configDir}'/* /run/home-assistant/
-          ln -s /var/home-assistant /run/home-assistant/.storage
+          mkdir -p /var/home-assistant/
+          cp '${configDir}'/* /var/home-assistant/
+          ${optionalString cfg.envsubst
+            ''
+              rm /var/home-assistant/configuration.yaml
+              ${pkgs.envsubst}/bin/envsubst \
+                < '${configDir}/configuration.yaml' \
+                > /var/home-assistant/configuration.yaml
+            ''
+          }
 
-          ${if cfg.customComponents != {} then "mkdir /run/home-assistant/custom_components" else ""}
-          ${concatStringsSep "\n" (mapAttrsToList (n: v: "ln -s ${v} /run/home-assistant/custom_components/${n}") cfg.customComponents)}
+          ${if cfg.customComponents != {} then "mkdir /var/home-assistant/custom_components" else ""}
+          ${concatStringsSep "\n" (mapAttrsToList (n: v: "ln -sf ${v} /var/home-assistant/custom_components/${n}") cfg.customComponents)}
 
-          ln -s /var/home-assistant/zigbee.db /run/home-assistant/zigbee.db
+          chown -R ${cfg.user}:${cfg.group} /var/home-assistant/
+          chmod -R u=rwX,g=r-X,o= /var/home-assistant/
 
-          ${cfg.package}/bin/hass --runner --config /run/home-assistant
+          chpst -u ${cfg.user}:${cfg.group} -b home-assistant ${cfg.package}/bin/hass --runner --config /var/home-assistant
         '';
       enabled = true;
+    };
+
+    users.users.${cfg.user} = mkDefaultRec {
+      description = "Home Assistant";
+      group = cfg.group;
+      createHome = false;
+      home = "/var/empty";
+      useDefaultShell = true;
+      uid = config.ids.uids.home-assistant;
+    };
+
+    users.groups.${cfg.group} = mkDefaultRec {
+      gid = config.ids.gids.home-assistant;
     };
   };
 }

@@ -26,6 +26,7 @@
               { makeSystem = import ./lib/make-system.nix { nglib = this; inherit (self) overlay;  };
                 dag = import ./lib/dag.nix { inherit lib; };
                 generators = import ./lib/generators.nix { inherit lib; };
+                mkDefaultRec = lib.mapAttrsRecursive (_: v: lib.mkDefault v);
               };
         in this;
 

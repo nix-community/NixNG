@@ -37,6 +37,9 @@ with lib;
       pantalaimon = 398; # might change!
       gitea = 399; # might change!
       jmusicbot = 400;
+      mosquitto = 401;
+      zigbee2mqtt = 402;
+      home-assistant = 403;
       vmail = 5000;
       nobody = 65534;
     };
@@ -57,6 +60,9 @@ with lib;
       pantalaimon = 398; # might change!
       log = 399;
       jmusicbot = 400;
+      mosquitto = 401;
+      zigbee2mqtt = 402;
+      home-assistant = 403;
       vmail = 5000;
       nogroup = 65534;
     };
