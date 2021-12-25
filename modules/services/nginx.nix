@@ -7,7 +7,7 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, config, lib, nglib, ... }:
-with lib;
+with nglib; with lib;
 let
   cfg = config.services.nginx;
   runtimeConfig = "/run/cfg/nginx.cfg";
@@ -88,7 +88,7 @@ in
           enabled = true;
         };
 
-      users.users.${cfg.user} = mkDefault {
+      users.users.${cfg.user} = mkDefaultRec {
         description = "Nginx";
         group = cfg.group;
         createHome = false;
@@ -97,8 +97,8 @@ in
         uid = config.ids.uids.nginx;
       };
 
-      users.groups.${cfg.group} = {
-        gid = mkDefault config.ids.gids.nginx;
+      users.groups.${cfg.group} = mkDefaultRec {
+        gid = config.ids.gids.nginx;
       };
     };
 }
