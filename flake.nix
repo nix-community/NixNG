@@ -8,7 +8,7 @@
 
 {
   inputs = {
-    nixpkgs.url = "nixpkgs";
+    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-21.11";
   };
 
   outputs = { nixpkgs, self }:
