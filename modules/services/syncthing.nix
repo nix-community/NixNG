@@ -51,7 +51,7 @@ in
   };
 
 
-  config = {
+  config = mkIf cfg.enable {
     init.services.syncthing = {
       enabled = true;
       script = pkgs.writeShellScript "syncthing-run"
