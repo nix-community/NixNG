@@ -55,6 +55,7 @@ let
     ../modules/services/home-assistant.nix
     ../modules/services/zigbee2mqtt.nix
     ../modules/services/mosquitto.nix
+    ../modules/services/syncthing.nix
     ({ ... }: {
       system.name = name;
     })
