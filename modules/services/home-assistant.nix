@@ -15,7 +15,10 @@ let
   configDir = pkgs.runCommandNoCC "home-assistant-config-dir" {}
     ''
       mkdir -p $out
-      ln -s ${format.generate "configuration.yaml" cfg.config} $out/configuration.yaml
+      ${pkgs.remarshal}/bin/json2yaml -i ${pkgs.writeText "configuration.json" (builtins.toJSON cfg.config)} -o $out/configuration.yaml
+      # Hack to support custom yaml objects,
+      # i.e. secrets: https://www.home-assistant.io/docs/configuration/secrets/
+      sed -i -e "s/'\!\([a-z_]\+\) \(.*\)'/\!\1 \2/;s/^\!\!/\!/;" $out/configuration.yaml
     '';
 in
 {
@@ -81,7 +84,7 @@ in
             ''
           }
 
-          ${if cfg.customComponents != {} then "mkdir /var/home-assistant/custom_components" else ""}
+          ${if cfg.customComponents != {} then "mkdir -p /var/home-assistant/custom_components" else ""}
           ${concatStringsSep "\n" (mapAttrsToList (n: v: "ln -sf ${v} /var/home-assistant/custom_components/${n}") cfg.customComponents)}
 
           chown -R ${cfg.user}:${cfg.group} /var/home-assistant/
