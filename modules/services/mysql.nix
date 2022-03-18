@@ -127,6 +127,15 @@ in
                 Name of the user to ensure.
               '';
             };
+
+            address = mkOption {
+              type = types.str;
+              description = ''
+                Address of the user to ensure.
+              '';
+              default = "localhost";
+            };
+
             ensurePermissions = mkOption {
               type = types.attrsOf types.str;
               default = { };
@@ -217,7 +226,7 @@ in
         script = pkgs.writeShellScript "mysql" ''
           if [[ ! -e ${cfg.dataDir}/mysql ]] ; then
             test -e ${cfg.package}/bin/mysql_install_db && ${cfg.package}/bin/mysql_install_db --defaults-file=${configFile} ${mysqldOptions}
-            test -e ${cfg.package}/bin/mysqld && ${cfg.package}/bin/mysqld --defaults-file=${configFile} ${mysqldOptions} --initialize-insecure
+            test -e ${cfg.package}/bin/mysqld && ${cfg.package}/bin/mysqld --defaults-file=${configFile} ${mysqldOptions}
 
             touch ${cfg.dataDir}/.first_startup
           fi
@@ -253,15 +262,15 @@ in
             ${concatMapStrings (database: ''
               echo "CREATE DATABASE IF NOT EXISTS \`${database}\`;"
             '') cfg.ensureDatabases}
-            ) | ${cfg.package}/bin/mysql -N
+            ) | ${cfg.package}/bin/mysql -N -u ${superUser}
           ''}
           ${concatMapStrings (user:
             ''
-              ( echo "CREATE USER IF NOT EXISTS '${user.name}'@'localhost' IDENTIFIED WITH ${if isMariaDB then "unix_socket" else "auth_socket"};"
+              ( echo "CREATE USER IF NOT EXISTS '${user.name}'@'${user.address}' IDENTIFIED WITH ${if isMariaDB then "unix_socket" else "auth_socket"};"
                 ${concatStringsSep "\n" (mapAttrsToList (database: permission: ''
-                  echo "GRANT ${permission} ON ${database} TO '${user.name}'@'localhost';"
+                  echo "GRANT ${permission} ON ${database} TO '${user.name}'@'${user.address}';"
                 '') user.ensurePermissions)}
-              ) | ${cfg.package}/bin/mysql -N
+              ) | ${cfg.package}/bin/mysql -N -u ${superUser}
             '') cfg.ensureUsers}
 
           wait $mysql
