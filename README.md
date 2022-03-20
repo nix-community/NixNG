@@ -24,7 +24,7 @@ to be containers.
 
 ### Testing out
 We have built up several functional containers, which showcase the syntax and
-functionality of NixNG. The sources arelocacted in `/examples/`. Currently you
+functionality of NixNG. The sources are located in `/examples/`. Currently you
 can build the top-level derivation which you theoretically could activate
 (don't, your system will break) with:
 
