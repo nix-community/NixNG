@@ -35,12 +35,7 @@ nglib.makeSystem {
         services.zigbee2mqtt = {
           enable = true;
           envsubst = true;
-          package = (import (pkgs.fetchFromGitHub {
-            owner = "NixOS";
-            repo = "nixpkgs";
-            rev = "0c408a087b4751c887e463e3848512c12017be25";
-            sha256 = "sha256-vBVwv3+kPrxbNyfo48cB5cc5/4tq5zlJGas/qw8XNBE=";
-          }) { inherit (pkgs.stdenv.hostPlatform) system; }).zigbee2mqtt;
+          package = pkgs.zigbee2mqtt;
 
           config =
             { homeassistant = true;

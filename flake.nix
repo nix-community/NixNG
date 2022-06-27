@@ -13,17 +13,17 @@
 
   outputs = { nixpkgs, self }:
     let
-      supportedSystems = [ "x86_64-linux" "i386-linux" "aarch64-linux" ];
+      supportedSystems = [ "x86_64-linux" "i686-linux" "aarch64-linux" ];
       forAllSystems' = nixpkgs.lib.genAttrs;
       forAllSystems = forAllSystems' supportedSystems;
       pkgsForSystem = system:
-        import nixpkgs { inherit system; overlays = [ self.overlay ]; };
+        import nixpkgs { inherit system; overlays = [ self.overlays.default ]; };
     in
     {
       nglib =
         lib:
         let this =
-              { makeSystem = import ./lib/make-system.nix { nglib = this; inherit (self) overlay;  };
+              { makeSystem = import ./lib/make-system.nix { nglib = this; overlay = self.overlays.default;  };
                 dag = import ./lib/dag.nix { inherit lib; };
                 generators = import ./lib/generators.nix { inherit lib; };
                 mkDefaultRec = lib.mapAttrsRecursive (_: v: lib.mkDefault v);
@@ -32,21 +32,21 @@
 
       examples = import ./examples { inherit nixpkgs; inherit (self) nglib; };
 
-      overlay = import ./overlay;
-      packages = forAllSystems pkgsForSystem;
+      overlays.default = import ./overlay;
 
-      devShell = forAllSystems (system:
+      devShells = forAllSystems (system:
         let pkgs = pkgsForSystem system;
         in
-        pkgs.mkShell {
-          nativeBuildInputs = with pkgs;
-            [
-              nixpkgs-fmt
-              rnix-lsp
-              dhall
-              reuse
-            ];
-        });
+          { default = pkgs.mkShell {
+              nativeBuildInputs = with pkgs;
+                [
+                  nixpkgs-fmt
+                  rnix-lsp
+                  dhall
+                  reuse
+                ];
+            };
+          });
 
       hydraJobs = {
         examples = nixpkgs.lib.mapAttrs (n: v: v.config.system.build.toplevel) self.examples;
