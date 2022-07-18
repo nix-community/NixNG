@@ -45,6 +45,7 @@
               rnix-lsp
               dhall
               reuse
+              dracut
             ];
         });
 

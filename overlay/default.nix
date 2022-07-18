@@ -11,6 +11,7 @@ let
   inherit (super) haskell callPackage;
 in
 {
+  dracut = callPackage ./dracut.nix { };
   tinyLinux = callPackage ./tiny-linux.nix { };
   runVmLinux = callPackage ./run-vm-linux.nix { };
   cronie = callPackage ./cronie.nix { };
