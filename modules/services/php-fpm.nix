@@ -88,7 +88,7 @@ let
 
       package = mkOption {
         type = types.package;
-        default = pkgs.php74;
+        default = pkgs.php;
         description = ''
           The PHP package to use for running this PHP-FPM pool.
         '';
