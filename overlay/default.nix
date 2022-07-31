@@ -8,13 +8,13 @@
 
 final: prev:
 let
-  inherit (prev) haskell callPackage;
+  inherit (prev) haskellPackages callPackage;
 in
 {
   tinyLinux = callPackage ./tiny-linux.nix { };
   runVmLinux = final.callPackage ./run-vm-linux.nix { };
   cronie = callPackage ./cronie.nix { };
-  sigell = haskell.packages."ghc884".callPackage ./sigell/cabal.nix { };
+  sigell = haskellPackages.callPackage ./sigell/cabal.nix { };
 
   inherit (callPackage ./trivial-builders.nix {})
     writeSubstitutedFile

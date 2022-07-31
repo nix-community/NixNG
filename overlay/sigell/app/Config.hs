@@ -10,6 +10,7 @@ import System.Posix.Signals (Signal, sigABRT, sigALRM, sigBUS, sigCHLD,
                              sigTRAP, sigURG, sigVTALRM, sigXCPU, sigXFSZ, sigTERM, sigTSTP)
 import Data.Aeson.Types ((.:))
 import Data.Aeson as A
+import Data.Aeson.KeyMap as A
 import Data.Aeson.Types as AT
 import Data.Vector as V
 import Data.HashMap.Strict as H
@@ -98,6 +99,6 @@ instance A.FromJSON Config where
     <*> v .: "command"
     <*> (v .:? "environment" <&> (=<<) (pure . H.toList))
     where a = entries >>= Prelude.mapM parseJSON
-          entries = case v H.! "entries" of
-                      A.Array v -> pure $ V.toList v
+          entries = case "entries" `A.lookup` v of
+                      Just (A.Array v) -> pure $ V.toList v
                       _ -> fail "Config filed `entries` not of type `Array`"
