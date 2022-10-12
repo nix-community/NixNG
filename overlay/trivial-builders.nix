@@ -6,7 +6,7 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ runCommandNoCCLocal
+{ runCommandLocal
 , busybox
 , runtimeShell
 }:
@@ -16,7 +16,7 @@
     , file
     , substitutes
     }:
-    runCommandNoCCLocal name
+    runCommandLocal name
       ({
         nativeBuildInputs = [ busybox ];
       } // substitutes)
@@ -34,7 +34,7 @@
     , file
     , substitutes
     }:
-    runCommandNoCCLocal name
+    runCommandLocal name
       ({
         nativeBuildInputs = [ busybox ];
       } // substitutes)
@@ -53,7 +53,7 @@
     , file
     , substitutes
     }:
-    runCommandNoCCLocal name
+    runCommandLocal name
       ({
         nativeBuildInputs = [ busybox ];
       } // substitutes)
