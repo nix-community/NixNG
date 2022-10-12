@@ -19,7 +19,7 @@ nglib.makeSystem {
     };
     nix = {
       enable = true;
-      package = pkgs.nixFlakes;
+      package = pkgs.nixVersions.stable;
       config = {
         experimental-features = [ "nix-command" "flakes" ];
         sandbox = false;
