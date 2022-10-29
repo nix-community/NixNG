@@ -122,7 +122,8 @@ in
       };
 
       ensureDatabases = mkOption {
-        type = types.listOf types.str;
+        type = with types;
+          oneOf [ (listOf str) (attrsOf (attrsOf str)) ];
         default = [ ];
         description = ''
           Ensures that the specified databases exist.
@@ -130,10 +131,12 @@ in
           option is changed. This means that databases created once through this option or
           otherwise have to be removed manually.
         '';
-        example = [
-          "gitea"
-          "nextcloud"
-        ];
+        example = literalExample ''
+          [
+            "gitea" = { encoding = UTF-8; }
+            "hydra"
+          ]
+        '';
       };
 
       ensureUsers = mkOption {
@@ -358,9 +361,14 @@ in
           sleep 0.1
         done
 
-        ${concatMapStrings (database: ''
-          $PSQL -tAc "SELECT 1 FROM pg_database WHERE datname = '${database}'" | grep -q 1 || $PSQL -tAc 'CREATE DATABASE "${database}"'
-        '') cfg.ensureDatabases}
+        ${concatMapStrings ({ database, options }: ''
+          $PSQL -tAc "SELECT 1 FROM pg_database WHERE datname = '${database}'" | grep -q 1 || $PSQL -tAc 'CREATE DATABASE "${database}" ${if options != "" then "WITH " + options else ""}'
+        '')
+          ((if isList cfg.ensureDatabases then
+            map (x: { database = x; options = ""; })
+           else
+             mapAttrsToList (k: v: { database = k; options = concatStringsSep " " (mapAttrsToList (k: v: "${k} = \"${v}\"") v); }))
+          cfg.ensureDatabases)}
 
         ${concatMapStrings (user: ''
           $PSQL -tAc "SELECT 1 FROM pg_roles WHERE rolname='${user.name}'" | grep -q 1 || $PSQL -tAc 'CREATE USER "${user.name}"'
