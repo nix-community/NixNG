@@ -11,6 +11,38 @@ with lib;
 let
   cfg = config.environment;
   profileScript = pkgs.writeShellScript "profile" cfg.shell.profile;
+
+  requiredPackages = map (pkg: setPrio ((pkg.meta.priority or 5) + 3) pkg) [
+    pkgs.bashInteractive
+    pkgs.coreutils-full
+    pkgs.diffutils
+    pkgs.findutils
+    pkgs.gawk
+    pkgs.gnugrep
+    pkgs.gnused
+    pkgs.gnutar
+    pkgs.gzip
+    pkgs.xz
+    pkgs.less
+    pkgs.ncurses
+    pkgs.procps
+    pkgs.su
+    pkgs.time
+    pkgs.util-linux
+    pkgs.which
+    pkgs.zstd
+  ];
+
+  makeShellWrapper = pkg: name: pkgs.writeShellScriptBin name ''
+    source /etc/profile
+    exec ${pkg}/bin/${name} "$@"
+  '';
+
+  shells = if cfg.shell.enable then ({
+    bash = (makeShellWrapper pkgs.bash "bash");
+  }) else ({
+    sh = "${pkgs.busybox}/bin/sh";
+  });
 in
 {
   options.environment = {
@@ -23,6 +55,13 @@ in
     };
 
     shell = {
+      enable = mkOption {
+        description = ''
+          Enable the packages needed to get a shell.
+        '';
+        type = types.bool;
+        default = true;
+      };
       profile = mkOption {
         description = ''
           Shell script fragments, concataned into /etc/profile.
@@ -49,6 +88,8 @@ in
   };
 
   config = {
+    environment.systemPackages = mkIf cfg.shell.enable requiredPackages;
+
     environment.shell.profile = [
       ''
         export ${cfg.variables}
@@ -79,8 +120,10 @@ in
           # Create the required /bin/sh symlink; otherwise lots of things
           # (notably the system() function) won't work.
           mkdir -m 0755 -p /bin
-          ln -sfn "${pkgs.busybox}/bin/sh" /bin/.sh.tmp
-          mv /bin/.sh.tmp /bin/sh # atomically replace /bin/sh
+          ${builtins.concatStringsSep "\n" (builtins.attrValues (builtins.mapAttrs (name: shell: ''
+            ln -sfn "${shell}" /bin/.${name}.tmp
+            mv /bin/.${name}.tmp /bin/${name} # atomically replace /bin/${name}
+          '') shells))}
 
           mkdir -pm 0777 /tmp
           mkdir -pm 0555 /var/empty

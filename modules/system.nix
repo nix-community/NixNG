@@ -158,6 +158,16 @@ in
 
         mkdir -p /run
         ln -s $_system_config /run/current-system
+
+        mkdir -p /run/current-system/sw/bin
+        ${concatStringsSep "\n" (map (pkg:
+          ''
+            execs=${pkgs.findutils}/bin/find ${pkg}/bin -type f
+            for exec in $execs; do
+              ln -sf $exec /run/current-system/sw/bin
+            done
+          ''
+        ) config.environment.systemPackages)}
       '';
 
     system.activationScript = pkgs.writeShellScript "activation"
