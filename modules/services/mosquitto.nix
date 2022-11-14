@@ -112,6 +112,8 @@ in
       enabled = true;
     };
 
+    environment.systemPackages = with pkgs; [ cfg.package ];
+
     users.users.${cfg.user} = mkDefaultRec {
       description = "mosquitto";
       group = cfg.group;

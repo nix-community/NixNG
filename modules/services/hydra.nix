@@ -376,6 +376,7 @@ in
       };
     };
 
+    environment.systemPackages = with pkgs; [ cfg.package ];
     environment.variables = hydraEnv;
 
     init.services = {

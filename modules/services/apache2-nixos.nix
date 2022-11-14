@@ -80,6 +80,8 @@ in
           enabled = true;
         };
 
+      environment.systemPackages = with pkgs; [ cfg.package ];
+
       users.users."www-data" = mkIf cfg.createUserGroup {
         description = "Apache HTTPD";
         group = "www-data";

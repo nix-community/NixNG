@@ -221,6 +221,8 @@ in
       enabled = true;
     };
 
+    environment.systemPackages = with pkgs; [ cfg.package ];
+
     users.users."gitea" = mkIf (cfg.enable && cfg.user == defaultUser) {
       uid = ids.uids.gitea;
       description = "Gitea user";

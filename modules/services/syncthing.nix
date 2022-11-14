@@ -71,6 +71,8 @@ in
         '';
     };
 
+    environment.systemPackages = with pkgs; [ cfg.package ];
+
     users.users.${cfg.user} = mkDefaultRec {
       description = "Syncthing";
       group = cfg.group;

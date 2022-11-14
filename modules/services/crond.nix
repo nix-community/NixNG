@@ -103,5 +103,7 @@ in
         '';
         enabled = true;
       };
+
+    environment.systemPackages = with pkgs; [ cfg.package ];
   };
 }
