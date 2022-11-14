@@ -15,55 +15,17 @@
 , name
 , system
 , config
+, defaultModules ? import ../modules/list.nix
+, extraModules ? []
 }:
 with nixpkgs.lib;
 let
-  defaultModules = [
-    ../modules/runit
-    ../modules/dumb-init
-    ../modules/initrd
-    ../modules/init.nix
-    ../modules/system.nix
-    ../modules/assertions.nix
-    ../modules/bootloader
-    ../modules/nix.nix
-
-    ../modules/security/ca.nix
-
-    ../modules/misc/iana.nix
-
-    ../modules/environment.nix
-    ../modules/users.nix
-    ../modules/ids.nix
-
-    ../modules/services/apache2-nixos.nix
-    ../modules/services/nginx.nix
-    ../modules/services/gitea.nix
-    ../modules/services/getty.nix
-    ../modules/services/socklog.nix
-    ../modules/services/crond.nix
-    ../modules/services/hydra.nix
-    ../modules/services/postgresql.nix
-    ../modules/services/mysql.nix
-    ../modules/services/certbot.nix
-    ../modules/services/postfix.nix
-    ../modules/services/dovecot.nix
-    ../modules/services/pantalaimon.nix
-    ../modules/services/jmusicbot.nix
-    ../modules/services/php-fpm.nix
-    ../modules/services/minecraft.nix
-    ../modules/services/home-assistant.nix
-    ../modules/services/zigbee2mqtt.nix
-    ../modules/services/mosquitto.nix
-    ../modules/services/syncthing.nix
-    ({ ... }: {
-      system.name = name;
-    })
-  ];
-
   evaledModules = evalModules
     {
-      modules = defaultModules ++ [
+      modules = defaultModules ++ extraModules ++ [
+        ({ ... }: {
+          system.name = name;
+        })
         config
         ({ ... }:
           {
