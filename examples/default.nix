@@ -25,4 +25,4 @@ let
       "syncthing" = ./syncthing;
     };
 in
-  nixpkgs.lib.mapAttrs (_: v: import v { nglib = nglib nixpkgs.lib; inherit nixpkgs; }) examples
+  nixpkgs.lib.mapAttrs (_: v: import v { inherit nixpkgs nglib; }) examples

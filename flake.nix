@@ -20,18 +20,8 @@
         import nixpkgs { inherit system; overlays = [ self.overlays.default ]; };
     in
     {
-      nglib =
-        lib:
-        let this =
-              { makeSystem = import ./lib/make-system.nix { nglib = this; overlay = self.overlays.default;  };
-                dag = import ./lib/dag.nix { inherit lib; };
-                generators = import ./lib/generators.nix { inherit lib; };
-                mkDefaultRec = lib.mapAttrsRecursive (_: v: lib.mkDefault v);
-              };
-        in this;
-
+      nglib = import ./lib nixpkgs.lib;
       examples = import ./examples { inherit nixpkgs; inherit (self) nglib; };
-
       overlays.default = import ./overlay;
 
       devShells = forAllSystems (system:
