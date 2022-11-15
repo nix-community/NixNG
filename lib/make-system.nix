@@ -30,7 +30,7 @@ let
         ({ ... }:
           {
             _module.args = {
-              pkgs = import nixpkgs { inherit system; overlays = [ overlay ]; };
+              pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [ overlay ];
               inherit system nglib;
             };
           }
