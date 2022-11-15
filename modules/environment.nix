@@ -14,23 +14,7 @@ let
 
   requiredPackages = map (pkg: setPrio ((pkg.meta.priority or 5) + 3) pkg) [
     pkgs.bashInteractive
-    pkgs.coreutils-full
-    pkgs.diffutils
-    pkgs.findutils
-    pkgs.gawk
-    pkgs.gnugrep
-    pkgs.gnused
-    pkgs.gnutar
-    pkgs.gzip
-    pkgs.xz
-    pkgs.less
-    pkgs.ncurses
-    pkgs.procps
-    pkgs.su
-    pkgs.time
-    pkgs.util-linux
-    pkgs.which
-    pkgs.zstd
+    pkgs.busybox
   ];
 
   makeShellWrapper = pkg: name:
