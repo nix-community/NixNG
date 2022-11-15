@@ -58,7 +58,10 @@ in
     {
       init.services.nginx =
         let
-          config = pkgs.writeText "nginx.cfg" (toNginx cfg.configuration);
+          config = pkgs.writeText "nginx.cfg" (toNginx ([{
+            daemon = "off";
+            error_log = ["/dev/stderr" "info"];
+          }] ++ (if builtins.isList cfg.configuration then cfg.configuration else [ cfg.configuration ])));
         in
         {
           ensureSomething.create."cache" = {
@@ -77,13 +80,11 @@ in
                 install -o nginx -g nginx -m 0440 /dev/null ${runtimeConfig}
                 envsubst < ${config} > ${runtimeConfig}
 
-                mkdir -p /var/log/nginx
                 HOME=~nginx ${cfg.package}/bin/nginx \
                   -c ${runtimeConfig}
               ''
             else
               ''
-                mkdir -p /var/log/nginx
                 HOME=~nginx ${cfg.package}/bin/nginx \
                   -c ${config}
               '');
