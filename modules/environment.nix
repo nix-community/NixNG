@@ -33,10 +33,13 @@ let
     pkgs.zstd
   ];
 
-  makeShellWrapper = pkg: name: pkgs.writeShellScriptBin name ''
-    source /etc/profile
-    exec ${pkg}/bin/${name} "$@"
-  '';
+  makeShellWrapper = pkg: name:
+    let
+      script = pkgs.writeShellScriptBin name ''
+        export PATH="$PATH"':${makeBinPath cfg.systemPackages}'
+        exec ${pkg}/bin/${name} "$@"
+      '';
+    in "${script}/bin/${name}";
 
   shells = if cfg.shell.enable then ({
     bash = (makeShellWrapper pkgs.bash "bash");

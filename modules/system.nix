@@ -164,7 +164,13 @@ in
           ''
             execs=$(${pkgs.findutils}/bin/find ${pkg}/bin -type f)
             for exec in $execs; do
-              ln -sf $exec /run/current-system/sw/bin
+              cat << EOF > /run/current-system/sw/bin/$(basename $exec)
+#!${pkgs.busybox}/bin/sh
+
+export PATH="$PATH"':${makeBinPath config.environment.systemPackages}'
+exec $exec "\$@"
+EOF
+              chmod +x /run/current-system/sw/bin/$(basename $exec)
             done
           ''
         ) config.environment.systemPackages)}
