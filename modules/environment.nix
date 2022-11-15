@@ -26,7 +26,8 @@ let
     in "${script}/bin/${name}";
 
   shells = if cfg.shell.enable then ({
-    bash = (makeShellWrapper pkgs.bash "bash");
+    bash = (makeShellWrapper pkgs.bashInteractive "bash");
+    sh = (makeShellWrapper pkgs.bashInteractive "bash");
   }) else ({
     sh = "${pkgs.busybox}/bin/sh";
   });
