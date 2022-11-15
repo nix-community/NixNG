@@ -77,11 +77,13 @@ in
                 install -o nginx -g nginx -m 0440 /dev/null ${runtimeConfig}
                 envsubst < ${config} > ${runtimeConfig}
 
+                mkdir -p /var/log/nginx
                 HOME=~nginx ${cfg.package}/bin/nginx \
                   -c ${runtimeConfig}
               ''
             else
               ''
+                mkdir -p /var/log/nginx
                 HOME=~nginx ${cfg.package}/bin/nginx \
                   -c ${config}
               '');
