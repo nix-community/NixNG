@@ -20,7 +20,8 @@ let
   makeShellWrapper = pkg: name:
     let
       script = pkgs.writeShellScriptBin name ''
-        export PATH="$PATH"':${makeBinPath cfg.systemPackages}'
+        set -n
+        source /etc/profile
         exec ${pkg}/bin/${name} "$@"
       '';
     in "${script}/bin/${name}";

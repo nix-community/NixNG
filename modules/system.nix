@@ -167,7 +167,8 @@ in
               cat << EOF > /run/current-system/sw/bin/$(basename $exec)
 #!${pkgs.busybox}/bin/sh
 
-export PATH="$PATH"':${makeBinPath config.environment.systemPackages}'
+set -n
+source /etc/profile
 exec $exec "\$@"
 EOF
               chmod +x /run/current-system/sw/bin/$(basename $exec)
