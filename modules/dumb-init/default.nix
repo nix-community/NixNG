@@ -89,6 +89,7 @@ in
           let
             runit = pkgs.writeShellScript "init"
               ''
+                set -n
                 export PATH=${pkgs.busybox}/bin
                 _system_config="@systemConfig@"
 
@@ -98,6 +99,7 @@ in
               '';
             shell = pkgs.writeShellScript "init"
               ''
+                set -n
                 export PATH=${pkgs.busybox}/bin:${pkgs.bash}/bin
                 _system_config="@systemConfig@"
 

@@ -94,6 +94,8 @@ in
       gid = mkDefault config.ids.gids.jmusicbot;
     };
 
+    environment.systemPackages = with pkgs; [ cfg.package ];
+
     init.services.jmusicbot =
       {
         script = pkgs.writeShellScript "jmusicbot-run"

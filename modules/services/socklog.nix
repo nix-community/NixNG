@@ -64,6 +64,8 @@ in
         enabled = true;
       };
 
+    environment.systemPackages = with pkgs; [ cfg.package ];
+
     assertions = [
       {
         assertion = !(cfg.unix == null && cfg.inet == null);

@@ -95,6 +95,8 @@ in
       enabled = true;
     };
 
+    environment.systemPackages = with pkgs; [ cfg.package ];
+
     users.users.${cfg.user} = mkDefaultRec {
       description = "Home Assistant";
       group = cfg.group;

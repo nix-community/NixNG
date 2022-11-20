@@ -76,6 +76,8 @@ in
       gid = mkDefault config.ids.gids.pantalaimon;
     };
 
+    environment.systemPackages = with pkgs; [ cfg.package ];
+
     init.services.pantalaimon =
       {
         ensureSomething.create."dataDir" = {

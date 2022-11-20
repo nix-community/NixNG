@@ -114,6 +114,8 @@ in
       }
     ];
 
+    environment.systemPackages = with pkgs; [ cfg.package ];
+
     system.activation.certbot = nglib.dag.dagEntryAfter
       [ "createbaseenv" "users" ]
       (concatStringsSep "\n" (mapAttrsToList

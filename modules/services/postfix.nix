@@ -207,6 +207,8 @@ in
         gid = mkDefault config.ids.gids.postdrop;
       };
 
+      environment.systemPackages = with pkgs; [ cfg.package ];
+
       services.postfix = {
         mainConfig = {
           compatibility_level = mkDefault cfg.package.version;

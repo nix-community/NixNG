@@ -140,6 +140,8 @@ in
         enabled = true;
       };
 
+    environment.systemPackages = with pkgs; [ cfg.javaPackage cfg.overlayfsPackage ];
+
     assertions = [
       { assertion = cfg.eulaAccept;
         message = "You must accept the EULA";

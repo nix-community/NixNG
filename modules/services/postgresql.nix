@@ -274,6 +274,8 @@ in
   # END Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
 
   config = mkIf cfg.enable {
+    environment.systemPackages = with pkgs; [ cfg.package ];
+
     # BEGIN Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
     services.postgresql.config = {
       hba_file = "${pkgs.writeText "pg_hba.conf" cfg.authentication}";

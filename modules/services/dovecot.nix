@@ -136,6 +136,8 @@ in
         gid = ids.gids.dovenull;
       };
 
+      environment.systemPackages = with pkgs; [ cfg.package ];
+
       services.dovecot = {
         config = {
           default_login_user = mkIf (cfg.loginUser != null) cfg.loginUser;

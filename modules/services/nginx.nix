@@ -88,6 +88,8 @@ in
           enabled = true;
         };
 
+      environment.systemPackages = with pkgs; [ cfg.package ];
+
       users.users.${cfg.user} = mkDefaultRec {
         description = "Nginx";
         group = cfg.group;

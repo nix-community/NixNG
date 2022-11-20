@@ -81,6 +81,8 @@ in
       enabled = true;
     };
 
+    environment.systemPackages = with pkgs; [ cfg.package ];
+
     users.users.${cfg.user} = mkDefaultRec {
       description = "zigbee2mqtt";
       group = cfg.group;

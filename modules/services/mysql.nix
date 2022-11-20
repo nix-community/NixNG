@@ -206,6 +206,8 @@ in
 
       users.groups.mysql.gid = config.ids.gids.mysql;
 
+      environment.systemPackages = with pkgs; [ cfg.package ];
+
       init.services.mysql = {
         ensureSomething.create."dataDir" = {
           type = "directory";
