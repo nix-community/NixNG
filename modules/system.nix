@@ -61,7 +61,7 @@ in
       };
     };
 
-    flatapk = mkOption {
+    flatpak = mkOption {
       description = ''
         Flatpak package configuration
       '';
