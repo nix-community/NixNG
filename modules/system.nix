@@ -52,6 +52,30 @@ in
           };
         };
       };
+
+      flatpak = mkOption {
+        description = ''
+          Flatpak package
+        '';
+        type = types.path;
+      };
+    };
+
+    flatapk = mkOption {
+      description = ''
+        Flatpak package configuration
+      '';
+      type = types.submodule {
+        options = {
+          name = mkOption {
+            description = ''
+              Package name of the Flatpak
+            '';
+            type = types.str;
+            default = "org.nixng.nix-community.${config.system.name}";
+          };
+        };
+      };
     };
 
     activation = mkOption {
@@ -150,6 +174,34 @@ in
           build = dockerTools.buildLayeredImage config;
           stream = dockerTools.streamLayeredImage config;
         };
+
+      flatpak =
+        let
+          toplevelHash = builtins.elemAt (builtins.split "-" (lib.removePrefix "${builtins.storeDir}/" (toString config.system.build.toplevel))) 0;
+
+          metadata = pkgs.writeText "metadata" ''
+            [Runtime]
+            name=${config.system.flatpak.name}
+            runtime=${config.system.flatpak.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash}
+            sdk=${config.system.flatpak.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash}
+          '';
+
+          toplevel = pkgs.runCommandNoCC "nixng-flatpak-toplevel"
+            { nativeBuildInputs = with pkgs; [ busybox makeWrapper ]; }
+            (with configFinal; ''
+              mkdir $out
+              substitute ${configFinal.built.toplevel} $out/files \
+                --subst-var-by "systemConfig" "$out"
+              substitute ${metadata} $out/metadata \
+                --subst-var-by "systemConfig" "$out"
+            '');
+        in pkgs.runCommandNoCC "nixng-flatpak"
+          { nativeBuildInputs = with pkgs; [ flatpak-builder ]; }
+          (with configFinal; ''
+            mkdir -p $out
+            ostree init --mode archive-z2 --repo=$out
+            ostree commit -b ${configFinal.system.flatpak.name}//${pkgs.targetPlatform.uname.processor}/${toplevelHash} --tree=dir=${toplevel}
+          '');
     };
 
     system.activation.currentSystem = nglib.dag.dagEntryAnywhere
