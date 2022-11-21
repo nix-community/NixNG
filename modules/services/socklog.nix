@@ -15,6 +15,12 @@ in
   options.services.socklog = {
     enable = mkEnableOption "Enable socklog.";
 
+    package = mkOption {
+      description = "Socklog package.";
+      type = types.package;
+      default = pkgs.socklog;
+    };
+
     unix = mkOption {
       description = "Make socklog listen on a unix domain socket. Input the path to the UDS socklog should use.";
       type = with types; nullOr path;
@@ -54,7 +60,7 @@ in
         script = pkgs.writeShellScript "socklog-run" ''
           set -m
 
-          export PATH=${pkgs.socklog}/bin:$PATH
+          export PATH=${cfg.package}/bin:$PATH
 
           trap 'kill %1; kill %2' SIGINT SIGTERM
           ${unixSocklog}
