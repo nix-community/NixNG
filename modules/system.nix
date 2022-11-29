@@ -65,6 +65,7 @@ in
       description = ''
         Flatpak package configuration
       '';
+      default = {};
       type = types.submodule {
         options = {
           name = mkOption {
@@ -186,21 +187,24 @@ in
             sdk=${config.system.flatpak.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash}
           '';
 
-          toplevel = pkgs.runCommandNoCC "nixng-flatpak-toplevel"
+          runtime = pkgs.runCommandNoCC "nixng-flatpak-runtime"
             { nativeBuildInputs = with pkgs; [ busybox makeWrapper ]; }
             (with configFinal; ''
-              mkdir $out
-              substitute ${configFinal.built.toplevel} $out/files \
+              mkdir -p $out/files
+              substitute ${configFinal.system.build.toplevel}/init $out/files/init \
+                --subst-var-by "systemConfig" "$out"
+              substitute ${configFinal.system.build.toplevel}/activation $out/files/activation \
                 --subst-var-by "systemConfig" "$out"
               substitute ${metadata} $out/metadata \
                 --subst-var-by "systemConfig" "$out"
             '');
         in pkgs.runCommandNoCC "nixng-flatpak"
-          { nativeBuildInputs = with pkgs; [ flatpak-builder ]; }
+          { nativeBuildInputs = with pkgs; [ flatpak-builder ostree ]; }
           (with configFinal; ''
             mkdir -p $out
             ostree init --mode archive-z2 --repo=$out
-            ostree commit -b ${configFinal.system.flatpak.name}//${pkgs.targetPlatform.uname.processor}/${toplevelHash} --tree=dir=${toplevel}
+            ostree commit --repo=$out -b runtime/${configFinal.system.flatpak.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash} --tree=dir=${runtime}
+            ostree summary --repo=$out -u
           '');
     };
 
