@@ -75,6 +75,42 @@ in
             type = types.str;
             default = "org.nixng.nix-community.${config.system.name}";
           };
+
+          runtime = mkOption {
+            description = ''
+              Flatpak runtime package options
+            '';
+            default = {};
+            type = types.submodule {
+              options = {
+                name = mkOption {
+                  description = ''
+                    Package name of the Flatpak
+                  '';
+                  type = types.str;
+                  default = "org.nixng.nix-community.runtime.${config.system.name}";
+                };
+              };
+            };
+          };
+
+          sdk = mkOption {
+            description = ''
+              Flatpak SDK package options
+            '';
+            default = {};
+            type = types.submodule {
+              options = {
+                name = mkOption {
+                  description = ''
+                    Package name of the Flatpak
+                  '';
+                  type = types.str;
+                  default = "org.nixng.nix-community.sdk.${config.system.name}";
+                };
+              };
+            };
+          };
         };
       };
     };
@@ -180,32 +216,42 @@ in
         let
           toplevelHash = builtins.elemAt (builtins.split "-" (lib.removePrefix "${builtins.storeDir}/" (toString config.system.build.toplevel))) 0;
 
-          metadata = pkgs.writeText "metadata" ''
-            [Runtime]
-            name=${config.system.flatpak.name}
-            runtime=${config.system.flatpak.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash}
-            sdk=${config.system.flatpak.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash}
-          '';
+          packageStep = name:
+            let
+              metadata = pkgs.writeText "metadata" ''
+                [Runtime]
+                name=${config.system.flatpak.${name}.name}
+                runtime=${config.system.flatpak.${name}.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash}
+                sdk=${config.system.flatpak.${name}.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash}
+              '';
 
-          runtime = pkgs.runCommandNoCC "nixng-flatpak-runtime"
-            { nativeBuildInputs = with pkgs; [ busybox makeWrapper ]; }
-            (with configFinal; ''
-              mkdir -p $out/files
-              substitute ${configFinal.system.build.toplevel}/init $out/files/init \
-                --subst-var-by "systemConfig" "$out"
-              substitute ${configFinal.system.build.toplevel}/activation $out/files/activation \
-                --subst-var-by "systemConfig" "$out"
-              substitute ${metadata} $out/metadata \
-                --subst-var-by "systemConfig" "$out"
-            '');
+              refs = pkgs.writeReferencesToFile configFinal.system.build.toplevel;
+            in pkgs.runCommandNoCC "nixng-flatpak-${name}-${toplevelHash}"
+              { nativeBuildInputs = with pkgs; [ busybox makeWrapper ]; }
+              ''
+                mkdir -p $out/files
+                cp ${metadata} $out/metadata
+
+                shopt -s dotglob
+                cp -r ${configFinal.system.build.toplevel}/* $out
+
+                for path in $(cat ${refs}); do
+                  test -f $path && ( mkdir -p $out/files/$(dirname $path) ; cp -r $path $out/files/$path )
+                  test -d $path && ( mkdir -p $out/files/$path ; cp -r $path/* $out/files/$path )
+                done
+              '';
+
+          runtime = packageStep "runtime";
+          sdk = packageStep "sdk";
         in pkgs.runCommandNoCC "nixng-flatpak"
           { nativeBuildInputs = with pkgs; [ flatpak-builder ostree ]; }
           (with configFinal; ''
-            mkdir -p $out
-            ostree init --mode archive-z2 --repo=$out
-            ostree commit --repo=$out -b runtime/${configFinal.system.flatpak.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash} --tree=dir=${runtime}
-            ostree summary --repo=$out -u
-          '');
+            mkdir -p $out/repo
+            ostree init --mode archive-z2 --repo=$out/repo
+            ostree commit --repo=$out/repo -b runtime/${configFinal.system.flatpak.runtime.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash} --tree=dir=${runtime}
+            ostree commit --repo=$out/repo -b runtime/${configFinal.system.flatpak.sdk.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash} --tree=dir=${sdk}
+            ostree summary --repo=$out/repo -u
+          ''); # TODO: figure out how to produce a flatpak package out of the runtime and SDK
     };
 
     system.activation.currentSystem = nglib.dag.dagEntryAnywhere
