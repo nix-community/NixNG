@@ -67,51 +67,56 @@ in
       '';
       default = {};
       type = types.submodule {
-        options = {
-          name = mkOption {
-            description = ''
-              Package name of the Flatpak
-            '';
-            type = types.str;
-            default = "org.nixng.nix-community.${config.system.name}";
-          };
+        options =
+          let
+            makeOptions = name: {
+              name = mkOption {
+                description = ''
+                  Package name
+                '';
+                type = types.str;
+                default = "${name}.${config.system.name}";
+              };
 
-          runtime = mkOption {
-            description = ''
-              Flatpak runtime package options
-            '';
-            default = {};
-            type = types.submodule {
-              options = {
-                name = mkOption {
-                  description = ''
-                    Package name of the Flatpak
-                  '';
-                  type = types.str;
-                  default = "org.nixng.nix-community.runtime.${config.system.name}";
-                };
+              metadata = mkOption {
+                description = ''
+                  Package metadata
+                '';
+                type = with types; attrsOf (oneOf [ str int bool ]);
+                default = {};
+              };
+            };
+          in {
+            application = mkOption {
+              description = ''
+                Flatpak application package options
+              '';
+              default = {};
+              type = types.submodule {
+                options = makeOptions "org.nixng.nix-community";
+              };
+            };
+
+            runtime = mkOption {
+              description = ''
+                Flatpak runtime package options
+              '';
+              default = {};
+              type = types.submodule {
+                options = makeOptions "org.nixng.nix-community.runtime";
+              };
+            };
+
+            sdk = mkOption {
+              description = ''
+                Flatpak SDK package options
+              '';
+              default = {};
+              type = types.submodule {
+                options = makeOptions "org.nixng.nix-community.sdk";
               };
             };
           };
-
-          sdk = mkOption {
-            description = ''
-              Flatpak SDK package options
-            '';
-            default = {};
-            type = types.submodule {
-              options = {
-                name = mkOption {
-                  description = ''
-                    Package name of the Flatpak
-                  '';
-                  type = types.str;
-                  default = "org.nixng.nix-community.sdk.${config.system.name}";
-                };
-              };
-            };
-          };
-        };
       };
     };
 
@@ -216,14 +221,31 @@ in
         let
           toplevelHash = builtins.elemAt (builtins.split "-" (lib.removePrefix "${builtins.storeDir}/" (toString config.system.build.toplevel))) 0;
 
-          packageStep = name:
+          makePackage = name:
             let
-              metadata = pkgs.writeText "metadata" ''
-                [Runtime]
-                name=${config.system.flatpak.${name}.name}
-                runtime=${config.system.flatpak.${name}.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash}
-                sdk=${config.system.flatpak.${name}.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash}
-              '';
+              metadataHeader = {
+                runtime = "Runtime";
+                sdk = "Runtime";
+                application = "Application";
+              };
+
+              baseMetadata = {
+                "${metadataHeader.${name}}" = {
+                  inherit (config.system.flatpak.${name}) name;
+                  runtime = "${config.system.flatpak.runtime.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash}";
+                  sdk = "${config.system.flatpak.sdk.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash}";
+                };
+              };
+
+              extraMetadata = ({
+                application = {
+                  "${metadataHeader.${name}}" = {
+                    command = "${configFinal.system.build.toplevel}/init";
+                  };
+                };
+              }).${name} or {};
+
+              metadata = pkgs.writeText "metadata" (generators.toINI {} (baseMetadata // extraMetadata // configFinal.system.flatpak.${name}.metadata));
 
               refs = pkgs.writeReferencesToFile configFinal.system.build.toplevel;
             in pkgs.runCommandNoCC "nixng-flatpak-${name}-${toplevelHash}"
@@ -241,17 +263,19 @@ in
                 done
               '';
 
-          runtime = packageStep "runtime";
-          sdk = packageStep "sdk";
+          makeCommit = kind: name: ''
+            ostree commit --repo=$out -b ${kind}/${configFinal.system.flatpak.${name}.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash} --tree=dir=${makePackage name}
+          '';
         in pkgs.runCommandNoCC "nixng-flatpak"
-          { nativeBuildInputs = with pkgs; [ flatpak-builder ostree ]; }
+          { nativeBuildInputs = with pkgs; [ ostree ]; }
           (with configFinal; ''
             mkdir -p $out/repo
-            ostree init --mode archive-z2 --repo=$out/repo
-            ostree commit --repo=$out/repo -b runtime/${configFinal.system.flatpak.runtime.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash} --tree=dir=${runtime}
-            ostree commit --repo=$out/repo -b runtime/${configFinal.system.flatpak.sdk.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash} --tree=dir=${sdk}
-            ostree summary --repo=$out/repo -u
-          ''); # TODO: figure out how to produce a flatpak package out of the runtime and SDK
+            ostree init --mode archive-z2 --repo=$out
+            ${makeCommit "runtime" "runtime"}
+            ${makeCommit "runtime" "sdk"}
+            ${makeCommit "application" "application"}
+            ostree summary --repo=$out -u
+          '');
     };
 
     system.activation.currentSystem = nglib.dag.dagEntryAnywhere
