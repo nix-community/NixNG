@@ -240,7 +240,7 @@ in
               extraMetadata = ({
                 application = {
                   "${metadataHeader.${name}}" = {
-                    command = "${configFinal.system.build.toplevel}/init";
+                    command = "/init";
                   };
                 };
               }).${name} or {};
@@ -248,20 +248,26 @@ in
               metadata = pkgs.writeText "metadata" (generators.toINI {} (baseMetadata // extraMetadata // configFinal.system.flatpak.${name}.metadata));
 
               refs = pkgs.writeReferencesToFile configFinal.system.build.toplevel;
-            in pkgs.runCommandNoCC "nixng-flatpak-${name}-${toplevelHash}"
-              { nativeBuildInputs = with pkgs; [ busybox makeWrapper ]; }
-              ''
-                mkdir -p $out/files
-                cp ${metadata} $out/metadata
+            in pkgs.runCommandNoCC "nixng-flatpak-${name}-${toplevelHash}" {} ''
+              mkdir -p $out/files
+              cp "${metadata}" $out/metadata
 
-                shopt -s dotglob
-                cp -r ${configFinal.system.build.toplevel}/* $out
+              shopt -s dotglob
+              cp -r ${configFinal.system.build.toplevel}/* $out/files
 
-                for path in $(cat ${refs}); do
-                  test -f $path && ( mkdir -p $out/files/$(dirname $path) ; cp -r $path $out/files/$path )
-                  test -d $path && ( mkdir -p $out/files/$path ; cp -r $path/* $out/files/$path )
-                done
-              '';
+              for path in $(cat ${refs}); do
+                dest=$out/files/$path
+                rm -rf $dest
+                mkdir -p $(dirname $dest)
+                if test -f $path; then
+                  echo "Copying file from $path to $dest"
+                  cp -r $path $dest
+                elif test -d $path; then
+                  echo "Copying dir from $path to $dest"
+                  cp -r $path $(dirname $dest)
+                fi
+              done
+            '';
 
           makeCommit = kind: name: ''
             ostree commit --repo=$out -b ${kind}/${configFinal.system.flatpak.${name}.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash} --tree=dir=${makePackage name}
