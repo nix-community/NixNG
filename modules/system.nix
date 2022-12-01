@@ -269,17 +269,27 @@ in
               done
             '';
 
-          makeCommit = kind: name: ''
-            ostree commit --repo=$out -b ${kind}/${configFinal.system.flatpak.${name}.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash} --tree=dir=${makePackage name}
-          '';
+          makeCommit = kind: name:
+            let
+              pkg = makePackage name;
+              pkgId = "${configFinal.system.flatpak.${name}.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash}";
+            in ''
+              echo "Adding ${pkgId} to $out"
+              ostree commit --repo=$out -b ${kind}/${pkgId} --tree=dir=${pkg}
+            '';
+
         in pkgs.runCommandNoCC "nixng-flatpak"
           { nativeBuildInputs = with pkgs; [ ostree ]; }
           (with configFinal; ''
-            mkdir -p $out/repo
+            mkdir -p $out
+            echo "Creating repo at $out"
             ostree init --mode archive-z2 --repo=$out
+
             ${makeCommit "runtime" "runtime"}
             ${makeCommit "runtime" "sdk"}
             ${makeCommit "application" "application"}
+
+            echo "Generating summary for $out"
             ostree summary --repo=$out -u
           '');
     };
