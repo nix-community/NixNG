@@ -159,8 +159,8 @@ in
     # add explicit path settings and ensure them, also add to config but only as defaults
   };
 
-  config = {
-    init.services.gitea = mkIf cfg.enable {
+  config = mkIf cfg.enable {
+    init.services.gitea = {
       ensureSomething.create."0-server.APP_DATA_PATH" = {
         type = "directory";
         mode = "755";
@@ -223,7 +223,7 @@ in
 
     environment.systemPackages = with pkgs; [ cfg.package ];
 
-    users.users."gitea" = mkIf (cfg.enable && cfg.user == defaultUser) {
+    users.users."gitea" = mkIf (cfg.user == defaultUser) {
       uid = ids.uids.gitea;
       description = "Gitea user";
     };
