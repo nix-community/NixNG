@@ -54,7 +54,7 @@ in
               name = "2";
               file = ./stage-2.sh;
               substitutes = {
-                inherit (pkgs) runit findutils busybox utillinux;
+                inherit (pkgs) runit busybox utillinux;
                 inherit (cfg) runtimeServiceDirectory;
               };
             };
@@ -81,7 +81,7 @@ in
   config = {
     system.activation."runit" = nglib.dag.dagEntryAnywhere
       ''
-        export PATH=${pkgs.findutils}/bin:${pkgs.busybox}/bin
+        export PATH=${pkgs.busybox}/bin
         mkdir -p ${cfg.runtimeServiceDirectory}
 
         function linkFarm() {

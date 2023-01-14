@@ -162,7 +162,7 @@ in
         mkdir -p /run/current-system/sw/bin
         ${concatStringsSep "\n" (map (pkg:
           ''
-            execs=$(${pkgs.findutils}/bin/find ${pkg}/bin -type f)
+            execs=$(${pkgs.busybox}/bin/find ${pkg}/bin -type f)
             for exec in $execs; do
               cat << EOF > /run/current-system/sw/bin/$(basename $exec)
 #!${pkgs.busybox}/bin/sh
