@@ -364,7 +364,7 @@ in
                 '';
               hydra-compress-logs = pkgs.writeShellScript "hydra-compress-logs"
                 ''
-                  export PATH=${makeBinPath [ pkgs.bzip2 pkgs.findutils pkgs.busybox ]}:$PATH
+                  export PATH=${makeBinPath [ pkgs.bzip2 pkgs.busybox ]}:$PATH
                   find /var/lib/hydra/build-logs -type f -name "*.drv" -mtime +3 -size +0c | xargs -r bzip2 -v -f
                 '';
             in
