@@ -52,6 +52,72 @@ in
           };
         };
       };
+
+      flatpak = mkOption {
+        description = ''
+          Flatpak package
+        '';
+        type = types.path;
+      };
+    };
+
+    flatpak = mkOption {
+      description = ''
+        Flatpak package configuration
+      '';
+      default = {};
+      type = types.submodule {
+        options =
+          let
+            makeOptions = name: {
+              name = mkOption {
+                description = ''
+                  Package name
+                '';
+                type = types.str;
+                default = "${name}.${config.system.name}";
+              };
+
+              metadata = mkOption {
+                description = ''
+                  Package metadata
+                '';
+                type = with types; attrsOf (oneOf [ str int bool ]);
+                default = {};
+              };
+            };
+          in {
+            application = mkOption {
+              description = ''
+                Flatpak application package options
+              '';
+              default = {};
+              type = types.submodule {
+                options = makeOptions "org.nixng.nix-community";
+              };
+            };
+
+            runtime = mkOption {
+              description = ''
+                Flatpak runtime package options
+              '';
+              default = {};
+              type = types.submodule {
+                options = makeOptions "org.nixng.nix-community.runtime";
+              };
+            };
+
+            sdk = mkOption {
+              description = ''
+                Flatpak SDK package options
+              '';
+              default = {};
+              type = types.submodule {
+                options = makeOptions "org.nixng.nix-community.sdk";
+              };
+            };
+          };
+      };
     };
 
     activation = mkOption {
@@ -150,6 +216,82 @@ in
           build = dockerTools.buildLayeredImage config;
           stream = dockerTools.streamLayeredImage config;
         };
+
+      flatpak =
+        let
+          toplevelHash = builtins.elemAt (builtins.split "-" (lib.removePrefix "${builtins.storeDir}/" (toString config.system.build.toplevel))) 0;
+
+          makePackage = name:
+            let
+              metadataHeader = {
+                runtime = "Runtime";
+                sdk = "Runtime";
+                application = "Application";
+              };
+
+              baseMetadata = {
+                "${metadataHeader.${name}}" = {
+                  inherit (config.system.flatpak.${name}) name;
+                  runtime = "${config.system.flatpak.runtime.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash}";
+                  sdk = "${config.system.flatpak.sdk.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash}";
+                };
+              };
+
+              extraMetadata = ({
+                application = {
+                  "${metadataHeader.${name}}" = {
+                    command = "/init";
+                  };
+                };
+              }).${name} or {};
+
+              metadata = pkgs.writeText "metadata" (generators.toINI {} (baseMetadata // extraMetadata // configFinal.system.flatpak.${name}.metadata));
+
+              refs = pkgs.writeReferencesToFile configFinal.system.build.toplevel;
+            in pkgs.runCommandNoCC "nixng-flatpak-${name}-${toplevelHash}" {} ''
+              mkdir -p $out/files
+              cp "${metadata}" $out/metadata
+
+              shopt -s dotglob
+              cp -r ${configFinal.system.build.toplevel}/* $out/files
+
+              for path in $(cat ${refs}); do
+                dest=$out/files/$path
+                rm -rf $dest
+                mkdir -p $(dirname $dest)
+                if test -f $path; then
+                  echo "Copying file from $path to $dest"
+                  cp -r $path $dest
+                elif test -d $path; then
+                  echo "Copying dir from $path to $dest"
+                  cp -r $path $(dirname $dest)
+                fi
+              done
+            '';
+
+          makeCommit = kind: name:
+            let
+              pkg = makePackage name;
+              pkgId = "${configFinal.system.flatpak.${name}.name}/${pkgs.targetPlatform.uname.processor}/${toplevelHash}";
+            in ''
+              echo "Adding ${pkgId} to $out"
+              ostree commit --repo=$out -b ${kind}/${pkgId} --tree=dir=${pkg}
+            '';
+
+        in pkgs.runCommandNoCC "nixng-flatpak"
+          { nativeBuildInputs = with pkgs; [ ostree ]; }
+          (with configFinal; ''
+            mkdir -p $out
+            echo "Creating repo at $out"
+            ostree init --mode archive-z2 --repo=$out
+
+            ${makeCommit "runtime" "runtime"}
+            ${makeCommit "runtime" "sdk"}
+            ${makeCommit "application" "application"}
+
+            echo "Generating summary for $out"
+            ostree summary --repo=$out -u
+          '');
     };
 
     system.activation.currentSystem = nglib.dag.dagEntryAnywhere
