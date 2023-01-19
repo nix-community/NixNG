@@ -19,6 +19,10 @@ in
   runVmLinux = final.callPackage ./run-vm-linux.nix { };
   cronie = callPackage ./cronie.nix { };
   sigell = haskellPackages.callPackage ./sigell/cabal.nix { };
+  util-linuxSystemdFree = prev.util-linux.override {
+    systemdSupport = false;
+    pamSupport = true;
+  };
 
   inherit (callPackage ./trivial-builders.nix {})
     writeSubstitutedFile

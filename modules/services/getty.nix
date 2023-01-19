@@ -10,43 +10,78 @@
 with lib;
 let
   cfg = config.services.getty;
+
+  optionsApplyFn = x:
+    if isString x then
+      x
+    else if isList x then
+      concatMapStringsSep " " optionsApplyFn x
+    else
+      toString x;
+  optionsCreateArgument = k: v:
+    if v != null then
+      ''"--${k}" "${optionsApplyFn v}"''
+    else
+      ''"--${k}"'';
 in
 {
   options.services.getty = mkOption {
     description = "All of the agettys";
     type = types.attrsOf (types.submodule {
       options = {
-        baudRate = mkOption {
-          description = "TTY baud rate";
-          type = types.int;
+        port = mkOption {
+          description = "TTY port.";
+          type = types.str;
         };
-        termName = mkOption {
-          description = "TTY terminal name";
+
+        baudrate = mkOption {
+          description = "TTY baud rate.";
+          type = with types;
+            nullOr (oneOf [ (listOf int) int str ]);
+          default = null;
+        };
+
+        term = mkOption {
+          description = "TTY terminal name.";
           type = types.str;
           default = "vt100";
         };
-        assume8BitTty = mkOption {
-          description = "Whether to assume the tty is 8-bit";
-          type = types.bool;
-          default = true;
+
+        options = mkOption {
+          description = "Extra options passed to the binary.";
+          type = with types;
+            let
+              values = [ int str bool path (listOf (oneOf [ int str bool path ])) ];
+            in
+              attrsOf (nullOr (oneOf values));
+          default = {};
         };
-        # TODO Local line -L
-        pkg = mkOption {
-          description = "getty package";
+
+        package = mkOption {
+          description = "getty package.";
           type = types.path;
-          default = "${pkgs.utillinuxMinimal}/bin/agetty";
+          default = "${pkgs.util-linuxSystemdFree}/bin/agetty";
         };
       };
     });
     default = { };
   };
-  config.init.services = mapAttrs'
+  config.init.services =  mapAttrs'
     (name: getty: nameValuePair "getty-${name}"
       {
         script = with getty;
           pkgs.writeShellScript "getty-${name}-run"
             ''
-              exec setsid ${pkg} ${optionalString assume8BitTty "-8"} "${name}" "${toString baudRate}" "${termName}"
+              exec ${package} \
+                 "${port}" \
+                 ${concatStringsSep " " (mapAttrsToList optionsCreateArgument options)}
+                 "${optionalString
+                   (baudrate != null)
+                   (if isList baudrate then
+                     concatMapStringsSep "," toString baudrate
+                    else
+                      toString baudrate)}" \
+                 "${term}"
             '';
         enabled = true;
       })
