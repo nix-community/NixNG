@@ -40,7 +40,7 @@ in
             type = types.path;
             description = "runit stage 1";
             default = pkgs.writeSubstitutedShellScript {
-              name = "1";
+              name = "runit-stage-1";
               file = ./stage-1.sh;
               substitutes = {
                 activationScript = cfgSystem.activationScript;
@@ -51,7 +51,7 @@ in
             type = types.path;
             description = "runit stage 2";
             default = pkgs.writeSubstitutedShellScript {
-              name = "2";
+              name = "runit-stage-2";
               file = ./stage-2.sh;
               substitutes = {
                 inherit (pkgs) runit busybox utillinux;
@@ -63,7 +63,7 @@ in
             type = types.path;
             description = "runit stage 3";
             default = pkgs.writeSubstitutedShellScript {
-              name = "3";
+              name = "runit-stage-3";
               file = ./stage-3.sh;
               substitutes = { };
             };
