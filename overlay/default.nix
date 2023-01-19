@@ -23,6 +23,17 @@ in
     systemdSupport = false;
     pamSupport = true;
   };
+  runit = prev.runit.overrideAttrs
+    (old:
+      {
+        src = final.fetchFromGitHub {
+          owner = "blatt-linux";
+          repo = "runit";
+          rev = "19edc11741498fc7aafd5c7175f56e41f7c945f9";
+          sha256 = "sha256-yx8rVubWkA2jQS2d3IuarZwJq4pQ+gmIYzv7tVMg7zA=";
+        };
+        sourceRoot = "";
+      });
 
   inherit (callPackage ./trivial-builders.nix {})
     writeSubstitutedFile
