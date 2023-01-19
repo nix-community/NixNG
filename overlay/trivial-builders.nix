@@ -24,7 +24,7 @@
         TMPFILE=$(mktemp)
         substituteAll ${file} $TMPFILE
         touch $out
-        echo "#! ${runtimeShell}" > $out
+        echo "#! ${busybox}/bin/sh" > $out
         cat $TMPFILE >> $out
         chmod +x $out
       '';
@@ -42,7 +42,7 @@
         TMPFILE=$(mktemp)
         substituteAll ${file} $TMPFILE
         mkdir -p $out/bin && touch $out/bin/${name}
-        echo "#! ${runtimeShell}" > $out/bin/${name}
+        echo "#! ${busybox}/bin/sh" > $out/bin/${name}
         cat $TMPFILE >> $out/bin/${name}
         chmod +x $out/bin/${name}
       '';

@@ -9,6 +9,10 @@
 final: prev:
 let
   inherit (prev) haskellPackages callPackage;
+  nixpkgsTrivialBuilders =
+    final.callPackage "${prev.path}/pkgs/build-support/trivial-builders.nix" {
+      runtimeShell = final.busybox + "/bin/sh";
+    };
 in
 {
   tinyLinux = callPackage ./tiny-linux.nix { };
@@ -20,4 +24,10 @@ in
     writeSubstitutedFile
     writeSubstitutedShellScript
     writeSubstitutedShellScriptBin;
+
+  inherit
+    (nixpkgsTrivialBuilders)
+    writeShellScript
+    writeShellScriptBin
+    writeShellScriptApplication;
 }
