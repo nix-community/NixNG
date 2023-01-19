@@ -78,7 +78,7 @@ let
           at the same time. Use <literal>mkpasswd -m sha-512</literal> to create a suitable hash.
 
           Be careful, the hash isn't checked for format errors and therefore by
-          inputing a wrongly formatted hash you can yourself out!!
+          inputing a wrongly formatted hash you can lock yourself out!!
         '';
         type = types.nullOr types.str;
         default = null;
@@ -92,7 +92,7 @@ let
           which the password hash is specified.
 
           Be careful, the hash isn't checked for format errors and therefore by
-          inputing a wrongly formatted hash you can yourself out!!
+          inputing a wrongly formatted hash you can lock yourself out!!
         '';
         type = types.nullOr types.str;
         default = null;
