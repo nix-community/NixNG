@@ -126,11 +126,7 @@ in
         type = "runit";
         shutdown = pkgs.writeShellScript "runit-shutdown"
           ''
-            mkdir -p /etc/runit
-            touch /etc/runit/stopit
-            chmod 544 /etc/runit/stopit
-
-            kill -SIGCONT 1
+            runit-init 0
           '';
         script = pkgs.writeShellScript "init"
           ''
