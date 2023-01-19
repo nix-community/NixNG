@@ -112,7 +112,7 @@ in
     defaultUserShell = mkOption {
       description = "The default normal user shell.";
       type = types.either types.shellPackage types.path;
-      default = "${pkgs.bashInteractive}/bin/bash";
+      default = "${pkgs.busybox}/bin/sh";
     };
 
     createDefaultUsersGroups = mkOption {
