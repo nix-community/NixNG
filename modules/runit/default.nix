@@ -88,16 +88,16 @@ in
             src="$1"
             dst="$2"
 
-            find "$src" -mindepth 1 -type d -printf "%P\n" | xargs -I {} mkdir "$dst/{}"
-            find "$src" -mindepth 1 -type f -printf "%P\n" | xargs -I {} ln -s "$src/{}" "$dst/{}"
-            find "$src" -mindepth 1 -type l -printf "%P\n" | xargs -I {} cp "$src/{}" "$dst/{}"
+            find "$src" -mindepth 1 -type d -print0 | sed -e "s~$src~~" | xargs -0 -I {} mkdir "$dst/{}"
+            find "$src" -mindepth 1 -type f -print0 | sed -e "s~$src~~" | xargs -0 -I {} ln -s "$src/{}" "$dst/{}"
+            find "$src" -mindepth 1 -type l -print0 | sed -e "s~$src~~" | xargs -0 -I {} cp "$src/{}" "$dst/{}"
         }
 
         linkFarm ${cfg.serviceDirectory} ${cfg.runtimeServiceDirectory}
       '';
 
     runit = {
-      serviceDirectory = pkgs.runCommandNoCCLocal "service-dir" { } ''
+      serviceDirectory = pkgs.runCommandNoCC "service-dir" { } ''
         mkdir $out
         ${concatStringsSep "\n" (mapAttrsToList (n: s:
           let
