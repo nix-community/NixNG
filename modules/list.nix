@@ -9,6 +9,7 @@
     ./assertions.nix
     ./bootloader
     ./nix.nix
+    ./fstab.nix
 
     ./security/ca.nix
 
