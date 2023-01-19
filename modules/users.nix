@@ -211,7 +211,11 @@ in
 
         ln -sf ${cfg.passwdFile} /etc/passwd
         ln -sf ${cfg.groupFile} /etc/group
+        touch /etc/shadow
+        chown 0:0 /etc/shadow
+        chmod 400 /etc/shadow
         ${cfg.generateShadow} > /etc/shadow
+        chattr +i /etc/shadow
         ${createHomes}
       '';
 
@@ -271,7 +275,7 @@ in
           cat << EOF
           ${concatStringsSep "\n" (mapAttrsToList (n: v:
             with v;
-            "${n}:${if hashedPassword != null then hashedPassword else if hashedPasswordFile != null then "$(<${hashedPasswordFile})" else "!"}:1::::::"
+            "${n}:${if hashedPassword != null then "$(echo '${hashedPassword}')" else if hashedPasswordFile != null then "$(<${hashedPasswordFile})" else "!"}:1::::::"
           ) cfg.users)}
           EOF
         '';
