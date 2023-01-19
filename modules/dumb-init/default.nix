@@ -121,7 +121,7 @@ in
       })
     ];
 
-    assertions = [
+    assertions = mkIf cfg.enable ([
       {
         assertion = count (x: x) (mapAttrsToList (n: v: v != null) cfg.type) == 1;
         message = "Please select exactly one dumb-init type.";
@@ -130,6 +130,6 @@ in
       {
         assertion = cfgUsers.users ? "${cfg.type.shell.user}";
         message = "User ${cfg.type.shell.user} does not exist!";
-      });
+      }));
   };
 }
