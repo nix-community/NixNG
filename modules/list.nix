@@ -6,6 +6,8 @@
     ./system.nix
     ./system/toplevel.nix
     ./system/oci-image.nix
+    ./system/bundle.nix
+    ./system/initrd.nix
     ./assertions.nix
     ./bootloader
     ./nix.nix
