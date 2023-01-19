@@ -8,7 +8,18 @@
 
 echo "<--- Stage 2.1 --->"
 
-mkdir /tmp
+mkdir -p /proc /sys
+mount -t proc none /proc
+mount -t sysfs none /sys
+
+mount -t devtmpfs devtmpfs /dev
+mkdir -p /dev/shm /dev/pts
+mount -t tmpfs -o "mode=1777" none /dev/shm
+mount -t devpts none /dev/pts
+mkdir -p /tmp
+mount -t tmpfs none /tmp
 
 # Run activation script for this system
 "$_system_config/activation"
+
+. /etc/profile
