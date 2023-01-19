@@ -4,6 +4,8 @@
     ./initrd
     ./init.nix
     ./system.nix
+    ./system/toplevel.nix
+    ./system/oci-image.nix
     ./assertions.nix
     ./bootloader
     ./nix.nix

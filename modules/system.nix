@@ -22,35 +22,15 @@ in
         which must be able to use Nix themselves.
       '';
 
-    build = {
-      toplevel = mkOption {
-        description = ''
-          The full system, built up.
-        '';
-        type = types.path;
-      };
-
-      ociImage = mkOption {
-        description = ''
-          OCI compatible image.
-        '';
-        type = types.submodule {
-          options = {
-            build = mkOption {
-              description = ''
-                A path to a OCI image in a gziped tarball.
-              '';
-              type = types.path;
-            };
-            stream = mkOption {
-              description = ''
-                A script which builds an OCI image and outputs what it builds
-                into stdout without saving to disk.
-              '';
-              type = types.path;
-            };
-          };
-        };
+    build = mkOption {
+      default = {};
+      description = lib.mdDoc ''
+        Attribute set of derivations used to set up the system.
+      '';
+      type = types.submoduleWith {
+        modules = [{
+          freeformType = with types; lazyAttrsOf (uniq unspecified);
+        }];
       };
     };
 
@@ -100,58 +80,11 @@ in
 
     name = mkOption {
       description = "System name, used when generating container images";
-      default = "nixng";
       type = types.str;
     };
   };
 
   config = {
-    system.build = {
-      toplevel = pkgs.runCommandNoCC "nixng"
-        { nativeBuildInputs = with pkgs; [ busybox makeWrapper ]; }
-        (with configFinal;
-        let
-          closureInfo = pkgs.closureInfo
-            { rootPaths = [ configFinal.init.script system.activationScript ]; };
-        in
-        ''
-          mkdir $out
-
-          # Substitute in the path to the system closure to avoid
-          # an infinite dep cycle
-          substitute ${init.script} $out/init \
-            --subst-var-by "systemConfig" "$out"
-          substitute ${system.activationScript} $out/activation \
-            --subst-var-by "systemConfig" "$out"
-          chmod +x $out/init $out/activation
-
-          #
-          ${optionalString system.createNixRegistration
-            "ln -s ${closureInfo}/registration $out/registration"}
-        '');
-
-      ociImage =
-        let
-          config = {
-            name = cfg.name;
-            tag = "latest";
-            maxLayers = 125;
-
-            config = {
-              StopSignal = "SIGCONT";
-              Entrypoint =
-                [
-                  "${configFinal.system.build.toplevel}/init"
-                ];
-            };
-          };
-        in
-        with pkgs; {
-          build = dockerTools.buildLayeredImage config;
-          stream = dockerTools.streamLayeredImage config;
-        };
-    };
-
     system.activation.currentSystem = nglib.dag.dagEntryAnywhere
       ''
         export PATH=${pkgs.busybox}/bin
