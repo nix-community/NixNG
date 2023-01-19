@@ -127,7 +127,7 @@ EOF
               unset PATH
               ${dag.data}
             )
-            if (( _localstatus > 0 )); then
+            if expr "$_localstatus" > 0; then
               printf "Activation script snippet '%s' failed (%s)\n" "${dag.name}" "$_localstatus"
             fi
           ''
