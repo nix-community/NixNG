@@ -23,6 +23,7 @@ let
       "minecraft" = ./minecraft;
       "home-assistant" = ./home-assistant;
       "syncthing" = ./syncthing;
+      "initrd" = ./initrd;
     };
 in
   nixpkgs.lib.mapAttrs (_: v: import v { inherit nixpkgs nglib; }) examples
