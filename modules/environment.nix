@@ -10,26 +10,12 @@
 with lib;
 let
   cfg = config.environment;
-  profileScript = pkgs.writeShellScript "profile" cfg.shell.profile;
 
-  requiredPackages = map (pkg: setPrio ((pkg.meta.priority or 5) + 3) pkg) [
-    pkgs.bashInteractive
-    pkgs.busybox
-  ];
-
-  makeShellWrapper = pkg: name:
-    let
-      script = pkgs.writeShellScriptBin name ''
-        set -n
-        source /etc/profile
-        exec ${pkg}/bin/${name} "$@"
-      '';
-    in "${script}/bin/${name}";
-
-  shells = if cfg.shell.enable then ({
-    bash = (makeShellWrapper pkgs.bashInteractive "bash");
-    sh = (makeShellWrapper pkgs.bashInteractive "bash");
-  }) else ({});
+  mkApply = fun: x:
+    {
+      original = x;
+      applied = fun x;
+    };
 in
 {
   options.environment = {
@@ -37,8 +23,9 @@ in
       default = { };
       example = { EDITOR = "vim"; BROWSER = "firefox"; };
       type = with types; attrsOf (either str (listOf str));
-      apply = x: concatStringsSep ":"
-        (mapAttrsToList (n: v: "${n}=" + (if isList v then concatStringsSep ":" v else v)) x);
+      apply = mkApply
+        (x: concatStringsSep ":"
+          (mapAttrsToList (n: v: "${n}=" + (if isList v then concatStringsSep ":" v else v)) x));
     };
 
     shell = {
@@ -54,7 +41,8 @@ in
           Shell script fragments, concataned into /etc/profile.
         '';
         type = with types; listOf str;
-        apply = x: concatStringsSep "\n" x;
+        apply = mkApply
+          (x: pkgs.writeShellScript "profile" (concatStringsSep "\n" x));
         default = [ ];
       };
     };
@@ -75,11 +63,11 @@ in
   };
 
   config = {
-    environment.systemPackages = mkIf cfg.shell.enable requiredPackages;
+    environment.systemPackages = with pkgs; [ runit busybox ];
 
     environment.shell.profile = [
       ''
-        export ${cfg.variables}
+        ${optionalString (cfg.variables.applied != "") "export ${cfg.variables.applied})"}
         export PATH="$PATH"':${makeBinPath cfg.systemPackages}'
       ''
     ];
@@ -88,7 +76,7 @@ in
       export PATH=${pkgs.busybox}/bin
 
       mkdir -m 0755 -p /etc
-      ln -sfn ${profileScript} /etc/.profile.tmp
+      ln -sfn ${cfg.shell.profile.applied} /etc/.profile.tmp
       mv /etc/.profile.tmp /etc/profile # atomically replace /etc/profile
     '';
 
@@ -105,12 +93,8 @@ in
           mv /usr/bin/.env.tmp /usr/bin/env # atomically replace /usr/bin/env
 
           # Create the required /bin/sh symlink; otherwise lots of things
-          # (notably the system() function) won't work.
+          # (notably the system() syscall) won't work.
           mkdir -m 0755 -p /bin
-          ${builtins.concatStringsSep "\n" (builtins.attrValues (builtins.mapAttrs (name: shell: ''
-            ln -sfn "${shell}" /bin/.${name}.tmp
-            mv /bin/.${name}.tmp /bin/${name} # atomically replace /bin/${name}
-          '') shells))}
 
           mkdir -pm 0777 /tmp
           mkdir -pm 0555 /var/empty
