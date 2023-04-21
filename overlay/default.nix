@@ -40,9 +40,9 @@ in
     writeSubstitutedShellScript
     writeSubstitutedShellScriptBin;
 
-  inherit
-    (nixpkgsTrivialBuilders)
-    writeShellScript
-    writeShellScriptBin
-    writeShellScriptApplication;
+  # inherit
+  #   (nixpkgsTrivialBuilders)
+  #   writeShellScript
+  #   writeShellScriptBin
+  #   writeShellScriptApplication;
 }
