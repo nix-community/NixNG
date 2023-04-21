@@ -31,12 +31,12 @@ executable sigell
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
     ghc-options: -threaded
-    build-depends:    base >=4.15.0.0,
-                      aeson ^>=2.0.3.0,
-                      unix ^>=2.7.2.2,
-                      vector ^>=0.12.0.0,
-                      bytestring ^>=0.10.10.0,
-                      unordered-containers ^>=0.2.10.0,
-                      cmdargs ^>=0.10.20
+    build-depends:    base,
+                      aeson,
+                      unix,
+                      vector,
+                      bytestring,
+                      unordered-containers,
+                      cmdargs
     hs-source-dirs:   app
     default-language: Haskell2010
