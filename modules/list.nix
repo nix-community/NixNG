@@ -41,4 +41,5 @@
     ./services/zigbee2mqtt.nix
     ./services/mosquitto.nix
     ./services/syncthing.nix
+    ./services/synapse.nix
 ]
