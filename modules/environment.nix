@@ -7,15 +7,9 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, lib, config, nglib, ... }:
-with lib;
+with lib; with nglib;
 let
   cfg = config.environment;
-
-  mkApply = fun: x:
-    {
-      original = x;
-      applied = fun x;
-    };
 in
 {
   options.environment = {
@@ -95,6 +89,8 @@ in
           # Create the required /bin/sh symlink; otherwise lots of things
           # (notably the system() syscall) won't work.
           mkdir -m 0755 -p /bin
+          ln -sfn "${pkgs.busybox}/bin/sh" /bin/.sh.tmp
+          mv /bin/.sh.tmp /bin/sh # atomically replace /bin/sh
 
           mkdir -pm 0777 /tmp
           mkdir -pm 0555 /var/empty
