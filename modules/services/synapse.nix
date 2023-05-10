@@ -103,8 +103,8 @@ in
                 pkgs.writeShellScript "synapse-worker-${n}.sh"
                   ''
                     ${pkgs.matrix-synapse}/bin/synapse_worker \
-                      ${concatStringsSep " " (mapAttrsToList (n: v: if isList v then concatMapStringsSep " " (x: "--${n} \"${x}\"") v else "\"--${n} ${v}\"") v.arguments)}
-    #             '';
+                      ${concatStringsSep "\n" (mapAttrsToList (n: v: if isList v then concatMapStringsSep "\n" (x: "--${n} \"${x}\"") v else "\"--${n} ${v}\"") v.arguments)}
+                 '';
           }
       );
   };
