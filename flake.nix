@@ -24,6 +24,13 @@
       examples = import ./examples { inherit nixpkgs; inherit (self) nglib; };
       overlays.default = import ./overlay;
 
+      packages = forAllSystems (system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+          fix = import ./overlay fix pkgs;
+        in
+          fix);
+
       devShells = forAllSystems (system:
         let pkgs = pkgsForSystem system;
         in
