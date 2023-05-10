@@ -67,7 +67,7 @@ in
 
     environment.shell.profile = [
       ''
-        ${optionalString (cfg.variables.applied != "") "export ${cfg.variables.applied})"}
+        ${optionalString (cfg.variables.applied != "") "export ${cfg.variables.applied}"}
         export PATH="$PATH"':${makeBinPath cfg.systemPackages}'
       ''
     ];
