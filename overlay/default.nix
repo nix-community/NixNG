@@ -29,10 +29,20 @@ in
         src = final.fetchFromGitHub {
           owner = "blatt-linux";
           repo = "runit";
-          rev = "19edc11741498fc7aafd5c7175f56e41f7c945f9";
-          sha256 = "sha256-yx8rVubWkA2jQS2d3IuarZwJq4pQ+gmIYzv7tVMg7zA=";
+          rev = "f3843594034e8347a94595d891e5c74178962c7d";
+          sha256 = "sha256-Ln5yuaxYCflZQnE58Gmm5WSfsmf+8+whyRIB3Pl8PCo=";
         };
         sourceRoot = "";
+
+        doCheck = false;
+
+        nativeBuildInputs = with prev; [
+          makeWrapper
+        ];
+        fixupPhase = ''
+          wrapProgram $out/bin/sv \
+            --set SVDIR "/service/"
+        '';
       });
 
   inherit (callPackage ./trivial-builders.nix {})
