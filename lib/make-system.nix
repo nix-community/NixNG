@@ -22,6 +22,10 @@ with nixpkgs.lib;
 let
   evaledModules = evalModules
     {
+      specialArgs = {
+        inherit nglib;
+      };
+
       modules = defaultModules ++ extraModules ++ [
         ({ ... }: {
           system.name = name;
@@ -31,7 +35,7 @@ let
           {
             _module.args = {
               pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [ overlay ];
-              inherit system nglib;
+              inherit system;
             };
           }
         )
