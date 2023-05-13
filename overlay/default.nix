@@ -18,6 +18,7 @@ in
   tinyLinux = callPackage ./tiny-linux.nix { };
   runVmLinux = final.callPackage ./run-vm-linux.nix { };
   cronie = callPackage ./cronie.nix { };
+  pause = callPackage ./pause.nix { };
   sigell = haskellPackages.callPackage ./sigell/cabal.nix { };
   util-linuxSystemdFree = prev.util-linux.override {
     systemdSupport = false;
