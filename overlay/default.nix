@@ -8,7 +8,8 @@
 
 final: prev:
 let
-  inherit (prev) haskellPackages callPackage;
+  inherit (final) haskellPackages;
+  inherit (prev) callPackage;
   nixpkgsTrivialBuilders =
     final.callPackage "${prev.path}/pkgs/build-support/trivial-builders.nix" {
       runtimeShell = final.busybox + "/bin/sh";
