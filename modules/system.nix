@@ -64,7 +64,7 @@ in
       ''
         export PATH=${pkgs.busybox}/bin
 
-        mkdir -p /run
+        mkdir -p /run/current-system
 
         function linkFarm() {
             src="$1"
