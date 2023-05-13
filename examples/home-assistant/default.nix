@@ -22,66 +22,22 @@ nglib.makeSystem {
         init.services.home-assistant = {
           shutdownOnExit = true;
         };
-        init.services.zigbee2mqtt = {
-          shutdownOnExit = false;
-        };
-
-        services.mosquitto = {
-          enable = true;
-          config = {};
-          envsubst = true;
-        };
-
-        services.zigbee2mqtt = {
-          enable = true;
-          envsubst = true;
-          package = pkgs.zigbee2mqtt;
-
-          config =
-            { homeassistant = true;
-              permit_join = true;
-              mqtt = {
-                base_topic = "zigbee2mqtt";
-                server = "mqtt://localhost:1883";
-              };
-
-              frontend =
-                { port = 8456;
-                  host = "0.0.0.0";
-                };
-
-              serial.port = "tcp://\${XIAOMI_HUB_IP}:8888";
-              serial.adapter = "ezsp";
-
-              devices = "devices.yaml";
-              groups = "groups.yaml";
-              log_level = "debug";
-            };
-        };
 
         services.home-assistant = {
           enable = true;
           envsubst = true;
-          customComponents = {
-            xiaomi_gateway3 = pkgs.fetchFromGitHub {
-              owner = "AlexxIT";
-              repo = "XiaomiGateway3";
-              rev = "v1.6.5";
-              sha256 = "sha256-RSIJqsbgnktl7zNaxAKUoMjbkrJ1aJTej0vjlCgstJ8=";
-            } + "/custom_components/xiaomi_gateway3";
-          };
           config =
             { default_config = {};
               http.server_port = "8123";
               logger.default = "info";
               homeassistant =
                 { name = "Home";
-                  latitude = "\${LATITUDE}";
-                  longitude = "\${LONGTIDE}";
-                  elevation = "\${ELEVATION}";
+                  latitude = "0";
+                  longitude = "0";
+                  elevation = "0";
                   # currency = "EUR";
                   unit_system = "metric";
-                  time_zone = "\${TIMEZONE}";
+                  time_zone = "Europe/Amsterdam";
                   internal_url = "http://localhost:8123/";
                 };
               frontend.themes =
