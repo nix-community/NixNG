@@ -60,7 +60,7 @@ in
         package = mkOption {
           description = "getty package.";
           type = types.path;
-          default = "${pkgs.util-linuxSystemdFree}/bin/agetty";
+          default = pkgs.util-linuxSystemdFree;
         };
       };
     });
@@ -72,7 +72,7 @@ in
         script = with getty;
           pkgs.writeShellScript "getty-${name}-run"
             ''
-              exec ${package} \
+              exec ${lib.getExe package} \
                  "${port}" \
                  ${concatStringsSep " " (mapAttrsToList optionsCreateArgument options)}
                  "${optionalString
