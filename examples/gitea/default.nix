@@ -49,7 +49,7 @@ nglib.makeSystem {
             APP_DATA_PATH = "/data/gitea";
             SSH_DOMAIN = "localhost";
             HTTP_PORT = 3000;
-            ROOT_URL = http://localhost:3000/;
+            ROOT_URL = "http://localhost:3000/";
             DISABLE_SSH = false;
             SSH_PORT = 22;
             SSH_LISTEN_PORT = 22;
