@@ -171,7 +171,7 @@ in
 
       ensureSomething.create."runConfig" = {
         type = "file";
-        mode = "400";
+        mode = "600";
         owner = "gitea:nogroup";
         persistent = false;
         dst = cfg.runConfig;
@@ -204,6 +204,8 @@ in
             export PATH=${pkgs.busybox}/bin:${pkgs.bash}/bin
 
             cp ${appIni} ${cfg.runConfig}
+            chmod 600 ${cfg.runConfig}
+            chown ${cfg.user}:nogroup ${cfg.runConfig}
 
             ${subsSecret secretKeyFile "secretKey"}
             ${subsSecret internalTokenFile "internalToken"}
