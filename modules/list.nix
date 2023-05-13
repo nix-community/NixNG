@@ -38,6 +38,7 @@
     ./services/php-fpm.nix
     ./services/minecraft.nix
     ./services/home-assistant.nix
+    ./services/tmpfilesd.nix
     ./services/zigbee2mqtt.nix
     ./services/mosquitto.nix
     ./services/syncthing.nix
