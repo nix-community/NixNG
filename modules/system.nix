@@ -74,18 +74,8 @@ in
             find "$src" -mindepth 1 -type f -print0 | sed -e "s~$src~~" | xargs -0 -I {} ln -s "$src/{}" "$dst/{}"
             find "$src" -mindepth 1 -type l -print0 | sed -e "s~$src~~" | xargs -0 -I {} cp "$src/{}" "$dst/{}"
         }
-        linkFarm $_system_config /run/current-system
 
-        mkdir -p /run/current-system/sw/bin
-        ${concatStringsSep "\n" (map (pkg:
-          ''
-            execs=$(${pkgs.busybox}/bin/find ${pkg}/bin -type f)
-            for exec in $execs; do
-              ln -s $exec /run/current-system/sw/bin/$(basename $exec)
-              chmod +x /run/current-system/sw/bin/$(basename $exec)
-            done
-          ''
-        ) config.environment.systemPackages)}
+        linkFarm $_system_config /run/current-system
       '';
 
     system.activationScript = pkgs.writeShellScript "activation"
