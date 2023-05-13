@@ -20,6 +20,9 @@ in
   cronie = callPackage ./cronie.nix { };
   pause = callPackage ./pause.nix { };
   sigell = haskellPackages.callPackage ./sigell/cabal.nix { };
+  systemdStandalone = callPackage ./systemd-minimal.nix { };
+  systemdTmpfilesD = callPackage ./systemd-tmpfiles.d.nix { inherit (final) systemdStandalone; };
+
   util-linuxSystemdFree = prev.util-linux.override {
     systemdSupport = false;
     pamSupport = true;
