@@ -6,6 +6,7 @@
     ./system.nix
     ./system/toplevel.nix
     ./system/oci-image.nix
+    ./system/run.nix
     ./system/bundle.nix
     ./system/initrd.nix
     ./assertions.nix
