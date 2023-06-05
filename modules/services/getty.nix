@@ -72,7 +72,7 @@ in
         script = with getty;
           pkgs.writeShellScript "getty-${name}-run"
             ''
-              exec ${lib.getExe package} \
+              exec ${package}/sbin/agetty \
                  "${port}" \
                  ${concatStringsSep " " (mapAttrsToList optionsCreateArgument options)}
                  "${optionalString
