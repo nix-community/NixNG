@@ -44,7 +44,7 @@ in
         term = mkOption {
           description = "TTY terminal name.";
           type = types.str;
-          default = "vt100";
+          default = "vt220";
         };
 
         options = mkOption {
