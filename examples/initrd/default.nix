@@ -27,7 +27,7 @@ nglib.makeSystem {
 
     services.getty."ttyS0" = {
       port = "ttyS0";
-      baudrate = "115200,38400 9600";
+      baudrate = "115200,38400,9600";
       options = {
         login-program = "${pkgs.busybox}/bin/login";
         login-options = [ "\\u" ];
