@@ -24,20 +24,22 @@ to be containers.
 
 ### Testing out
 We have built up several functional containers, which showcase the syntax and
-functionality of NixNG. The sources are located in `/examples/`. Currently you
+functionality of NixNG. The sources are located in [/examples/](). Currently you
 can build the top-level derivation which you theoretically could activate
 (don't, your system will break) with:
 
-`nix build .#examples.<systemName>.config.system.build.top-level`
+`nix build .#examples.<name>.config.system.build.toplevel`
+
+i.e.: `nix build .#examples.nix.config.system.build.toplevel`
 
 Or also an OCI image which you can load into Docker, Podman, etc, with:
 
-`nix build .#examples.<systemName>.config.system.build.ociImage.build`
+`nix build .#examples.<name>.config.system.build.ociImage.build`
 
 Alternatively, you can stream the image without saving it into the Nix store
 with:
 
-`nix build .#examples.<systemName>.config.system.build.ociImage.stream && ./result | docker load`.
+`nix build .#examples.<name>.config.system.build.ociImage.stream && ./result | docker load`.
 
 ## Contributing
 I've provided some basic docs in `./doc`, start with
