@@ -8,9 +8,6 @@
 
 { lib, ... }:
 with lib;
-let
-  cfg = config.assertions;
-in
 {
   options.assertions = mkOption {
     description = "List of assertions";

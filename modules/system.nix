@@ -10,8 +10,6 @@
 with lib; with nglib;
 let
   cfg = config.system;
-
-  configFinal = config;
 in
 {
   options.system = {

@@ -11,7 +11,7 @@ nglib.makeSystem {
   inherit nixpkgs;
   system = "x86_64-linux";
   name = "nixng-home-assistant";
-  config = ({ pkgs, config, lib, ... }:
+  config = ({ pkgs, config, ... }:
     {
       config = {
         dumb-init = {

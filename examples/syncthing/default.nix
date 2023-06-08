@@ -11,7 +11,7 @@ nglib.makeSystem {
   inherit nixpkgs;
   system = "x86_64-linux";
   name = "nixng-syncthing";
-  config = ({ pkgs, ... }:
+  config = ({ ... }:
     {
       dumb-init = {
         enable = true;

@@ -245,8 +245,6 @@ in
       ] ++
       (
         let
-          filterGroups = groups:
-            filter (group: cfg.groups ? "${group}") groups;
           members = flatten (mapAttrsToList (n: u: map (g: { "${g}".members = [ n ]; }) (u.extraGroups ++ singleton u.group)) cfg.users);
         in
         members

@@ -6,7 +6,7 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, lib, config, ... }:
+{ lib, config, ... }:
 with lib;
 let
   cfg = config.init;
@@ -14,9 +14,6 @@ let
   log = mkOption {
     description = "Logging settings.";
     type = with types; nullOr (submodule ({ config, ... }:
-      let
-        cfg = config;
-      in
       {
         options = {
           file = mkOption {
