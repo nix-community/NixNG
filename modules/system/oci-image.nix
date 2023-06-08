@@ -37,8 +37,8 @@ with lib;
   config = {
     system.build.ociImage =
       let
-        config = {
-          name = cfg.name;
+        cfg = {
+          inherit (config.system) name;
           tag = "latest";
           maxLayers = 125;
 
@@ -46,14 +46,14 @@ with lib;
             StopSignal = "SIGCONT";
             Entrypoint =
               [
-                "${configFinal.system.build.toplevel}/init"
+                "${config.system.build.toplevel}/init"
               ];
           };
         };
       in
         with pkgs; {
-          build = dockerTools.buildLayeredImage config;
-          stream = dockerTools.streamLayeredImage config;
+          build = dockerTools.buildLayeredImage cfg;
+          stream = dockerTools.streamLayeredImage cfg;
         };
   };
 }
