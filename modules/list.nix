@@ -18,6 +18,7 @@
 
     ./misc/iana.nix
 
+    ./networking.nix
     ./environment.nix
     ./users.nix
     ./ids.nix
