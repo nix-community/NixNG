@@ -11,7 +11,7 @@ nglib.makeSystem {
   inherit nixpkgs;
   system = "x86_64-linux";
   name = "nixng-certbot";
-  config = ({ pkgs, config, ... }:
+  config = ({ config, ... }:
     {
       config = {
         dumb-init = {

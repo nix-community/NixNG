@@ -12,9 +12,6 @@ nglib.makeSystem {
   system = "x86_64-linux";
   name = "nixng-apache";
   config = ({ pkgs, config, ... }:
-    let
-      ids = config.ids;
-    in
     {
       config = {
         dumb-init = {

@@ -6,11 +6,9 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, config, lib, nglib, ... }:
+{ pkgs, config, lib, ... }:
 let
   cfg = config.services.synapse;
-
-  dataDir = "/var/syncthing";
 
   inherit (lib)
     mkOption
@@ -98,9 +96,7 @@ in
             enabled = true;
             shutdownOnExit = true;
             script =
-              let
-              in
-                pkgs.writeShellScript "synapse-worker-${n}.sh"
+              pkgs.writeShellScript "synapse-worker-${n}.sh"
                   ''
                     ${pkgs.matrix-synapse}/bin/synapse_worker \
                       ${concatStringsSep " " (mapAttrsToList (n: v: if isList v then concatMapStringsSep " " (x: "--${n} \"${x}\"") v else "\"--${n} ${v}\"") v.arguments)}

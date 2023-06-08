@@ -11,9 +11,7 @@ with lib;
 let
   cfg = config.dumb-init;
   cfgRunit = config.runit;
-  cfgSystem = config.system;
   cfgUsers = config.users;
-  cfgNix = config.nix;
 
   userShell =
     let

@@ -12,8 +12,6 @@ let
   cfg = config.runit;
   cfgSystem = config.system;
   cfgInit = config.init;
-
-  cfgNix = config.nix;
 in
 {
   options.runit = {

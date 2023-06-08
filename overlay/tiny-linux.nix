@@ -13,7 +13,6 @@
 , pkg-config
 , ncurses
 , writeText
-, runCommand
 , lib
 , extraConfig ? { }
 }:
