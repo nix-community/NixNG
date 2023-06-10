@@ -25,6 +25,8 @@ nglib.makeSystem {
     };
     users.users.root.hashedPassword = "$5$Ws9piKbYzt9S6p1R$X4L6xn5UNQnufJUc/K5sKRE.0GuMR.8vp2BwIiglVYB"; # toor
 
+    networking.hostName = "initrd";
+
     services.getty."ttyS0" = {
       port = "ttyS0";
       baudrate = "115200,38400,9600";
