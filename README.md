@@ -41,6 +41,10 @@ with:
 
 `nix build .#examples.<name>.config.system.build.ociImage.stream && ./result | docker load`.
 
+Or finally to quickly run a conguration without creating any image:
+
+`nix run .#examples.<systemName>.config.system.build.runDocker`.
+
 ## Contributing
 I've provided some basic docs in `./doc`, start with
 [README.org](/doc/README.org). There are some open issue which need work,
