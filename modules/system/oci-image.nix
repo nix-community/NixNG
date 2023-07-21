@@ -8,6 +8,9 @@
 
 { pkgs, lib, config, ... }:
 with lib;
+let
+  cfg = config.system;
+in
 {
   options.system.build = {
     ociImage = mkOption {
@@ -37,7 +40,7 @@ with lib;
   config = {
     system.build.ociImage =
       let
-        config = {
+        ociConfig = {
           name = cfg.name;
           tag = "latest";
           maxLayers = 125;
@@ -46,14 +49,14 @@ with lib;
             StopSignal = "SIGCONT";
             Entrypoint =
               [
-                "${configFinal.system.build.toplevel}/init"
+                "${config.system.build.toplevel}/init"
               ];
           };
         };
       in
         with pkgs; {
-          build = dockerTools.buildLayeredImage config;
-          stream = dockerTools.streamLayeredImage config;
+          build = dockerTools.buildLayeredImage ociConfig;
+          stream = dockerTools.streamLayeredImage ociConfig;
         };
   };
 }
