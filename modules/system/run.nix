@@ -19,13 +19,21 @@ with lib;
   };
 
   config.system.build.runDocker =
-    pkgs.writeShellScript "nixng-${config.system.name}-docker.run"
+    pkgs.writeShellScriptBin "nixng-${config.system.name}-docker.run"
       (let
          closureInfo = pkgs.closureInfo
            { rootPaths = [ config.system.build.toplevel ]; };
        in
          ''
-           docker run $(xargs -I{} printf -- ' --mount type=bind,source={},destination={},ro' < ${closureInfo}/store-paths) $DOCKER_OPTS magicrb/nix-container-base@sha256:01f199486f5b0e3c90411d700436395f21154f8234b6dfa86eb224eb5b6ad43b ${config.system.build.toplevel}/init "$@"
+           _docker_args=()
+
+           until [ "$1" == "--" ] || [ "$#" == "0" ] ; do
+             _docker_args+=("$1")
+             shift 1
+           done
+           shift 1
+
+           docker run "''${_docker_args[@]}" $(xargs -I{} printf -- ' --mount type=bind,source={},destination={},ro' < ${closureInfo}/store-paths) $DOCKER_OPTS magicrb/nix-container-base@sha256:01f199486f5b0e3c90411d700436395f21154f8234b6dfa86eb224eb5b6ad43b ${config.system.build.toplevel}/init "$@"
          '');
 }
 
