@@ -199,7 +199,7 @@ in
               pkgs.writeShellScript "php-fpm-${pool}-run"
                 ''
                   echo HELLO
-                  ${opts.package}/bin/php-fpm -y ${phpFpmConfFile} -c ${phpIniFile}
+                  ${opts.package.php}/bin/php-fpm -y ${phpFpmConfFile} -c ${phpIniFile}
                 '';
           }
         )
