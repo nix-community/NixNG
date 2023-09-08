@@ -25,7 +25,7 @@ let
       preferLocalBuild = true;
     }
     ''
-      cat ${package}/etc/php.ini $phpGlobalSettingsPath $phpSettingsPath > $out
+      cat $phpGlobalSettingsPath $phpSettingsPath > $out
     '';
 
   genFpmConfFile = { settings }: pkgs.runCommandNoCC "php-fpm.conf"
