@@ -45,6 +45,10 @@ let
 
   mainDefaults = { config, name, ... }: {
     package = mkDefault pkgs.matrix-synapse;
+
+    arguments = {
+      "config-path" = singleton (configFormat.generate "worker-${name}.yaml" config.settings);
+    };
   };
 
   instanceSubmodule =
