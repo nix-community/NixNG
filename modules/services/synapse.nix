@@ -96,7 +96,7 @@ let
               if isList v then
                 concatMapStringsSep " " (x: "--${n} \"${x}\"") v
               else
-                "\"--${n} ${v}\""))}
+                "--${n} \"${v}\""))}
         '';
    };
 in
