@@ -23,18 +23,38 @@ let
     isList
     concatMapStringsSep
     concatStringsSep
+    makeSearchPathOutput
+    listToAttrs
+    mkEnableOption
   ;
 
   configFormat = pkgs.formats.yaml {};
 
+  workerDefaults = { config, name, ... }: {
+    package = mkDefault cfg.main.package;
+    settings = mapAttrs (_: mkDefault) {
+      worker_replication_host = "127.0.0.1";
+      worker_replication_http_port = 9093;
+      worker_name = "worker-" + name;
+      worker_log_config = "/dev/stdout";
+    };
 
-  workerSubmodule =
-    { config, name, ... }:
+    arguments = {
+      "config-path" = singleton (configFormat.generate "worker-${name}.yaml" config.settings);
+    };
+  };
+
+  mainDefaults = { config, name, ... }: {
+    package = pkgs.matrix-synapse;
+  };
+
+  instanceSubmodule =
+    defaults:
+    { config, name ? "", ... }@args:
     {
       options = {
         package = mkOption {
           type = types.package;
-          default = pkgs.matrix-synapse;
           description = ''
             Package used for this worker.
           '';
@@ -61,47 +81,64 @@ let
         };
       };
 
-      config = {
-        settings = mapAttrs (_: mkDefault) {
-          worker_replication_host = "127.0.0.1";
-          worker_replication_http_port = 9093;
-          worker_name = "worker-" + name;
-
-          worker_log_config = "/dev/stdout";
-        };
-
-        arguments = {
-          "config-path" = singleton (configFormat.generate "worker-${name}.yaml" config.settings);
-        };
-      };
+      config = defaults args;
     };
+
+  synapseService =
+    name: cfg:
+    {
+      enabled = true;
+      shutdownOnExit = true;
+      script = pkgs.writeShellScript "synapse-worker-${name}.sh"
+        ''
+          ${pkgs.matrix-synapse}/bin/synapse_worker \
+            ${concatStringsSep " " (flip mapAttrsToList cfg.arguments (n: v:
+              if isList v then
+                concatMapStringsSep " " (x: "--${n} \"${x}\"") v
+              else
+                "\"--${n} ${v}\""))}
+        '';
+   };
 in
 {
   options = {
-    services.synapse.workers = mkOption {
-      type = types.attrsOf (types.submodule workerSubmodule);
+    services.synapse = mkOption {
+      type = types.submodule {
+        imports = [
+          (instanceSubmodule mainDefaults)
+          {
+            options = {
+              enable = mkEnableOption "Enable main synapse process";
+              workers = mkOption {
+                type = types.attrsOf (types.submodule (instanceSubmodule workerDefaults));
+                default = {};
+                description = ''
+                  Synapse worker instances.
+                '';
+              };
+            };
+          }
+        ];
+      };
       default = {};
       description = ''
-        Synapse worker instances.
+        Synapse main instance.
       '';
     };
   };
 
   config = {
-    init.services = flip mapAttrs' cfg.workers
-      (n: v:
+    init.services = listToAttrs ((flip mapAttrsToList cfg.workers
+      (name: value:
         nameValuePair
-          "synapse-worker-${n}"
-          {
-            enabled = true;
-            shutdownOnExit = true;
-            script =
-              pkgs.writeShellScript "synapse-worker-${n}.sh"
-                  ''
-                    ${pkgs.matrix-synapse}/bin/synapse_worker \
-                      ${concatStringsSep " " (mapAttrsToList (n: v: if isList v then concatMapStringsSep " " (x: "--${n} \"${x}\"") v else "\"--${n} ${v}\"") v.arguments)}
-    #             '';
-          }
-      );
+          "synapse-worker-${name}"
+          (synapseService name value)
+
+      ))  ++ [
+        (nameValuePair
+          "synapse"
+          (synapseService "main" cfg))
+      ]
+    );
   };
 }
