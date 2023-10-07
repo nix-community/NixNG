@@ -86,13 +86,13 @@ let
     };
 
   synapseService =
-    name: cfg:
+    name: cfg: bin:
     {
       enabled = true;
       shutdownOnExit = true;
       script = pkgs.writeShellScript "synapse-worker-${name}.sh"
         ''
-          ${cfg.package}/bin/synapse_worker \
+          ${cfg.package}/bin/${bin} \
             ${concatStringsSep " \\\n  " (flip mapAttrsToList cfg.arguments (n: v:
               if isList v then
                 concatMapStringsSep " \\\n  " (x: "--${n} \"${x}\"") v
@@ -133,12 +133,12 @@ in
       (name: value:
         nameValuePair
           "synapse-worker-${name}"
-          (synapseService name value)
+          (synapseService name value "synapse_worker")
 
       ))  ++ (optional cfg.enable
         (nameValuePair
           "synapse"
-          (synapseService "main" cfg))
+          (synapseService "main" cfg "synapse_homeserver"))
       )
     );
   };
