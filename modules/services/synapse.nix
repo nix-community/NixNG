@@ -34,8 +34,6 @@ let
   workerDefaults = { config, name, ... }: {
     package = mkDefault cfg.package;
     settings = mapAttrs (_: mkDefault) {
-      worker_replication_host = "127.0.0.1";
-      worker_replication_http_port = 9093;
       worker_name = "worker-" + name;
       worker_log_config = "/dev/stdout";
     };
