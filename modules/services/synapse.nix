@@ -26,12 +26,13 @@ let
     makeSearchPathOutput
     listToAttrs
     mkEnableOption
+    optional
   ;
 
   configFormat = pkgs.formats.yaml {};
 
   workerDefaults = { config, name, ... }: {
-    package = mkDefault cfg.main.package;
+    package = mkDefault cfg.package;
     settings = mapAttrs (_: mkDefault) {
       worker_replication_host = "127.0.0.1";
       worker_replication_http_port = 9093;
@@ -45,7 +46,7 @@ let
   };
 
   mainDefaults = { config, name, ... }: {
-    package = pkgs.matrix-synapse;
+    package = mkDefault pkgs.matrix-synapse;
   };
 
   instanceSubmodule =
@@ -91,10 +92,10 @@ let
       shutdownOnExit = true;
       script = pkgs.writeShellScript "synapse-worker-${name}.sh"
         ''
-          ${pkgs.matrix-synapse}/bin/synapse_worker \
-            ${concatStringsSep " " (flip mapAttrsToList cfg.arguments (n: v:
+          ${cfg.package}/bin/synapse_worker \
+            ${concatStringsSep " \\\n  " (flip mapAttrsToList cfg.arguments (n: v:
               if isList v then
-                concatMapStringsSep " " (x: "--${n} \"${x}\"") v
+                concatMapStringsSep " \\\n  " (x: "--${n} \"${x}\"") v
               else
                 "--${n} \"${v}\""))}
         '';
@@ -134,11 +135,11 @@ in
           "synapse-worker-${name}"
           (synapseService name value)
 
-      ))  ++ [
+      ))  ++ (optional cfg.enable
         (nameValuePair
           "synapse"
           (synapseService "main" cfg))
-      ]
+      )
     );
   };
 }
