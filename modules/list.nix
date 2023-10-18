@@ -13,6 +13,7 @@
     ./bootloader
     ./nix.nix
     ./fstab.nix
+    ./time.nix
 
     ./security/ca.nix
 
