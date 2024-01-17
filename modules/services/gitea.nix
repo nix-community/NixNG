@@ -12,6 +12,8 @@ let
   cfg = config.services.gitea;
   ids = config.ids;
 
+  configFormat = pkgs.formats.ini {};
+
   defaultUser = "gitea";
 
   giteaSecrets = {
@@ -92,6 +94,12 @@ let
   };
 in
 {
+  imports = [
+    (mkRemovedOptionModule [ "services" "gitea" "appName" ] "The option has been moved to <services.gitea.configuration.appName")
+    (mkRemovedOptionModule [ "services" "gitea" "runMode" ] "The option has been moved to <services.gitea.configuration.runMode")
+    (mkRemovedOptionModule [ "services" "gitea" "user" ] "The option has been moved to <services.gitea.configuration.runUser")
+  ];
+
   options.services.gitea = {
     enable = mkEnableOption "Enable Gitea service.";
 
@@ -109,44 +117,41 @@ in
 
     configuration = mkOption {
       description = ''
-        Gitea configuration. <literal>APP_NAME</literal>,
-        <literal>RUN_MODE</literal>, and <literal>RUN_USER</literal>
-        are specified separately, because they are not under any section,
-        therefore the Gitea configuration file isn't a real INI file.
+        Gitea configuration.
       '';
-      type = types.attrs;
+      type = with types; submodule {
+        freeformType = configFormat.type;
+
+        options = {
+          appName = mkOption {
+            description = ''
+              Gitea's app name, displayed on the front page.
+            '';
+            type = types.str;
+            default = "Gitea";
+          };
+          runMode = mkOption {
+            description = ''
+              Gitea's run mode.
+            '';
+            type = types.str;
+            default = "prod";
+          };
+          runUser = mkOption {
+            description = ''
+              Gitea's user. Under which the Gitea process runs.
+            '';
+            type = types.str;
+            default = defaultUser;
+          };
+        };
+      };
       example = ''
         {
           repository = { ROOT = /data/gitea/git/repositories; };
           repository.local = { LOCAL_COPY_PATH = /data/gitea/tmp/local-repo; };
         }
       '';
-    };
-
-    appName = mkOption {
-      description = ''
-        Gitea's app name, displayed on the front page.
-        As to why this is explicitly set here, see
-        <option>services.gitea.configuration</option>.
-      '';
-      type = types.str;
-      default = "Gitea";
-    };
-    runMode = mkOption {
-      description = ''
-        Gitea's run mode.
-        As to why this is explicitly set here, see
-        <option>services.gitea.configuration</option>.
-      '';
-      type = types.str;
-      default = "prod";
-    };
-    user = mkOption {
-      description = ''
-        Gitea's user. Under which the Gitea process runs.
-      '';
-      type = types.str;
-      default = defaultUser;
     };
 
     runConfig = mkOption {
@@ -182,11 +187,11 @@ in
           let
             appIni = pkgs.writeText "app.ini"
               ''
-                APP_NAME = ${cfg.appName}
-                RUN_MODE = ${cfg.runMode}
-                RUN_USER = ${cfg.user}
+                APP_NAME = ${cfg.configuration.appName}
+                RUN_MODE = ${cfg.configuration.runMode}
+                RUN_USER = ${cfg.configuration.runUser}
 
-                ${generators.toINI {} cfg.configuration}
+                ${generators.toINI {} (filterAttrs (n: _: !(elem n ["appName" "runMode" "runUser"])) cfg.configuration)}
               '';
             inherit (cfg.secrets) secretKeyFile internalTokenFile jwtSecretFile lfsJwtSecretFile databaseUserFile databasePasswordFile databaseHostFile;
 
@@ -205,7 +210,7 @@ in
 
             cp ${appIni} ${cfg.runConfig}
             chmod 600 ${cfg.runConfig}
-            chown ${cfg.user}:nogroup ${cfg.runConfig}
+            chown ${cfg.configuration.runUser}:nogroup ${cfg.runConfig}
 
             ${subsSecret secretKeyFile "secretKey"}
             ${subsSecret internalTokenFile "internalToken"}
@@ -216,7 +221,7 @@ in
             ${subsSecret databaseHostFile "databaseHost"}
 
             export HOME=${cfg.configuration.repository.ROOT}
-            chpst -u ${cfg.user}:nogroup ${cfg.package}/bin/gitea -c ${cfg.runConfig}
+            chpst -u ${cfg.configuration.runUser}:nogroup ${cfg.package}/bin/gitea -c ${cfg.runConfig}
           ''
         );
 
@@ -225,7 +230,7 @@ in
 
     environment.systemPackages = [ cfg.package ];
 
-    users.users."gitea" = mkIf (cfg.user == defaultUser) {
+    users.users."gitea" = mkIf (cfg.configuration.runUser == defaultUser) {
       uid = ids.uids.gitea;
       description = "Gitea user";
     };
