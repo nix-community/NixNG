@@ -98,6 +98,7 @@ in
     (mkRemovedOptionModule [ "services" "gitea" "appName" ] "The option has been moved to <services.gitea.configuration.appName")
     (mkRemovedOptionModule [ "services" "gitea" "runMode" ] "The option has been moved to <services.gitea.configuration.runMode")
     (mkRemovedOptionModule [ "services" "gitea" "user" ] "The option has been moved to <services.gitea.configuration.runUser")
+    (mkRemovedOptionModule [ "services" "gitea" "configuration" ] "The option has been renamed to <services.gitea.settings>")
   ];
 
   options.services.gitea = {
@@ -115,7 +116,7 @@ in
       default = { };
     };
 
-    configuration = mkOption {
+    settings = mkOption {
       description = ''
         Gitea configuration.
       '';
@@ -152,6 +153,7 @@ in
           repository.local = { LOCAL_COPY_PATH = /data/gitea/tmp/local-repo; };
         }
       '';
+      default = {};
     };
 
     runConfig = mkOption {
@@ -171,7 +173,7 @@ in
         mode = "755";
         owner = "gitea:nogroup";
         persistent = true;
-        dst = cfg.configuration."server"."APP_DATA_PATH";
+        dst = cfg.settings."server"."APP_DATA_PATH";
       };
 
       ensureSomething.create."runConfig" = {
@@ -187,11 +189,11 @@ in
           let
             appIni = pkgs.writeText "app.ini"
               ''
-                APP_NAME = ${cfg.configuration.appName}
-                RUN_MODE = ${cfg.configuration.runMode}
-                RUN_USER = ${cfg.configuration.runUser}
+                APP_NAME = ${cfg.settings.appName}
+                RUN_MODE = ${cfg.settings.runMode}
+                RUN_USER = ${cfg.settings.runUser}
 
-                ${generators.toINI {} (filterAttrs (n: _: !(elem n ["appName" "runMode" "runUser"])) cfg.configuration)}
+                ${generators.toINI {} (filterAttrs (n: _: !(elem n ["appName" "runMode" "runUser"])) cfg.settings)}
               '';
             inherit (cfg.secrets) secretKeyFile internalTokenFile jwtSecretFile lfsJwtSecretFile databaseUserFile databasePasswordFile databaseHostFile;
 
@@ -210,7 +212,7 @@ in
 
             cp ${appIni} ${cfg.runConfig}
             chmod 600 ${cfg.runConfig}
-            chown ${cfg.configuration.runUser}:nogroup ${cfg.runConfig}
+            chown ${cfg.settings.runUser}:nogroup ${cfg.runConfig}
 
             ${subsSecret secretKeyFile "secretKey"}
             ${subsSecret internalTokenFile "internalToken"}
@@ -220,8 +222,8 @@ in
             ${subsSecret databasePasswordFile "databasePassword"}
             ${subsSecret databaseHostFile "databaseHost"}
 
-            export HOME=${cfg.configuration.repository.ROOT}
-            chpst -u ${cfg.configuration.runUser}:nogroup ${cfg.package}/bin/gitea -c ${cfg.runConfig}
+            export HOME=${cfg.settings.repository.ROOT}
+            chpst -u ${cfg.settings.runUser}:nogroup ${cfg.package}/bin/gitea -c ${cfg.runConfig}
           ''
         );
 
@@ -230,7 +232,7 @@ in
 
     environment.systemPackages = [ cfg.package ];
 
-    users.users."gitea" = mkIf (cfg.configuration.runUser == defaultUser) {
+    users.users."gitea" = mkIf (cfg.settings.runUser == defaultUser) {
       uid = ids.uids.gitea;
       description = "Gitea user";
     };
