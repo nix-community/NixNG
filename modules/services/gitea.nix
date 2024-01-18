@@ -153,7 +153,9 @@ in
           repository.local = { LOCAL_COPY_PATH = /data/gitea/tmp/local-repo; };
         }
       '';
-      default = {};
+      default = {
+        server.STATIC_ROOT_PATH = "${pkgs.gitea.data}";
+      };
     };
 
     runConfig = mkOption {
@@ -222,7 +224,14 @@ in
             ${subsSecret databasePasswordFile "databasePassword"}
             ${subsSecret databaseHostFile "databaseHost"}
 
-            export HOME=${cfg.settings.repository.ROOT}
+            ${optionalString (cfg.package.name == pkgs.forgejo.name) ''
+              set -v
+              mkdir -p ${cfg.settings.server.APP_DATA_PATH}/conf
+              ln -sf ${cfg.package}/locale ${cfg.settings.server.APP_DATA_PATH}/conf
+              ls ${cfg.settings.server.APP_DATA_PATH}/conf/locale
+            ''}
+
+            export HOME=${cfg.settings.server.APP_DATA_PATH}
             chpst -u ${cfg.settings.runUser}:nogroup ${cfg.package}/bin/gitea -c ${cfg.runConfig}
           ''
         );
