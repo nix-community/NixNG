@@ -16,7 +16,6 @@ let
   cfg = config.services.mysql;
 
   isMariaDB = lib.getName cfg.package == lib.getName pkgs.mariadb;
-  superUser = if isMariaDB then cfg.user else "root";
 
   mysqldOptions =
     "--user=${cfg.user} --datadir=${cfg.dataDir} --basedir=${cfg.package}";
@@ -246,25 +245,25 @@ in
             # Since we don't want to run this service as 'root' we need to ensure the account exists on first run
             ( echo "CREATE USER IF NOT EXISTS '${cfg.user}'@'localhost' IDENTIFIED WITH ${if isMariaDB then "unix_socket" else "auth_socket"};"
               echo "GRANT ALL PRIVILEGES ON *.* TO '${cfg.user}'@'localhost' WITH GRANT OPTION;"
-            ) | ${cfg.package}/bin/mysql -u ${superUser} -N
+            ) | ${cfg.package}/bin/mysql -u root -N
 
             ${optionalString (cfg.initialScript != null)
               ''
                 # Execute initial script
                 # using toString to avoid copying the file to nix store if given as path instead of string,
                 # as it might contain credentials
-                cat ${toString cfg.initialScript} | ${cfg.package}/bin/mysql -u ${superUser} -N
+                cat ${toString cfg.initialScript} | ${cfg.package}/bin/mysql -u root -N
               ''}
 
               rm ${cfg.dataDir}/.first_startup
           fi
-
+          echo "creating users and databases"
           ${optionalString (cfg.ensureDatabases != []) ''
             (
             ${concatMapStrings (database: ''
               echo "CREATE DATABASE IF NOT EXISTS \`${database}\`;"
             '') cfg.ensureDatabases}
-            ) | ${cfg.package}/bin/mysql -N -u ${superUser}
+            ) | ${cfg.package}/bin/mysql -N -u root
           ''}
           ${concatMapStrings (user:
             ''
@@ -272,7 +271,7 @@ in
                 ${concatStringsSep "\n" (mapAttrsToList (database: permission: ''
                   echo "GRANT ${permission} ON ${database} TO '${user.name}'@'${user.address}';"
                 '') user.ensurePermissions)}
-              ) | ${cfg.package}/bin/mysql -N -u ${superUser}
+              ) | ${cfg.package}/bin/mysql -N -u root
             '') cfg.ensureUsers}
 
           wait $mysql
