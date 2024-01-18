@@ -95,9 +95,9 @@ let
 in
 {
   imports = [
-    (mkRemovedOptionModule [ "services" "gitea" "appName" ] "The option has been moved to <services.gitea.configuration.appName")
-    (mkRemovedOptionModule [ "services" "gitea" "runMode" ] "The option has been moved to <services.gitea.configuration.runMode")
-    (mkRemovedOptionModule [ "services" "gitea" "user" ] "The option has been moved to <services.gitea.configuration.runUser")
+    (mkRemovedOptionModule [ "services" "gitea" "appName" ] "The option has been moved to <services.gitea.settings.default.appName")
+    (mkRemovedOptionModule [ "services" "gitea" "runMode" ] "The option has been moved to <services.gitea.settings.default.runMode")
+    (mkRemovedOptionModule [ "services" "gitea" "user" ] "The option has been moved to <services.gitea.settings.default.runUser")
     (mkRemovedOptionModule [ "services" "gitea" "configuration" ] "The option has been renamed to <services.gitea.settings>")
   ];
 
@@ -120,42 +120,13 @@ in
       description = ''
         Gitea configuration.
       '';
-      type = with types; submodule {
-        freeformType = configFormat.type;
-
-        options = {
-          appName = mkOption {
-            description = ''
-              Gitea's app name, displayed on the front page.
-            '';
-            type = types.str;
-            default = "Gitea";
-          };
-          runMode = mkOption {
-            description = ''
-              Gitea's run mode.
-            '';
-            type = types.str;
-            default = "prod";
-          };
-          runUser = mkOption {
-            description = ''
-              Gitea's user. Under which the Gitea process runs.
-            '';
-            type = types.str;
-            default = defaultUser;
-          };
-        };
-      };
+      type = configFormat.type;
       example = ''
         {
           repository = { ROOT = /data/gitea/git/repositories; };
           repository.local = { LOCAL_COPY_PATH = /data/gitea/tmp/local-repo; };
         }
       '';
-      default = {
-        server.STATIC_ROOT_PATH = "${pkgs.gitea.data}";
-      };
     };
 
     runConfig = mkOption {
@@ -214,7 +185,7 @@ in
 
             cp ${appIni} ${cfg.runConfig}
             chmod 600 ${cfg.runConfig}
-            chown ${cfg.settings.runUser}:nogroup ${cfg.runConfig}
+            chown ${cfg.settings.DEFAULT.RUN_USER or "root"}:nogroup ${cfg.runConfig}
 
             ${subsSecret secretKeyFile "secretKey"}
             ${subsSecret internalTokenFile "internalToken"}
@@ -232,7 +203,7 @@ in
             ''}
 
             export HOME=${cfg.settings.server.APP_DATA_PATH}
-            chpst -u ${cfg.settings.runUser}:nogroup ${cfg.package}/bin/gitea -c ${cfg.runConfig}
+            chpst -u ${cfg.settings.DEFAULT.RUN_USER or "root"}:nogroup ${cfg.package}/bin/gitea -c ${cfg.runConfig}
           ''
         );
 
@@ -241,7 +212,7 @@ in
 
     environment.systemPackages = [ cfg.package ];
 
-    users.users."gitea" = mkIf (cfg.settings.runUser == defaultUser) {
+    users.users."gitea" = mkIf ((cfg.settings.DEFAULT.RUN_USER or "root") == defaultUser) {
       uid = ids.uids.gitea;
       description = "Gitea user";
     };
