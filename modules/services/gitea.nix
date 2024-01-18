@@ -160,14 +160,8 @@ in
       script = pkgs.writeShellScript "gitea-run"
         (
           let
-            appIni = pkgs.writeText "app.ini"
-              ''
-                APP_NAME = ${cfg.settings.appName}
-                RUN_MODE = ${cfg.settings.runMode}
-                RUN_USER = ${cfg.settings.runUser}
+            appIni = configFormat.generate "app.ini" cfg.settings;
 
-                ${generators.toINI {} (filterAttrs (n: _: !(elem n ["appName" "runMode" "runUser"])) cfg.settings)}
-              '';
             inherit (cfg.secrets) secretKeyFile internalTokenFile jwtSecretFile lfsJwtSecretFile databaseUserFile databasePasswordFile databaseHostFile;
 
             subsSecret = source: key:
