@@ -227,7 +227,6 @@ in
         script = pkgs.writeShellScript "mysql" ''
           if [[ ! -e ${cfg.dataDir}/mysql ]] ; then
             test -e ${cfg.package}/bin/mysql_install_db && ${cfg.package}/bin/mysql_install_db --defaults-file=${configFile} ${mysqldOptions}
-            test -e ${cfg.package}/bin/mysqld && ${cfg.package}/bin/mysqld --defaults-file=${configFile} ${mysqldOptions}
 
             touch ${cfg.dataDir}/.first_startup
           fi
