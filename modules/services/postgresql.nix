@@ -168,6 +168,15 @@ in
                 }
               '';
             };
+            ensureDBOwnership = mkOption {
+              type = types.bool;
+              default = false;
+              description = mdDoc ''
+                Grants the  user ownership to a database with the same name.
+                This database must be defined manually in
+                [](#opt-services.postgresql.ensureDatabases).
+              '';
+            };
           };
         });
         default = [ ];
@@ -377,6 +386,7 @@ in
           ${concatStringsSep "\n" (mapAttrsToList (database: permission: ''
             $PSQL -tAc 'GRANT ${permission} ON ${database} TO "${user.name}"'
           '') user.ensurePermissions)}
+          ${optionalString user.ensureDBOwnership ''$PSQL -tAc 'ALTER DATABASE "${user.name}" OWNER TO "${user.name}";' ''}
         '') cfg.ensureUsers}
 
         ${concatStrings (mapAttrsToList (extension: schemas:
