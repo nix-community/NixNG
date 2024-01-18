@@ -140,6 +140,10 @@ in
   };
 
   config = mkIf cfg.enable {
+    services.gitea.settings = {
+      server.STATIC_ROOT_PATH = "${cfg.package.data}";
+    };
+
     init.services.gitea = {
       ensureSomething.create."0-server.APP_DATA_PATH" = {
         type = "directory";
