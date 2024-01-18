@@ -175,7 +175,8 @@ in
 
             server = {
               LFS_START_SERVER = config.lfs.enable;
-              # LFS_JWT_SECRET = mkIf config.lfs.enable "#lfsjwtsecret#";
+              LFS_JWT_SECRET =
+                mkIf (config.lfs.enable && cfg.secrets.lfsJwtSecretFile != null) "#lfsjwtsecret#";
               APP_DATA_PATH = config.stateDirectory;
             };
 
@@ -183,7 +184,7 @@ in
               {
                 DB_TYPE = config.database.type;
               }
-              (mkIf (elem config.database.type [ "postgresql" "mysql" ]) {
+              (mkIf (elem config.database.type [ "postgres" "mysql" ]) {
                 HOST =
                   if config.database.socket != null then
                     config.database.socket
@@ -191,12 +192,12 @@ in
                     config.database.host + ":" + toString config.database.port;
                 NAME = config.database.name;
                 USER = config.database.user;
-                # PASSWD = "#dbpass#";
+                PASSWD = mkIf (cfg.secrets.databasePasswordFile != null) "#databasePassword#";
               })
               (mkIf (config.database.type == "sqlite") {
                 PATH = config.database.path;
               })
-              (mkIf (config.database.type == "postgresql") {
+              (mkIf (config.database.type == "postgres") {
                 SSL_MODE = "disable";
               })
             ];
@@ -210,8 +211,8 @@ in
             };
 
             security = {
-              # SECRET_KEY = "#secretkey#";
-              # INTERNAL_TOKEN = "#internaltoken#";
+              SECRET_KEY = mkIf (cfg.secrets.secretKeyFile != null) "#secretkey#";
+              INTERNAL_TOKEN = mkIf (cfg.secrets.internalTokenFile != null) "#internaltoken#";
               INSTALL_LOCK = true;
             };
 
@@ -220,7 +221,7 @@ in
             # };
 
             oauth2 = {
-              # JWT_SECRET = "#oauth2jwtsecret#";
+              JWT_SECRET = mkIf (cfg.secrets.jwtSecretFile != null) "#oauth2jwtsecret#";
             };
 
             lfs = mkIf config.lfs.enable {
