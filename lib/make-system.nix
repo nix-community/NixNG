@@ -33,8 +33,9 @@ let
         config
         ({ ... }:
           {
+            nixpkgs.pkgs = nixpkgs.legacyPackages.${system}.appendOverlays
+              [ overlay ];
             _module.args = {
-              pkgs = nixpkgs.legacyPackages.${system}.appendOverlays [ overlay ];
               inherit system;
             };
           }

@@ -3,6 +3,7 @@
     ./dumb-init
     ./initrd
     ./init.nix
+    ./nixpkgs.nix
     ./system.nix
     ./system/toplevel.nix
     ./system/oci-image.nix
