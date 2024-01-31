@@ -81,7 +81,7 @@ in
         type = "dumb-init";
         shutdown = pkgs.writeShellScript "dum-init-shutdown"
           ''
-            kill -SIGTERM 1
+            kill -SIGHUP 1
           '';
         script =
           let
@@ -90,9 +90,21 @@ in
                 export PATH=${pkgs.busybox}/bin
                 _system_config="@systemConfig@"
 
+                function _sig_hup() {
+                  kill -HUP $_init_system
+                }
+                trap _sig_hup SIGHUP
+
                 "$_system_config/activation"
-                exec ${cfg.package}/bin/dumb-init -- \
-                  ${sigell [ "${cfgRunit.stages.stage-2}" ]}
+                # exec ${cfg.package}/bin/dumb-init --rewrite 15:1 --single-child -- \
+                ${sigell [ "${cfgRunit.stages.stage-2}" ]} &
+                _init_system="$!"
+                wait "$_init_system"
+
+                echo "Shutting down"
+                _all_pids="$(ps | tail +2  | grep -v " $$ " | tr -s ' ' | sed 's/^[ \t]*//;s/[ \t]*$//' | cut -f 1 -d' ' | tr '\n' ' ')"
+                timeout 60 sh -c "wait $_all_pids"
+
               '';
             shell = pkgs.writeShellScript "init"
               ''
