@@ -18,7 +18,7 @@ in
       example = { EDITOR = "vim"; BROWSER = "firefox"; };
       type = with types; attrsOf (either str (listOf str));
       apply = mkApply
-        (x: concatStringsSep ":"
+        (x: concatStringsSep " "
           (mapAttrsToList (n: v: "${n}=" + (if isList v then concatStringsSep ":" v else v)) x));
     };
 
