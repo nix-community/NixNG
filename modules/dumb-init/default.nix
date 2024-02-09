@@ -92,6 +92,23 @@ in
 
                 function _sig_hup() {
                   kill -HUP $_init_system
+
+                  echo "Shutting down"
+
+                  _all_pids="$(ps aux | grep "[r]unsv " | tr -s ' ' | cut -f 2 -d ' ')"
+                  start_ts=$(date +%s)
+                  while ! [ -z "$_all_pids" ] ; do
+                      now_ts=$(date +%s)
+                      if [ $(( now_ts - start_ts )) -gt 60 ]; then
+                          echo "Shutdown timeout."
+                          break
+                      fi
+                      _all_pids="$(ps aux | grep "[r]unsv " | tr -s ' ' | cut -f 2 -d ' ')"
+                      echo $_all_pids
+                      sleep 1
+                  done
+
+                  exit 0
                 }
                 trap _sig_hup SIGHUP
 
@@ -100,10 +117,6 @@ in
                 ${sigell [ "${cfgRunit.stages.stage-2}" ]} &
                 _init_system="$!"
                 wait "$_init_system"
-
-                echo "Shutting down"
-                _all_pids="$(ps | tail +2  | grep -v " $$ " | tr -s ' ' | sed 's/^[ \t]*//;s/[ \t]*$//' | cut -f 1 -d' ' | tr '\n' ' ')"
-                timeout 60 sh -c "wait $_all_pids"
 
               '';
             shell = pkgs.writeShellScript "init"
