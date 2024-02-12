@@ -36,6 +36,7 @@ with lib;
             substitute ${system.activationScript} $out/activation \
               --subst-var-by "systemConfig" "$out"
             chmod +x $out/init $out/activation
+            echo "${pkgs.stdenv.system}" > $out/system
 
             #
             ${optionalString system.createNixRegistration
