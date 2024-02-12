@@ -103,8 +103,6 @@ in
             finish = pkgs.callPackage ./finish.nix {} { inherit n s cfgInit; };
             log = pkgs.callPackage ./log.nix {} { inherit n s; };
           in
-            assert s.dependencies == [];
-
             ''
               mkdir -p $out/${n}/log
               ln -s ${run} $out/${n}/run

@@ -12,6 +12,14 @@
 { n, s }:
 with lib;
 writeShellScript "${n}-run" ''
+  ${concatStringsSep "\n" (map (dependency:
+    ''
+      if ! sv check "${dependency}" ; then
+        exit -1
+      fi
+    ''
+  ) s.dependencies)}
+
   ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
     with cv;
       ''
