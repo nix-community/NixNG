@@ -347,6 +347,15 @@ in
 
       # BEGIN Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
       script = pkgs.writeShellScript "postgresql" ''
+        function _sigterm() {
+          if ! [ -z "$postgresql" ] && kill -0 "$postgresql" ; then
+            kill -TERM "$postgresql"
+            wait "$postgresql"
+          fi
+          exit 0
+        }
+        trap _sigterm TERM
+
         if [[ ! -e ${cfg.dataDir}/PG_VERSION ]] ; then
            # Clean up the data directory
            rm -f ${cfg.dataDir}/*.conf
