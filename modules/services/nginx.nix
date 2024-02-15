@@ -58,7 +58,10 @@ in
     {
       init.services.nginx =
         let
-          config = pkgs.writeText "nginx.cfg" (toNginx cfg.configuration);
+          config = pkgs.writeText "nginx.cfg" (toNginx ([{
+            daemon = "off";
+            error_log = ["/dev/stderr" "info"];
+          }] ++ (if builtins.isList cfg.configuration then cfg.configuration else [ cfg.configuration ])));
         in
         {
           ensureSomething.create."cache" = {
