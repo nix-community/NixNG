@@ -18,6 +18,12 @@
       forAllSystems = forAllSystems' supportedSystems;
       pkgsForSystem = system:
         import nixpkgs { inherit system; overlays = [ self.overlays.default ]; };
+
+
+      inherit
+        (nixpkgs.lib)
+        recurseIntoAttrs
+        ;
     in
     {
       nglib = import ./lib nixpkgs.lib;
@@ -48,8 +54,8 @@
             };
           });
 
-      hydraJobs = {
-        examples = nixpkgs.lib.mapAttrs (n: v: v.config.system.build.toplevel) self.examples;
+      checks = {
+        examples = recurseIntoAttrs (nixpkgs.lib.mapAttrs (n: v: v.config.system.build.toplevel) self.examples);
       };
     };
 }
