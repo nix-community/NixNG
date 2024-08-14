@@ -21,15 +21,22 @@
     in
     {
       nglib = import ./lib nixpkgs.lib;
-      examples = import ./examples { inherit nixpkgs; inherit (self) nglib; };
+      examples = import ./examples { inherit nixpkgs; inherit (self) nglib; nixng = self; };
       overlays.default = import ./overlay;
+
+      legacyPackages = forAllSystems (system:
+        let
+          pkgs = import nixpkgs { inherit system; overlays = [ (import ./overlay) ]; };
+          lib = pkgs.lib;
+        in
+          lib.genAttrs (lib.attrNames (import ./overlay null null)) (packageName: pkgs.${packageName}));
 
       packages = forAllSystems (system:
         let
-          pkgs = import nixpkgs { inherit system; };
-          fix = import ./overlay fix pkgs;
+          lib = nixpkgs.lib;
         in
-          fix);
+          lib.filterAttrs (_: v: lib.isDerivation v) self.legacyPackages.${system}
+      );
 
       devShells = forAllSystems (system:
         let pkgs = pkgsForSystem system;

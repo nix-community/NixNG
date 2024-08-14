@@ -6,12 +6,12 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ nglib, nixpkgs }:
+{ nglib, nixpkgs, ... }:
 nglib.makeSystem {
   inherit nixpkgs;
   system = "x86_64-linux";
   name = "nixng-gitea";
-  config = ({ ... }:
+  config = ({ lib, config, ... }:
     {
       dumb-init = {
         enable = true;
@@ -21,18 +21,44 @@ nglib.makeSystem {
       services.gitea = {
         enable = true;
 
-        appName = "Gitea";
-        runMode = "prod";
-        user = "gitea";
-
         secrets = {
-          secretKeyFile = "/secret_key";
-          internalTokenFile = "/internal_token";
-          jwtSecretFile = "/jwt_secret";
-          lfsJwtSecretFile = "/lfs_jwt_secret";
+          secretKey = {
+            source.file = "/secret_key";
+            generate = ''
+              _target="$1"
+              ${lib.getExe config.services.gitea.package} generate secret SECRET_KEY > $_target
+            '';
+          };
+          internalToken = {
+            source.file = "/internal_token";
+            generate = ''
+              _target="$1"
+              ${lib.getExe config.services.gitea.package} generate secret INTERNAL_TOKEN > $_target
+            '';
+          };
+          jwtSecret = {
+            source.file = "/jwt_secret";
+            generate = ''
+              _target="$1"
+              ${lib.getExe config.services.gitea.package} generate secret JWT_SECRET > $_target
+            '';
+          };
+          lfsJwtSecret = {
+            source.file = "/lfs_jwt_secret";
+            generate = ''
+              _target="$1"
+              ${lib.getExe config.services.gitea.package} generate secret LFS_JWT_SECRET > $_target
+            '';
+          };
         };
 
-        configuration = {
+        settings = {
+          default = {
+            APP_NAME = "Gitea";
+            RUN_MODE = "prod";
+            RUN_USER = "gitea";
+          };
+
           repository = {
             ROOT = "/data/gitea/git/repositories";
           };
@@ -56,7 +82,7 @@ nglib.makeSystem {
             LFS_START_SERVER = true;
             LFS_CONTENT_PATH = "/data/gitea/git/lfs";
             DOMAIN = "localhost";
-            LFS_JWT_SECRET = "#lfsJwtSecret#";
+            LFS_JWT_SECRET = "@lfsJwtSecret@";
             OFFLINE_MODE = false;
           };
 
@@ -88,8 +114,8 @@ nglib.makeSystem {
 
           security = {
             INSTALL_LOCK = true;
-            SECRET_KEY = "#secretKey";
-            INTERNAL_TOKEN = "#internalToken#";
+            SECRET_KEY = "@secretKey@";
+            INTERNAL_TOKEN = "@internalToken@";
           };
 
           service = {
@@ -105,7 +131,7 @@ nglib.makeSystem {
             NO_REPLY_ADDRESS = "noreply.localhost";
           };
 
-          oauth2.JWT_SECRET = "#jwtSecret#";
+          oauth2.JWT_SECRET = "@jwtSecret@";
 
           mailer.ENABLED = false;
 

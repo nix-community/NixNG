@@ -6,10 +6,11 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ nglib, nixpkgs }:
+{ nglib, nixpkgs, nixng }:
 let
   examples =
     { "gitea" = ./gitea;
+      "gitea-sane" = ./gitea/sane.nix;
       "apache" = ./apache;
       "nginx" = ./nginx;
       "crond" = ./crond;
@@ -26,4 +27,4 @@ let
       "initrd" = ./initrd;
     };
 in
-  nixpkgs.lib.mapAttrs (_: v: import v { inherit nixpkgs nglib; }) examples
+  nixpkgs.lib.mapAttrs (_: v: import v { inherit nixpkgs nglib nixng; }) examples

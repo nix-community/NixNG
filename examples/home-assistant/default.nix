@@ -6,7 +6,7 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ nglib, nixpkgs }:
+{ nglib, nixpkgs, ... }:
 nglib.makeSystem {
   inherit nixpkgs;
   system = "x86_64-linux";
@@ -53,7 +53,6 @@ nglib.makeSystem {
                     "cloud"
                     "onboarding"
                     "frontend"
-                    "safe_mode"
                     "met"
                     "zha"
                     "mobile_app"

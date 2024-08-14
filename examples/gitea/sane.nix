@@ -22,12 +22,8 @@ nglib.makeSystem {
         (import "${nixng}/modules/services/gitea/sane.nix" {
           user = "gitea";
           database = {
-            type = "postgres";
-            # host = "127.0.0.1";
-            # port = 5432;
-            socket = "/run/postgresql";
-            name = "gitea";
-            user = "gitea";
+            type = "sqlite3";
+            path = "/var/lib/gitea/db.sqlite3";
           };
         })
       ];
@@ -37,28 +33,28 @@ nglib.makeSystem {
         enable = true;
 
         secrets = {
-          secretKeyFile = {
+          secretKey = {
             source.file = "/secret_key";
             generate = ''
               _target="$1"
               ${lib.getExe config.services.gitea.package} generate secret SECRET_KEY > $_target
             '';
           };
-          internalTokenFile = {
+          internalToken = {
             source.file = "/internal_token";
             generate = ''
               _target="$1"
               ${lib.getExe config.services.gitea.package} generate secret INTERNAL_TOKEN > $_target
             '';
           };
-          jwtSecretFile = {
+          jwtSecret = {
             source.file = "/jwt_secret";
             generate = ''
               _target="$1"
               ${lib.getExe config.services.gitea.package} generate secret JWT_SECRET > $_target
             '';
           };
-          lfsJwtSecretFile = {
+          lfsJwtSecret = {
             source.file = "/lfs_jwt_secret";
             generate = ''
               _target="$1"
