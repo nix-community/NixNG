@@ -21,7 +21,6 @@ let
       "pantalaimon" = ./pantalaimon;
       "jmusicbot" = ./jmusicbot;
       "php-fpm" = ./php-fpm;
-      "minecraft" = ./minecraft;
       "home-assistant" = ./home-assistant;
       "syncthing" = ./syncthing;
       "initrd" = ./initrd;
