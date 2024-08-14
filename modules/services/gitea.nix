@@ -92,6 +92,110 @@ let
       };
     };
   };
+
+  secretModule = {name, ...}: {
+    options = {
+      source = mkOption {
+        type = types.attrTag {
+          file = mkOption {
+            type = types.path;
+          };
+
+          environment = mkOption {
+            type = types.str;
+          };
+        };
+      };
+
+      generate = mkOption {
+        type = types.str;
+        default = "false";
+      };
+
+      placeholder = mkOption {
+        type = types.str;
+        default = name;
+      };
+    };
+  };
+
+  case = a: attrs:
+    attrs.${a};
+
+  tagCase = a: attrs:
+    attrs.${head (attrNames a)};
+
+  fromMaybe = maybe: value:
+    if maybe == null then
+      value
+    else
+      maybe;
+
+  declareSubstituteSecrets =
+    secrets:
+    {
+      targetNotFound ? "_targetNotFound_default",
+      secretNotUsed ? "_secretNotUsed_default",
+      secretNotFound ? "_secretNotFound_default",
+    }:
+    ''
+      function _targetNotFound_default() {
+        local _target="$1"
+
+        echo "$_target not found"
+        exit 2
+      }
+
+      function _secretNotUsed_default() {
+        local _placeholder="$2"
+
+        echo "$_placeholder not used"
+        exit 2
+      }
+
+      function _secretNotFound_default() {
+        local _placeholder="$2"
+
+        echo "$_placeholder was not found"
+        exit 2
+      }
+
+      function substituteSecrets()
+      {
+        local _target=$1
+
+        if ! [ -f "$_target" ] ; then
+          ${targetNotFound} "$_target"
+        fi
+
+        ${concatMapStringsSep "\n" (secret:
+          ''
+            local _placeholder="${secret.placeholder}"
+            grep "@$_placeholder@" "$_target" || ${secretNotUsed} "$_target" "$_placeholder"
+
+            unset _secret
+            local _secret
+            ${tagCase secret.source {
+              file = ''
+                if [ -f "${secret.source.file}" ] \
+                  || ${pkgs.writeShellScript "gitea-generate-${secret.placeholder}" secret.generate} "${secret.source.file}" \
+                   ; then
+                    _secret="$(cat "${secret.source.file}" | head -n 1)"
+                else
+                  ${secretNotFound} "$_target" "$_placeholder"
+                fi
+              '';
+              environment = ''
+                _secret=${secret.source.environment}
+                _secret=''${!_secret}
+              '';
+            }}
+
+            sed -i "s,@${secret.placeholder}@,$_secret,g" "$_target"
+          ''
+        ) (attrValues secrets)}
+      }
+    '';
 in
 {
   imports = [
@@ -112,7 +216,7 @@ in
 
     secrets = mkOption {
       description = "Gitea secrets.";
-      type = types.submodule giteaSecrets;
+      type = types.attrsOf (types.submodule secretModule);
       default = { };
     };
 
@@ -156,7 +260,7 @@ in
       ensureSomething.create."runConfig" = {
         type = "file";
         mode = "600";
-        owner = "gitea:nogroup";
+        owner = cfg.settings.default.RUN_USER or "root";
         persistent = false;
         dst = cfg.runConfig;
       };
@@ -165,42 +269,27 @@ in
         (
           let
             appIni = configFormat.generate "app.ini" cfg.settings;
-
-            inherit (cfg.secrets) secretKeyFile internalTokenFile jwtSecretFile lfsJwtSecretFile databaseUserFile databasePasswordFile databaseHostFile;
-
-            subsSecret = source: key:
-              optionalString (source != null)
-                ''
-                  if [[ -f '${source}' ]] ; then
-                    SECRET="$(head -n1 ${source})"
-                    sed -i "s,#${key}#,$SECRET,g" ${cfg.runConfig}
-                    echo 'Substituted contents of `${source}` in place of `#${key}#`'
-                  fi
-                '';
           in
-          ''
-            export PATH=${pkgs.busybox}/bin:${pkgs.bash}/bin
+            ''
+              set -x
+              export PATH=${pkgs.busybox}/bin:${pkgs.bash}/bin
 
-            cp ${appIni} ${cfg.runConfig}
-            chmod 600 ${cfg.runConfig}
-            chown ${cfg.settings.DEFAULT.RUN_USER or "root"}:nogroup ${cfg.runConfig}
+              cp ${appIni} ${cfg.runConfig}
+              chmod 600 ${cfg.runConfig}
+              chown ${cfg.settings.default.RUN_USER}:nogroup ${cfg.runConfig}
 
-            ${subsSecret secretKeyFile "secretKey"}
-            ${subsSecret internalTokenFile "internalToken"}
-            ${subsSecret jwtSecretFile "jwtSecret"}
-            ${subsSecret lfsJwtSecretFile "lfsJwtSecret"}
-            ${subsSecret databaseUserFile "databaseUser"}
-            ${subsSecret databasePasswordFile "databasePassword"}
-            ${subsSecret databaseHostFile "databaseHost"}
+              ${declareSubstituteSecrets cfg.secrets { secretNotFound = "false"; }}
+              substituteSecrets ${cfg.runConfig}
+              cat ${cfg.runConfig}
 
-            ${optionalString (cfg.package.name == pkgs.forgejo.name) ''
-              mkdir -p ${cfg.settings.server.APP_DATA_PATH}/conf
-              ln -sf ${cfg.package}/locale ${cfg.settings.server.APP_DATA_PATH}/conf
-            ''}
+              ${optionalString (cfg.package.name == pkgs.forgejo.name) ''
+                mkdir -p ${cfg.settings.server.APP_DATA_PATH}/conf
+                ln -sf ${cfg.package}/locasle ${cfg.settings.server.APP_DATA_PATH}/conf
+              ''}
 
-            export HOME=${cfg.settings.server.APP_DATA_PATH}
-            chpst -u ${cfg.settings.DEFAULT.RUN_USER or "root"}:nogroup ${cfg.package}/bin/gitea -c ${cfg.runConfig}
-          ''
+              export HOME=${cfg.settings.server.APP_DATA_PATH}
+              chpst -u ${cfg.settings.default.RUN_USER or "root"}:nogroup ${cfg.package}/bin/gitea -c ${cfg.runConfig}
+            ''
         );
 
       enabled = true;
@@ -208,7 +297,7 @@ in
 
     environment.systemPackages = [ cfg.package ];
 
-    users.users."gitea" = mkIf ((cfg.settings.DEFAULT.RUN_USER or "root") == defaultUser) {
+    users.users."gitea" = mkIf ((cfg.settings.default.RUN_USER or "root") == defaultUser) {
       uid = ids.uids.gitea;
       description = "Gitea user";
     };

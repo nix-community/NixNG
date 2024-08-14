@@ -1,5 +1,5 @@
-{ rootConfig, rootOptions, pkgs, lib }:
 module:
+{ pkgs, lib, config, options, ... }:
 let
   inherit (lib)
     types
@@ -16,7 +16,12 @@ let
     concatStrings
     mkDefault
     mkEnableOption
+    optional
+    concatMapStringsSep
     ;
+
+  rootConfig = config;
+  rootOptions = options;
 
   cfg = getAttrFromPath [ "services" "gitea" ] rootConfig;
 
@@ -150,24 +155,41 @@ in
       };
 
       config.output = {
-        assertions = [
-          (mkIf (elem config.database.type [ "postgresql" "mysql" ])  {
-            assertion = with config.database;
-              (host == null && socket != null && port == null) ||
-              (host != null && socket == null && port != null);
-            message = concatStrings [
-              "Setting the PostgreSQL database by `database.host`, "
-              "`database.port` is exclusive with `database.sockets`"
-              ", but at least one must be set."
-            ];
-          })
-        ];
+        assertions =
+          let
+            remoteDatabase = elem config.database.type [ "postgresql" "mysql" ];
+            requiredSecrets = [
+              "lfsJwtSecret"
+              "internalToken"
+              "jwtSecret"
+              "secretKey"
+            ] ++ (optional remoteDatabase "databasePassword");
+          in [
+            {
+              assertion = lib.foldl (a: b: a && (cfg.secrets ? ${b})) true [
+              ];
+              message = ''
+                The Gitea sane requires the following secrets:
+              '' + concatMapStringsSep "\n" (secret: "  - ${secret}") requiredSecrets;
+            }
+            {
+              assertion = with config.database;
+                remoteDatabase ->
+                (host == null && socket != null && port == null) ||
+                (host != null && socket == null && port != null);
+              message = concatStrings [
+                "Setting the PostgreSQL database by `database.host`, "
+                "`database.port` is exclusive with `database.sockets`"
+                ", but at least one must be set."
+              ];
+            }
+          ];
         init.services.gitea.environment = {
           GITEA_WORK_DIR = config.stateDirectory;
         };
         services.gitea = {
           settings = {
-            DEFAULT = {
+            default = {
               RUN_MODE = "prod";
               RUN_USER = config.user;
               WORK_PATH = config.stateDirectory;
@@ -175,8 +197,7 @@ in
 
             server = {
               LFS_START_SERVER = config.lfs.enable;
-              LFS_JWT_SECRET =
-                mkIf (config.lfs.enable && cfg.secrets.lfsJwtSecretFile != null) "#lfsjwtsecret#";
+              LFS_JWT_SECRET = "@${cfg.secrets.lfsJwtSecret.placeholder}@";
               APP_DATA_PATH = config.stateDirectory;
             };
 
@@ -192,7 +213,7 @@ in
                     config.database.host + ":" + toString config.database.port;
                 NAME = config.database.name;
                 USER = config.database.user;
-                PASSWD = mkIf (cfg.secrets.databasePasswordFile != null) "#databasePassword#";
+                PASSWD = "@${cfg.secrets.databasePassword.placeholder}@";
               })
               (mkIf (config.database.type == "sqlite") {
                 PATH = config.database.path;
@@ -211,8 +232,8 @@ in
             };
 
             security = {
-              SECRET_KEY = mkIf (cfg.secrets.secretKeyFile != null) "#secretkey#";
-              INTERNAL_TOKEN = mkIf (cfg.secrets.internalTokenFile != null) "#internaltoken#";
+              SECRET_KEY = "@${cfg.secrets.secretKey.placeholder}@";
+              INTERNAL_TOKEN = "@${cfg.secrets.internalToken.placeholder}@";
               INSTALL_LOCK = true;
             };
 
@@ -221,7 +242,7 @@ in
             # };
 
             oauth2 = {
-              JWT_SECRET = mkIf (cfg.secrets.jwtSecretFile != null) "#oauth2jwtsecret#";
+              JWT_SECRET = "@${cfg.secrets.jwtSecret.placeholder}@";
             };
 
             lfs = mkIf config.lfs.enable {
