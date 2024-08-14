@@ -13,6 +13,7 @@ let
     mkOptionType
     mkOption
     types
+    singleton
     ;
   overlayType =
     mkOptionType {
@@ -40,6 +41,9 @@ in
     };
   };
 
-  config._module.args.pkgs =
-    cfg.pkgs.appendOverlays config.nixpkgs.overlays;
+  config = {
+    nixpkgs.overlays = singleton (import ../overlay);
+    _module.args.pkgs =
+      cfg.pkgs.appendOverlays config.nixpkgs.overlays;
+  };
 }
