@@ -6,7 +6,7 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ lib, config, ... }:
+{ lib, config, system, ... }:
 let
   cfg = config.nixpkgs;
   inherit (lib)
@@ -14,7 +14,9 @@ let
     mkOption
     types
     singleton
-    ;
+    foldr
+  ;
+
   overlayType =
     mkOptionType {
       name = "nixpkgs-overlay";
@@ -22,6 +24,8 @@ let
       check = lib.isFunction;
       merge = lib.mergeOneOption;
     };
+
+  upstreamOpts = (import "${cfg.pkgs.path}/nixos/modules/misc/nixpkgs.nix" { inherit lib; options = {}; config = {}; pkgs = {}; }).options.nixpkgs;
 in
 {
   options.nixpkgs = {
@@ -31,6 +35,8 @@ in
       '';
       type = types.unspecified;
     };
+
+    config = upstreamOpts.config;
 
     overlays = mkOption {
       description = ''
@@ -44,6 +50,10 @@ in
   config = {
     nixpkgs.overlays = singleton (import ../overlay);
     _module.args.pkgs =
-      cfg.pkgs.appendOverlays config.nixpkgs.overlays;
+      import cfg.pkgs.path {
+        inherit system;
+        overlays = config.nixpkgs.overlays;
+        config = config.nixpkgs.config;
+      };
   };
 }
