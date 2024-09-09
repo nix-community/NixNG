@@ -24,6 +24,7 @@ let
       "home-assistant" = ./home-assistant;
       "syncthing" = ./syncthing;
       "initrd" = ./initrd;
+      "dnsmasq" = ./dnsmasq;
     };
 in
   nixpkgs.lib.mapAttrs (_: v: import v { inherit nixpkgs nglib nixng; }) examples
