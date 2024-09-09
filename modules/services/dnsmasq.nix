@@ -43,8 +43,6 @@ in
         };
 
         script = pkgs.writeShellScript "dnsmasq-run" ''
-          ${pkgs.coreutils}/bin/ls -alhd /var/lib/misc
-          echo ${pkgs.coreutils}/bin
           chpst -u ${cfg.user}:${cfg.group} -b dnsmasq ${lib.getExe cfg.package} \
             --keep-in-foreground \
             --pid-file=/run/dnsmasq.pid \
@@ -54,7 +52,7 @@ in
         '';
       };
 
-      environment.systemPackages = [ cfg.package configFile pkgs.coreutils ];
+      environment.systemPackages = [ cfg.package configFile ];
 
       users.users.${cfg.user} = mkDefaultRec {
         description = "dnsmasq";
