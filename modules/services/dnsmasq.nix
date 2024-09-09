@@ -52,7 +52,7 @@ in
         '';
       };
 
-      environment.systemPackages = [ cfg.package configFile ];
+      environment.systemPackages = [ cfg.package ];
 
       users.users.${cfg.user} = mkDefaultRec {
         description = "dnsmasq";
