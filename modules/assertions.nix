@@ -7,7 +7,13 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { lib, ... }:
-with lib;
+let
+  inherit
+    (lib)
+    mkOption
+    types
+    ;
+in
 {
   options.assertions = mkOption {
     description = "List of assertions";

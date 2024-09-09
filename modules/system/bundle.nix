@@ -7,11 +7,11 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, lib, config, ... }:
-with lib;
 let
-  inherit (pkgs)
-    runCommandNoCC
-    writeReferencesToFile;
+  inherit (lib)
+    mkOption
+    types
+    ;
 in
 {
   options.system.build = {
@@ -24,11 +24,11 @@ in
   };
 
   config.system.build.bundle =
-    runCommandNoCC (config.system.name + "-bundle")
+    pkgs.runCommandNoCC (config.system.name + "-bundle")
       { }
       ''
         set -o pipefail
         mkdir -p $out
-        xargs tar c < ${writeReferencesToFile config.system.build.toplevel} | tar -xC $out/
+        xargs tar c < ${pkgs.writeReferencesToFile config.system.build.toplevel} | tar -xC $out/
       '';
 }

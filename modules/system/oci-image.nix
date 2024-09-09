@@ -7,8 +7,13 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, lib, config, ... }:
-with lib;
 let
+  inherit
+    (lib)
+    mkOption
+    types
+    ;
+
   cfg = config.system;
 in
 {

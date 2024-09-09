@@ -18,8 +18,14 @@
 , defaultModules ? import ../modules/list.nix
 , extraModules ? []
 }:
-with nixpkgs.lib;
 let
+  inherit
+    (nixpkgs.lib)
+    evalModules
+    filter
+    concatStringsSep
+    ;
+
   evaledModules = evalModules
     {
       specialArgs = {

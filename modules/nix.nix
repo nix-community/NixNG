@@ -7,8 +7,28 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, lib, config, nglib, ... }:
-with lib;
 let
+  inherit
+    (lib)
+    getVersion
+    versionAtLeast
+    isString
+    isInt
+    isBool
+    isList
+    concatMapStringsSep
+    concatStringsSep
+    mapAttrsToList
+    mkIf
+    mkDefault
+    optionals
+    mkMerge
+    range
+    mkOption
+    types
+    mkEnableOption
+    ;
+
   cfg = config.nix;
 
   nix = cfg.package.out;

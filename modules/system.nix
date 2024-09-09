@@ -7,8 +7,21 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, lib, nglib, config, ... }:
-with lib; with nglib;
 let
+  inherit
+    (lib)
+    concatSepStrings
+    mkOption
+    types
+    mkEnableOption
+    ;
+
+  inherit
+    (nglib)
+    mergeShellFragmentsIsolated
+    mkDagOption
+    ;
+
   cfg = config.system;
 in
 {
@@ -94,7 +107,7 @@ in
         message = ''
           `cfg.activation` has one or more cycles and/or loops.
           - cycles:
-            ${(map (x: "{ after = [ ${concatSepStrings " " x.after} ]; data = ${x.data}; name = ${x.name} }") cfg.activation.loops or []) or ""}
+            ${(map (x: "{ after = [ ${concatSepStrings " " x.after} ]; data = ${x.data}; name = ${x.name} }") cfg.activation.loops or [])}
           - loops:
             ${(map (x: "{ after = [ ${concatSepStrings " " x.after} ]; data = ${x.data}; name = ${x.name} }") cfg.activation.loops or [])}
         '';
