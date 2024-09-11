@@ -1,48 +1,95 @@
 { pkgs, lib, nglib, config, ... }:
-with lib; with nglib;
 let
   cfg = config.services.dnsmasq;
+
+  # BEGIN Copyright (c) 2003-2024 Eelco Dolstra and the Nixpkgs/NixOS contributors
+  stateDir = "/var/lib/dnsmasq";
+
+  # True values are just put as `name` instead of `name=true`, and false values
+  # are turned to comments (false values are expected to be overrides e.g.
+  # mkForce)
+  formatKeyValue =
+    name: value:
+    if value == true
+    then name
+    else if value == false
+    then "# setting `${name}` explicitly set to false"
+    else lib.generators.mkKeyValueDefault { } "=" name value;
+
+  settingsFormat = pkgs.formats.keyValue {
+    mkKeyValue = formatKeyValue;
+    listsAsDuplicateKeys = true;
+  };
+  # END Copyright (c) 2003-2024 Eelco Dolstra and the Nixpkgs/NixOS contributors
 in
 {
   options.services.dnsmasq = {
-    enable = mkEnableOption "dnsmasq";
-    package = mkPackageOption pkgs "dnsmasq" { };
+    enable = lib.mkEnableOption "dnsmasq";
+    package = lib.mkPackageOption pkgs "dnsmasq" { };
 
-    user = mkOption {
+    user = lib.mkOption {
       description = "dnsmasq user";
-      type = types.str;
+      type = lib.types.str;
       default = "dnsmasq";
     };
 
-    group = mkOption {
+    group = lib.mkOption {
       description = "dnsmasq group";
-      type = types.str;
+      type = lib.types.str;
       default = "dnsmasq";
     };
 
-    configuration = mkOption {
-      type = types.str;
+    # BEGIN Copyright (c) 2003-2024 Eelco Dolstra and the Nixpkgs/NixOS contributors
+    settings = lib.mkOption {
+      type = lib.types.submodule {
+        freeformType = settingsFormat.type;
+      };
+
+      default = { };
+      description = ''
+        Configuration of dnsmasq. Lists get added one value per line (empty
+        lists and false values don't get added, though false values get
+        turned to comments). Gets merged with
+
+            {
+              dhcp-leasefile = "${stateDir}/dnsmasq.leases";
+            }
+      '';
+      example = lib.literalExpression ''
+        {
+          domain-needed = true;
+          dhcp-range = [ "192.168.0.2,192.168.0.254" ];
+        }
+      '';
     };
+    # END Copyright (c) 2003-2024 Eelco Dolstra and the Nixpkgs/NixOS contributors
   };
 
-  config = mkIf cfg.enable (
+  config = lib.mkIf cfg.enable (
     let
-      configFile = builtins.toFile "dnsmasq.conf" cfg.configuration;
+      configFile = settingsFormat.generate "dnsmasq.conf" cfg.settings;
     in
     {
+      # BEGIN Copyright (c) 2003-2024 Eelco Dolstra and the Nixpkgs/NixOS contributors
+      services.dnsmasq.settings = {
+        dhcp-leasefile = lib.mkDefault "${stateDir}/dnsmasq.leases";
+      };
+      # END Copyright (c) 2003-2024 Eelco Dolstra and the Nixpkgs/NixOS contributors
+
       init.services.dnsmasq = {
         enabled = true;
 
         # This is the default directory for dnsmasq's leasefile.
-        ensureSomething.create."/var/lib/misc" = {
+        ensureSomething.create."stateDir" = {
           type = "directory";
           mode = "755";
-          owner = "root:root";
+          owner = "dnsmasq:dnsmasq";
           persistent = true;
-          dst = "/var/lib/misc";
+          dst = stateDir;
         };
 
         script = pkgs.writeShellScript "dnsmasq-run" ''
+          ${lib.getExe pkgs.dnsmasq} --test
           chpst -u ${cfg.user}:${cfg.group} -b dnsmasq ${lib.getExe cfg.package} \
             --keep-in-foreground \
             --pid-file=/run/dnsmasq.pid \
@@ -54,7 +101,7 @@ in
 
       environment.systemPackages = [ cfg.package ];
 
-      users.users.${cfg.user} = mkDefaultRec {
+      users.users.${cfg.user} = nglib.mkDefaultRec {
         description = "dnsmasq";
         group = cfg.group;
         createHome = false;
@@ -63,7 +110,7 @@ in
         uid = config.ids.uids.dnsmasq;
       };
 
-      users.groups.${cfg.group} = mkDefaultRec {
+      users.groups.${cfg.group} = nglib.mkDefaultRec {
         gid = config.ids.gids.dnsmasq;
       };
     }

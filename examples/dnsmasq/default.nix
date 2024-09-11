@@ -17,9 +17,9 @@ nglib.makeSystem {
     services.dnsmasq = {
       enable = true;
 
-      configuration = ''
-        address=/pim.example.com/10.42.42.43
-      '';
+      settings = {
+        address = "/pim.example.com/10.42.42.42";
+      };
     };
   };
 }
