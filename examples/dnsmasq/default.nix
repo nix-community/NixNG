@@ -18,7 +18,14 @@ nglib.makeSystem {
       enable = true;
 
       settings = {
-        address = "/pim.example.com/10.42.42.42";
+        address = [
+          "/test1.example.com/192.0.2.42"
+          "/test2.example.com/198.51.100.42"
+        ];
+
+        server = "203.0.113.42";
+        no-resolv = true;
+        expand-hosts = true;
       };
     };
   };
