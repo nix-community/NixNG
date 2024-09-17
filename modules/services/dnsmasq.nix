@@ -53,6 +53,7 @@ in
 
             {
               dhcp-leasefile = "${stateDir}/dnsmasq.leases";
+              log-facility = "-";
             }
       '';
       example = lib.literalExpression ''
@@ -73,6 +74,7 @@ in
       # BEGIN Copyright (c) 2003-2024 Eelco Dolstra and the Nixpkgs/NixOS contributors
       services.dnsmasq.settings = {
         dhcp-leasefile = lib.mkDefault "${stateDir}/dnsmasq.leases";
+        log-facility = "-";
       };
       # END Copyright (c) 2003-2024 Eelco Dolstra and the Nixpkgs/NixOS contributors
 
