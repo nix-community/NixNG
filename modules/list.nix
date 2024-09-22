@@ -46,4 +46,5 @@
     ./services/mosquitto.nix
     ./services/syncthing.nix
     ./services/synapse.nix
+    ./services/dnsmasq.nix
 ]
