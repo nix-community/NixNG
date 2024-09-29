@@ -32,6 +32,12 @@ in
       '';
       type = lib.types.str;
     };
+
+    configFile = lib.mkOption {
+      description = "Generated configuration file";
+      type = lib.types.path;
+      default = settingsFormat.generate "attic.toml" cfg.settings;
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -41,13 +47,13 @@ in
       script = pkgs.writeShellScript "attic-run"
         (
           let
-            configFile = settingsFormat.generate "attic.toml" cfg.settings;
+            atticd = lib.getExe cfg.package;
           in
           ''
             export ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64="$(<${cfg.credentialsFile})"
-            ${cfg.package}/bin/atticadm --config ${configFile} make-token --sub demo --validity '1 day' --pull '*' --push '*' --create-cache '*'
-            chpst -b atticd ${lib.getExe cfg.package} \
-              --config ${configFile}
+            set -e
+            ${atticd} --mode check-config --config ${cfg.configFile}
+            chpst -b atticd ${atticd} --config ${cfg.configFile}
           ''
         );
     };
