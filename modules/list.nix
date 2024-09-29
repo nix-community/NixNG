@@ -47,4 +47,5 @@
     ./services/syncthing.nix
     ./services/synapse.nix
     ./services/dnsmasq.nix
+    ./services/attic.nix
 ]

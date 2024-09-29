@@ -25,6 +25,7 @@ let
       "syncthing" = ./syncthing;
       "initrd" = ./initrd;
       "dnsmasq" = ./dnsmasq;
+      "attic" = ./attic;
     };
 in
   nixpkgs.lib.mapAttrs (_: v: import v { inherit nixpkgs nglib nixng; }) examples
