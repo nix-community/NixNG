@@ -23,6 +23,18 @@ in
     settings = lib.mkOption {
       type = lib.types.submodule {
         freeformType = settingsFormat.type;
+
+        options = {
+          storage = {
+            type = lib.mkOption {
+              type = lib.types.str;
+            };
+
+            path = lib.mkOption {
+              type = lib.types.str;
+            };
+          };
+        };
       };
     };
 
@@ -43,6 +55,13 @@ in
   config = lib.mkIf cfg.enable {
     init.services.attic = {
       enabled = true;
+
+      ensureSomething.create.storageDir = lib.mkIf (cfg.settings.storage.type == "local") {
+        type = "directory";
+        mode = "0755";
+        owner = "atticd:atticd";
+        dst = cfg.settings.storage.path;
+      };
 
       script = pkgs.writeShellScript "attic-run"
         (
