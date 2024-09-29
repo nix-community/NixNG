@@ -27,7 +27,7 @@ in
         options = {
           storage = {
             type = lib.mkOption {
-              type = lib.types.str;
+              type = lib.types.enum [ "local" "s3" ];
             };
 
             path = lib.mkOption {
