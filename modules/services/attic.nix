@@ -1,7 +1,22 @@
 { pkgs, lib, nglib, config, ... }:
 let
   cfg = config.services.attic;
+  atticd = lib.getExe cfg.package;
   settingsFormat = pkgs.formats.toml { };
+
+  validatedConfigFile = pkgs.stdenvNoCC.mkDerivation {
+    name = "attic-validated.toml";
+    src = cfg.configFile;
+    dontUnpack = true;
+
+    # Even the check-config mode needs a (dummy) secret.
+    ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64 = "kONlkVtBeH1PPoc7jLo0X3xKnNzuLhwYf030ghOTCH817P6jzqotxuhzRSrlOxS/VAmb5UEDobgw21EFGk8+XA==";
+
+    buildPhase = ''
+      ${atticd} --mode check-config --config $src
+      cp $src $out
+    '';
+  };
 in
 {
   options.services.attic = {
@@ -63,18 +78,10 @@ in
         dst = cfg.settings.storage.path;
       };
 
-      script = pkgs.writeShellScript "attic-run"
-        (
-          let
-            atticd = lib.getExe cfg.package;
-          in
-          ''
-            export ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64="$(<${cfg.credentialsFile})"
-            set -e
-            ${atticd} --mode check-config --config ${cfg.configFile}
-            chpst -b atticd ${atticd} --config ${cfg.configFile}
-          ''
-        );
+      script = pkgs.writeShellScript "attic-run" ''
+        export ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64="$(<${cfg.credentialsFile})"
+        chpst -b atticd ${atticd} --config ${validatedConfigFile}
+      '';
     };
 
     environment.systemPackages = [ cfg.package ];
