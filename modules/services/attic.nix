@@ -58,6 +58,7 @@ in
         File containing the server's secret token, generated using the command `openssl rand 64 | base64 -w0`.
       '';
       type = lib.types.str;
+      default = "";
     };
 
     configFile = lib.mkOption {
@@ -76,10 +77,14 @@ in
         mode = "0755";
         owner = "atticd:atticd";
         dst = cfg.settings.storage.path;
+        persistent = true;
       };
 
       script = pkgs.writeShellScript "attic-run" ''
-        export ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64="$(<${cfg.credentialsFile})"
+        if [ -f "${cfg.credentialsFile}" ]; then
+          export ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64="$(<'${cfg.credentialsFile}')"
+        fi
+
         chpst -b atticd ${atticd} --config ${validatedConfigFile}
       '';
     };

@@ -1,6 +1,6 @@
 { nglib, nixpkgs, ... }:
 let
-  credentialsFile = "/run/attic.token";
+  credentialsFile = "/tmp/dummy";
 in
 nglib.makeSystem {
   inherit nixpkgs;
@@ -22,23 +22,23 @@ nglib.makeSystem {
 
         ensureSomething.exec."credentials" = {
           dst = credentialsFile;
+
           executable = pkgs.writers.writeBash "gen_attic_credentials.bash" ''
-            ${lib.getExe pkgs.openssl} rand 64 | base64 -w0 > ${credentialsFile}
-            export ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64="$(<${credentialsFile})"
             echo Use the following token to try out the server:
             echo '$ attic login demo http://<server>:<port> <token>'
             ${cfg.package}/bin/atticadm --config ${cfg.configFile} make-token --sub demo --validity '1 day' --pull '*' --push '*' --create-cache '*'
+            touch ${credentialsFile}
           '';
         };
       };
 
       services.attic = {
         enable = true;
-        inherit credentialsFile;
 
         settings = {
           listen = "[::]:8080";
           database.url = "sqlite:///server.db?mode=rwc";
+          token-hs256-secret-base64 = "kONlkVtBeH1PPoc7jLo0X3xKnNzuLhwYf030ghOTCH817P6jzqotxuhzRSrlOxS/VAmb5UEDobgw21EFGk8+XA==";
 
           storage = {
             type = "local";
