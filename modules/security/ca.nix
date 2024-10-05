@@ -7,7 +7,6 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { config, lib, pkgs, nglib, ... }:
-with lib;
 let
   cfg = config.security.ca;
 
@@ -19,7 +18,7 @@ let
     {
       files =
         cfg.certificateFiles ++
-        [ (builtins.toFile "extra.crt" (concatStringsSep "\n" cfg.certificates)) ];
+        [ (builtins.toFile "extra.crt" (lib.concatStringsSep "\n" cfg.certificates)) ];
       preferLocalBuild = true;
     }
     ''
@@ -28,7 +27,7 @@ let
 in
 {
   options.security.ca = {
-    certificateFiles = mkOption {
+    certificateFiles = lib.mkOption {
       description = ''
         A list of files containing trusted root certificates in PEM
         format. These are concatenated to form
@@ -36,26 +35,26 @@ in
         used by many programs that use OpenSSL, such as
         <command>curl</command> and <command>git</command>.
       '';
-      type = with types; listOf path;
+      type = with lib.types; listOf path;
       default = [ ];
     };
 
-    certificates = mkOption {
+    certificates = lib.mkOption {
       description = ''
         A list of trusted root certificates in PEM format.
       '';
-      type = with types; listOf str;
+      type = with lib.types; listOf str;
       default = [ ];
     };
 
-    certificateBlacklist = mkOption {
+    certificateBlacklist = lib.mkOption {
       description = ''
         A list of blacklisted CA certificate names that won't be imported from
         the Mozilla Trust Store into
         <filename>/etc/ssl/certs/ca-certificates.crt</filename>. Use the
         names from that file.
       '';
-      type = with types; listOf str;
+      type = with lib.types; listOf str;
       default = [ ];
     };
   };

@@ -7,7 +7,6 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, config, lib, nglib, ... }:
-with nglib; with lib;
 let
   cfg = config.services.syncthing;
 
@@ -15,43 +14,43 @@ let
 in
 {
   options.services.syncthing = {
-    enable = mkEnableOption "Enable SyncThing";
+    enable = lib.mkEnableOption "Enable SyncThing";
 
-    package = mkOption {
+    package = lib.mkOption {
       description = "syncthing package to use.";
       default = pkgs.syncthing;
-      type = types.package;
+      type = lib.types.package;
     };
 
-    config = mkOption {
+    config = lib.mkOption {
       description = ''
         Configuration options for syncthing.
       '';
-      type = format.type;
-      default = {};
+      type = lib.format.type;
+      default = { };
     };
 
-    user = mkOption {
+    user = lib.mkOption {
       description = "Syncthing user.";
-      type = types.str;
+      type = lib.types.str;
       default = "syncthing";
     };
 
-    group = mkOption {
+    group = lib.mkOption {
       description = "Syncthing group.";
-      type = types.str;
+      type = lib.types.str;
       default = "syncthing";
     };
 
-    guiAddress = mkOption {
+    guiAddress = lib.mkOption {
       description = "Syncthing GUI address";
-      type = types.str;
+      type = lib.types.str;
       default = "http://127.0.0.1:8384/";
     };
   };
 
 
-  config = mkIf cfg.enable {
+  config = lib.mkIf cfg.enable {
     init.services.syncthing = {
       enabled = true;
       script = pkgs.writeShellScript "syncthing-run"
@@ -71,9 +70,9 @@ in
         '';
     };
 
-    environment.systemPackages = with pkgs; [ cfg.package ];
+    environment.systemPackages = [ cfg.package ];
 
-    users.users.${cfg.user} = mkDefaultRec {
+    users.users.${cfg.user} = lib.mkDefaultRec {
       description = "Syncthing";
       group = cfg.group;
       createHome = false;
@@ -82,8 +81,8 @@ in
       uid = config.ids.uids.syncthing;
     };
 
-    users.groups.${cfg.group} = mkDefaultRec {
+    users.groups.${cfg.group} = lib.mkDefaultRec {
       gid = config.ids.gids.syncthing;
     };
-  }; 
+  };
 }

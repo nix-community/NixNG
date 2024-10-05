@@ -7,24 +7,23 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { lib, config, ... }:
-with lib;
 let
   cfg = config.init;
 
-  log = mkOption {
+  log = lib.mkOption {
     description = "Logging settings.";
-    type = with types; nullOr (submodule ({ config, ... }:
+    type = with lib.types; nullOr (submodule ({ config, ... }:
       {
         options = {
-          file = mkOption {
+          file = lib.mkOption {
             description = "Log to a plain file, without rotation.";
             type = nullOr (submodule {
               options = {
-                dst = mkOption {
+                dst = lib.mkOption {
                   description = "The file to which to log to.";
                   type = path;
                 };
-                rotate = mkOption {
+                rotate = lib.mkOption {
                   description = "The size after which the file should rotated in kilo bytes.";
                   type = int;
                   default = 0; # 1 MB
@@ -41,35 +40,35 @@ let
               in
               {
                 options = {
-                  type = mkOption {
+                  type = lib.mkOption {
                     description = "Syslog type, UDS, TCP, or UDP.";
                     type = enum [ "uds" "tcp" "udp" ];
                   };
-                  dst = mkOption {
+                  dst = lib.mkOption {
                     description = "The endpoint to log to, format depends on the type.";
                     type = str;
                   };
-                  time = mkOption {
+                  time = lib.mkOption {
                     description = "Whether the complete sender timestamp should be included in log messages";
                     type = bool;
                     default = false;
                   };
-                  host = mkOption {
+                  host = lib.mkOption {
                     description = "Whether the hostname should be included in log messages.";
                     type = bool;
                     default = true;
                   };
-                  timeQuality = mkOption {
+                  timeQuality = lib.mkOption {
                     description = "Whether time quality information should be included in the log messages.";
                     type = bool;
                     default = false;
                   };
-                  tag = mkOption {
+                  tag = lib.mkOption {
                     description = "Every message will be marked with this tag.";
                     type = nullOr str;
                     default = null;
                   };
-                  priority = mkOption {
+                  priority = lib.mkOption {
                     description = "Mark every message with a priority.";
                     type = nullOr str;
                     default = null;
@@ -79,9 +78,9 @@ let
                 config = {
                   dst =
                     if cfg.type == "uds" then
-                      mkDefault "/dev/log"
+                      lib.mkDefault "/dev/log"
                     else if cfg.type == "tcp" || cfg.type == "udp" then
-                      mkDefault "127.0.0.1:514"
+                      lib.mkDefault "127.0.0.1:514"
                     else
                       abort "Unknown syslog type, this should have been caught by the module system!";
                 };
@@ -93,24 +92,24 @@ let
       }));
     default = { };
   };
-  ensureSomething = mkOption {
+  ensureSomething = lib.mkOption {
     description = "Files or directories which need to exist before service is started, no overwriting though.";
     default = { };
-    type = with types;
+    type = with lib.types;
       submodule {
         options = {
-          link = mkOption {
+          link = lib.mkOption {
             type = attrsOf (submodule {
               options = {
-                src = mkOption {
+                src = lib.mkOption {
                   description = "The source of the link.";
                   type = path;
                 };
-                dst = mkOption {
+                dst = lib.mkOption {
                   description = "The destination of the link.";
                   type = path;
                 };
-                persistent = mkOption {
+                persistent = lib.mkOption {
                   description = "Whether the created something should be kept after service stop.";
                   type = bool;
                   default = false;
@@ -119,18 +118,18 @@ let
             });
             default = { };
           };
-          copy = mkOption {
+          copy = lib.mkOption {
             type = attrsOf (submodule {
               options = {
-                src = mkOption {
+                src = lib.mkOption {
                   description = "The source of the copy.";
                   type = path;
                 };
-                dst = mkOption {
+                dst = lib.mkOption {
                   description = "The destination of copy.";
                   type = path;
                 };
-                persistent = mkOption {
+                persistent = lib.mkOption {
                   description = "Whether the created something should be kept after service stop.";
                   type = bool;
                   default = false;
@@ -140,18 +139,18 @@ let
             });
             default = { };
           };
-          linkFarm = mkOption {
+          linkFarm = lib.mkOption {
             type = attrsOf (submodule {
               options = {
-                src = mkOption {
+                src = lib.mkOption {
                   description = "The source of the link farm.";
                   type = path;
                 };
-                dst = mkOption {
+                dst = lib.mkOption {
                   description = "The destination of the link farm.";
                   type = path;
                 };
-                persistent = mkOption {
+                persistent = lib.mkOption {
                   description = "Whether the created something should be kept after service stop.";
                   type = bool;
                   default = false;
@@ -160,19 +159,19 @@ let
             });
             default = { };
           };
-          exec = mkOption {
+          exec = lib.mkOption {
             description = "Execute file to create a file or directory.";
             type = attrsOf (submodule {
               options = {
-                dst = mkOption {
+                dst = lib.mkOption {
                   description = "Where should the executable output and what file or folder to check whether it should be run.";
                   type = path;
                 };
-                executable = mkOption {
+                executable = lib.mkOption {
                   description = "The path to the executable to execute. Use $out.";
                   type = path;
                 };
-                persistent = mkOption {
+                persistent = lib.mkOption {
                   description = "Whether the created something should be kept after service stop.";
                   type = bool;
                   default = false;
@@ -181,29 +180,29 @@ let
             });
             default = { };
           };
-          create = mkOption {
+          create = lib.mkOption {
             description = "Creates either an empty file or directory.";
             type = attrsOf (submodule {
               options = {
-                type = mkOption {
+                type = lib.mkOption {
                   description = "Whether to create a direcotroy or file.";
                   type = enum [ "directory" "file" ];
                 };
-                mode = mkOption {
+                mode = lib.mkOption {
                   description = "Mode to set for the new creation, if set to `null`, its up to the implementation.";
                   default = null;
                   type = nullOr str;
                 };
-                owner = mkOption {
+                owner = lib.mkOption {
                   description = "Owner of new creation.";
                   default = "root:root";
                   type = str;
                 };
-                dst = mkOption {
+                dst = lib.mkOption {
                   description = "Wheret to create it.";
                   type = path;
                 };
-                persistent = mkOption {
+                persistent = lib.mkOption {
                   description = "Whether the created something should be kept after service stop.";
                   type = bool;
                   default = false;
@@ -218,67 +217,67 @@ let
 in
 {
   options.init = {
-    type = mkOption {
+    type = lib.mkOption {
       description = "Selected init system.";
-      type = types.enum cfg.type;
+      type = lib.types.enum cfg.type;
     };
-    availableInits = mkOption {
+    availableInits = lib.mkOption {
       description = "List of available init systems.";
-      type = types.listOf types.str;
+      type = with lib.types; listOf str;
     };
-    script = mkOption {
+    script = lib.mkOption {
       description = "init script.";
-      type = types.path;
+      type = lib.types.path;
     };
-    shutdown = mkOption {
+    shutdown = lib.mkOption {
       description = "A script which successfully shuts down the system.";
-      type = types.path;
+      type = lib.types.path;
     };
-    services = mkOption {
-      type = types.attrsOf (types.submodule {
+    services = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.submodule {
         options = {
-          dependencies = mkOption {
+          dependencies = lib.mkOption {
             description = "Service dependencies";
-            type = types.listOf (types.str);
+            type = with lib.types; listOf str;
             default = [ ];
           };
 
           inherit ensureSomething log;
 
-          shutdownOnExit = mkEnableOption "Whether the init system should enter shutdown when this particular service exits";
+          shutdownOnExit = lib.mkEnableOption "Whether the init system should enter shutdown when this particular service exits";
 
-          script = mkOption {
+          script = lib.mkOption {
             description = "Service script to start the program.";
-            type = types.path;
+            type = lib.types.path;
             default = "";
           };
 
-          finish = mkOption {
+          finish = lib.mkOption {
             description = "Script to run upon service stop.";
-            type = with types; nullOr path;
+            type = with lib.types; nullOr path;
             default = null;
           };
 
-          enabled = mkOption {
+          enabled = lib.mkOption {
             description = "Whether the service should run on startup.";
-            type = types.bool;
+            type = lib.types.bool;
             default = false;
           };
 
-          environment = mkOption {
+          environment = lib.mkOption {
             description = ''
               The environment variables that will be added to the default ones prior to running <option>script</option>
               and <option>finish</option>.
             '';
-            type = with types; attrsOf (oneOf [ str int ]);
+            type = with lib.types; attrsOf (oneOf [ str int ]);
             default = { };
           };
 
-          pwd = mkOption {
+          pwd = lib.mkOption {
             description = ''
               Directory in which both <option>script</option> and <option>finish</option> will be ran.
             '';
-            type = types.str;
+            type = lib.types.str;
             default = "/var/empty";
           };
         };
@@ -290,13 +289,13 @@ in
 
   config = {
     # TODO add assertions for this module
-    assertions = flatten (mapAttrsToList
+    assertions = lib.flatten (lib.mapAttrsToList
       (n: v:
         [{
           assertion =
             let
               selectedCount =
-                (count (x: x) (mapAttrsToList (n: v: if v == null then false else true) v.log));
+                (lib.count (x: x) (lib.mapAttrsToList (n: v: if v == null then false else true) v.log));
             in
             selectedCount == 1 || selectedCount == 0;
           message = "You can only select one log type, in service ${n}.";
