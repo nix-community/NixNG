@@ -9,65 +9,97 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-24.05";
+    treefmt-nix.url = "github:numtide/treefmt-nix";
   };
 
-  outputs = { nixpkgs, self }:
+  outputs =
+    {
+      nixpkgs,
+      self,
+      treefmt-nix,
+    }:
     let
-      supportedSystems = [ "x86_64-linux" "i686-linux" "aarch64-linux" ];
+      supportedSystems = [
+        "x86_64-linux"
+        "i686-linux"
+        "aarch64-linux"
+      ];
       forAllSystems' = nixpkgs.lib.genAttrs;
       forAllSystems = forAllSystems' supportedSystems;
-      pkgsForSystem = system:
-        import nixpkgs { inherit system; overlays = [ self.overlays.default ]; };
+      pkgsForSystem =
+        system:
+        import nixpkgs {
+          inherit system;
+          overlays = [ self.overlays.default ];
+        };
 
+      treefmtEval = forAllSystems (
+        system: treefmt-nix.lib.evalModule (pkgsForSystem system) ./treefmt.nix
+      );
 
-      inherit
-        (nixpkgs.lib)
-        recurseIntoAttrs
-        ;
+      inherit (nixpkgs.lib) recurseIntoAttrs;
     in
     {
       nglib = import ./lib nixpkgs.lib;
-      examples = import ./examples { inherit nixpkgs; inherit (self) nglib; nixng = self; };
+      examples = import ./examples {
+        inherit nixpkgs;
+        inherit (self) nglib;
+        nixng = self;
+      };
       overlays.default = import ./overlay;
 
-      legacyPackages = forAllSystems (system:
+      legacyPackages = forAllSystems (
+        system:
         let
-          pkgs = import nixpkgs { inherit system; overlays = [ (import ./overlay) ]; };
+          pkgs = import nixpkgs {
+            inherit system;
+            overlays = [ (import ./overlay) ];
+          };
           lib = pkgs.lib;
         in
-        lib.genAttrs (lib.attrNames (import ./overlay null null)) (packageName: pkgs.${packageName}));
+        lib.genAttrs (lib.attrNames (import ./overlay null null)) (packageName: pkgs.${packageName})
+      );
 
-      packages = forAllSystems (system:
+      packages = forAllSystems (
+        system:
         let
           lib = nixpkgs.lib;
         in
         lib.filterAttrs (_: v: lib.isDerivation v) self.legacyPackages.${system}
       );
 
-      devShells = forAllSystems (system:
-        let pkgs = pkgsForSystem system;
-        in
-        {
-          default = pkgs.mkShell {
-            nativeBuildInputs = with pkgs;
-              [
-              ];
-          };
-        });
-
-      checks = {
-        examples = recurseIntoAttrs (nixpkgs.lib.mapAttrs (n: v: v.config.system.build.toplevel) self.examples);
-      } // forAllSystems (system:
+      devShells = forAllSystems (
+        system:
         let
           pkgs = pkgsForSystem system;
         in
         {
-          with-lib = pkgs.callPackage ./checks/with-lib.nix { inherit self; } {
-            allowed = [
-              "/doc/style_and_vocabulary.org"
-              "/checks"
-            ];
-          };
-        });
+          default = pkgs.mkShell { nativeBuildInputs = with pkgs; [ ]; };
+        }
+      );
+
+      checks =
+        {
+          formatting = forAllSystems (system: treefmtEval.${system}.config.build.check self);
+          examples = recurseIntoAttrs (
+            nixpkgs.lib.mapAttrs (n: v: v.config.system.build.toplevel) self.examples
+          );
+        }
+        // forAllSystems (
+          system:
+          let
+            pkgs = pkgsForSystem system;
+          in
+          {
+            with-lib = pkgs.callPackage ./checks/with-lib.nix { inherit self; } {
+              allowed = [
+                "/doc/style_and_vocabulary.org"
+                "/checks"
+              ];
+            };
+          }
+        );
+
+      formatter = forAllSystems (system: (treefmtEval.${system}.config.build.wrapper));
     };
 }
