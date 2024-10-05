@@ -19,6 +19,7 @@ in
   sigell = haskellPackages.callPackage ./sigell/cabal.nix { };
   systemdStandalone = callPackage ./systemd-minimal.nix { };
   systemdTmpfilesD = callPackage ./systemd-tmpfiles.d.nix { inherit (final) systemdStandalone; };
+  dinit = callPackage ./dinit.nix {};
 
   util-linuxSystemdFree = prev.util-linux.override {
     systemdSupport = false;
