@@ -72,7 +72,7 @@ in
 
     environment.systemPackages = [ cfg.package ];
 
-    users.users.${cfg.user} = lib.mkDefaultRec {
+    users.users.${cfg.user} = nglib.mkDefaultRec {
       description = "Syncthing";
       group = cfg.group;
       createHome = false;
@@ -81,7 +81,7 @@ in
       uid = config.ids.uids.syncthing;
     };
 
-    users.groups.${cfg.group} = lib.mkDefaultRec {
+    users.groups.${cfg.group} = nglib.mkDefaultRec {
       gid = config.ids.gids.syncthing;
     };
   };

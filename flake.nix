@@ -35,24 +35,25 @@
           pkgs = import nixpkgs { inherit system; overlays = [ (import ./overlay) ]; };
           lib = pkgs.lib;
         in
-          lib.genAttrs (lib.attrNames (import ./overlay null null)) (packageName: pkgs.${packageName}));
+        lib.genAttrs (lib.attrNames (import ./overlay null null)) (packageName: pkgs.${packageName}));
 
       packages = forAllSystems (system:
         let
           lib = nixpkgs.lib;
         in
-          lib.filterAttrs (_: v: lib.isDerivation v) self.legacyPackages.${system}
+        lib.filterAttrs (_: v: lib.isDerivation v) self.legacyPackages.${system}
       );
 
       devShells = forAllSystems (system:
         let pkgs = pkgsForSystem system;
         in
-          { default = pkgs.mkShell {
-              nativeBuildInputs = with pkgs;
-                [
-                ];
-            };
-          });
+        {
+          default = pkgs.mkShell {
+            nativeBuildInputs = with pkgs;
+              [
+              ];
+          };
+        });
 
       checks = {
         examples = recurseIntoAttrs (nixpkgs.lib.mapAttrs (n: v: v.config.system.build.toplevel) self.examples);
@@ -60,13 +61,13 @@
         let
           pkgs = pkgsForSystem system;
         in
-          {
-            with-lib = pkgs.callPackage ./checks/with-lib.nix { inherit self; } {
-              allowed = [
-                "/doc/style_and_vocabulary.org"
-                "/checks"
-              ];
-            };
-          });
+        {
+          with-lib = pkgs.callPackage ./checks/with-lib.nix { inherit self; } {
+            allowed = [
+              "/doc/style_and_vocabulary.org"
+              "/checks"
+            ];
+          };
+        });
     };
 }
