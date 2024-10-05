@@ -1,0 +1,25 @@
+diff --git a/src/shutdown.cc b/src/shutdown.cc
+index c9a13ab..cb1725d 100644
+--- a/src/shutdown.cc
++++ b/src/shutdown.cc
+@@ -483,20 +483,6 @@ void do_system_shutdown(shutdown_type_t shutdown_type)
+             break;
+         }
+     }
+-
+-    // perform shutdown
+-    if (do_unmount_ourself) {
+-        sub_buf.append("Turning off swap...\n");
+-        swap_off(loop, sub_buf);
+-        sub_buf.append("Unmounting disks...\n");
+-        unmount_disks(loop, sub_buf);
+-    }
+-
+-    sync();
+-    
+-    sub_buf.append("Issuing shutdown via kernel...\n");
+-    loop.poll();  // give message a chance to get to console
+-    reboot(reboot_type);
+ }
+ 
+ // Watcher for subprocess output.
