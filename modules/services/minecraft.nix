@@ -9,6 +9,9 @@
 { lib, ... }:
 {
   imports = [
-    (lib.mkRemovedOptionModule ["services" "minecraft"] "The Minecraft Forge module was removed due to being completely broken.")
+    (lib.mkRemovedOptionModule [
+      "services"
+      "minecraft"
+    ] "The Minecraft Forge module was removed due to being completely broken.")
   ];
 }

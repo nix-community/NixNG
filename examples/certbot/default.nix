@@ -11,7 +11,8 @@ nglib.makeSystem {
   inherit nixpkgs;
   system = "x86_64-linux";
   name = "nixng-certbot";
-  config = ({ config, ... }:
+  config = (
+    { config, ... }:
     {
       config = {
         dumb-init = {
@@ -26,9 +27,7 @@ nglib.makeSystem {
 
           domains = {
             "redalder.org" = {
-              extraDomains = [
-                "hydra.redalder.org"
-              ];
+              extraDomains = [ "hydra.redalder.org" ];
               webroot = "/var/www/acme";
               email = "admin@redalder.org";
             };

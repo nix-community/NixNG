@@ -6,67 +6,87 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ lib
-, writeShellScript
+{ lib, writeShellScript }:
+{
+  n,
+  s,
+  cfgInit,
 }:
-{ n, s, cfgInit }:
 writeShellScript "${n}-finish" ''
-  ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
-    with cv;
-    lib.optionalString (!cv.persistent) ''
-      if [[ -e ${dst} ]] ; then
-        echo '${n}: removing non-presistent `${dst}`'
-        rm -v ${dst}
-      fi
-    ''
-  ) s.ensureSomething.link)}
+  ${lib.concatStringsSep "\n" (
+    lib.mapAttrsToList (
+      cn: cv:
+      with cv;
+      lib.optionalString (!cv.persistent) ''
+        if [[ -e ${dst} ]] ; then
+          echo '${n}: removing non-presistent `${dst}`'
+          rm -v ${dst}
+        fi
+      ''
+    ) s.ensureSomething.link
+  )}
 
-  ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
-    with cv;
-    lib.optionalString (!cv.persistent) ''
-      if [[ -e ${dst} ]] ; then
-        echo '${n}: removing non-presistent `${dst}`'
-        rm -rv ${dst}
-      fi
-    ''
-  ) s.ensureSomething.copy)}
+  ${lib.concatStringsSep "\n" (
+    lib.mapAttrsToList (
+      cn: cv:
+      with cv;
+      lib.optionalString (!cv.persistent) ''
+        if [[ -e ${dst} ]] ; then
+          echo '${n}: removing non-presistent `${dst}`'
+          rm -rv ${dst}
+        fi
+      ''
+    ) s.ensureSomething.copy
+  )}
 
-  ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
-    abort "linkFarm is not implemented yet in runit!"
-  ) s.ensureSomething.linkFarm)}
+  ${lib.concatStringsSep "\n" (
+    lib.mapAttrsToList (
+      cn: cv: abort "linkFarm is not implemented yet in runit!"
+    ) s.ensureSomething.linkFarm
+  )}
 
-  ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
-    with cv;
-    lib.optionalString (!cv.persistent) ''
-      if [[ -e ${dst} ]] ; then
-        echo '${n}: removing non-persistent `${dst}`'
-        rm -rv '${dst}'
-      fi
-    ''
-  ) s.ensureSomething.exec)}
+  ${lib.concatStringsSep "\n" (
+    lib.mapAttrsToList (
+      cn: cv:
+      with cv;
+      lib.optionalString (!cv.persistent) ''
+        if [[ -e ${dst} ]] ; then
+          echo '${n}: removing non-persistent `${dst}`'
+          rm -rv '${dst}'
+        fi
+      ''
+    ) s.ensureSomething.exec
+  )}
 
-  ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
-    with cv;
-    lib.optionalString (!cv.persistent) ''
-      if [[ -e ${dst} ]] ; then
-        echo '${n}: removing non-persistent `${dst}`'
+  ${lib.concatStringsSep "\n" (
+    lib.mapAttrsToList (
+      cn: cv:
+      with cv;
+      lib.optionalString (!cv.persistent) ''
+        if [[ -e ${dst} ]] ; then
+          echo '${n}: removing non-persistent `${dst}`'
 
-        ${if (type == "directory") then
-          "rm -rv ${dst}"
-          else if (type == "file") then
-            ''
-              rm -v ${dst}
-            ''
-          else
-            abort "Unsupported init create type, module system should have caught this!"
-         }
-      fi
-    ''
-  ) s.ensureSomething.create)}
+          ${
+            if (type == "directory") then
+              "rm -rv ${dst}"
+            else if (type == "file") then
+              ''
+                rm -v ${dst}
+              ''
+            else
+              abort "Unsupported init create type, module system should have caught this!"
+          }
+        fi
+      ''
+    ) s.ensureSomething.create
+  )}
 
   (
     cd ${s.pwd}
-    ${lib.optionalString (s.environment != {}) "export ${lib.concatStringsSep " " (lib.mapAttrsToList (n: v: "${n}=${v}") s.environment)}"}
+    ${
+      lib.optionalString (s.environment != { })
+        "export ${lib.concatStringsSep " " (lib.mapAttrsToList (n: v: "${n}=${v}") s.environment)}"
+    }
     ${lib.optionalString (s.finish != null && !s.shutdownOnExit) "exec ${s.finish}"}
     ${lib.optionalString (s.finish != null && s.shutdownOnExit) "${s.finish}"}
   )

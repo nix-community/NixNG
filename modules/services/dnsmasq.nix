@@ -1,4 +1,10 @@
-{ pkgs, lib, nglib, config, ... }:
+{
+  pkgs,
+  lib,
+  nglib,
+  config,
+  ...
+}:
 let
   cfg = config.services.dnsmasq;
 
@@ -10,18 +16,19 @@ let
   # mkForce)
   formatKeyValue =
     name: value:
-    if value == true
-    then name
-    else if value == false
-    then "# setting `${name}` explicitly set to false"
-    else lib.generators.mkKeyValueDefault { } "=" name value;
+    if value == true then
+      name
+    else if value == false then
+      "# setting `${name}` explicitly set to false"
+    else
+      lib.generators.mkKeyValueDefault { } "=" name value;
 
   settingsFormat = pkgs.formats.keyValue {
     mkKeyValue = formatKeyValue;
     listsAsDuplicateKeys = true;
   };
-  # END Copyright (c) 2003-2024 Eelco Dolstra and the Nixpkgs/NixOS contributors
 in
+# END Copyright (c) 2003-2024 Eelco Dolstra and the Nixpkgs/NixOS contributors
 {
   options.services.dnsmasq = {
     enable = lib.mkEnableOption "dnsmasq";
@@ -41,9 +48,7 @@ in
 
     # BEGIN Copyright (c) 2003-2024 Eelco Dolstra and the Nixpkgs/NixOS contributors
     settings = lib.mkOption {
-      type = lib.types.submodule {
-        freeformType = settingsFormat.type;
-      };
+      type = lib.types.submodule { freeformType = settingsFormat.type; };
 
       default = { };
       description = ''
@@ -112,9 +117,7 @@ in
         uid = config.ids.uids.dnsmasq;
       };
 
-      users.groups.${cfg.group} = nglib.mkDefaultRec {
-        gid = config.ids.gids.dnsmasq;
-      };
+      users.groups.${cfg.group} = nglib.mkDefaultRec { gid = config.ids.gids.dnsmasq; };
     }
   );
 }

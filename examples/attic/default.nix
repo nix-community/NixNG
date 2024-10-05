@@ -7,7 +7,13 @@ nglib.makeSystem {
   system = "x86_64-linux";
   name = "nixng-attic";
 
-  config = { pkgs, lib, config, ... }:
+  config =
+    {
+      pkgs,
+      lib,
+      config,
+      ...
+    }:
     let
       cfg = config.services.attic;
     in

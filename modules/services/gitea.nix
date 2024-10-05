@@ -6,7 +6,12 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, lib, config, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 let
   cfg = config.services.gitea;
   ids = config.ids;
@@ -92,50 +97,42 @@ let
     };
   };
 
-  secretModule = { name, ... }: {
-    options = {
-      source = lib.mkOption {
-        type = lib.types.attrTag {
-          file = lib.mkOption {
-            type = lib.types.path;
-          };
+  secretModule =
+    { name, ... }:
+    {
+      options = {
+        source = lib.mkOption {
+          type = lib.types.attrTag {
+            file = lib.mkOption { type = lib.types.path; };
 
-          environment = lib.mkOption {
-            type = lib.types.str;
+            environment = lib.mkOption { type = lib.types.str; };
           };
         };
-      };
 
-      generate = lib.mkOption {
-        type = lib.types.str;
-        default = "false";
-      };
+        generate = lib.mkOption {
+          type = lib.types.str;
+          default = "false";
+        };
 
-      placeholder = lib.mkOption {
-        type = lib.types.str;
-        default = name;
+        placeholder = lib.mkOption {
+          type = lib.types.str;
+          default = name;
+        };
       };
     };
-  };
 
-  case = a: attrs:
-    attrs.${a};
+  case = a: attrs: attrs.${a};
 
-  tagCase = a: attrs:
-    attrs.${lib.head (lib.attrNames a)};
+  tagCase = a: attrs: attrs.${lib.head (lib.attrNames a)};
 
-  fromMaybe = maybe: value:
-    if maybe == null then
-      value
-    else
-      maybe;
+  fromMaybe = maybe: value: if maybe == null then value else maybe;
 
   declareSubstituteSecrets =
     secrets:
-    { targetNotFound ? "_targetNotFound_default"
-    , secretNotUsed ? "_secretNotUsed_default"
-    , secretNotFound ? "_secretNotFound_default"
-    ,
+    {
+      targetNotFound ? "_targetNotFound_default",
+      secretNotUsed ? "_secretNotUsed_default",
+      secretNotFound ? "_secretNotFound_default",
     }:
     ''
       function _targetNotFound_default() {
@@ -167,8 +164,8 @@ let
           ${targetNotFound} "$_target"
         fi
 
-        ${lib.concatMapStringsSep "\n" (secret:
-          ''
+        ${
+          lib.concatMapStringsSep "\n" (secret: ''
             local _placeholder="${secret.placeholder}"
             grep "@$_placeholder@" "$_target" || ${secretNotUsed} "$_target" "$_placeholder"
 
@@ -191,17 +188,33 @@ let
             }}
 
             sed -i "s,@${secret.placeholder}@,$_secret,g" "$_target"
-          ''
-        ) (lib.attrValues secrets)}
+          '') (lib.attrValues secrets)
+        }
       }
     '';
 in
 {
   imports = [
-    (lib.mkRemovedOptionModule [ "services" "gitea" "appName" ] "The option has been moved to <services.gitea.settings.default.appName")
-    (lib.mkRemovedOptionModule [ "services" "gitea" "runMode" ] "The option has been moved to <services.gitea.settings.default.runMode")
-    (lib.mkRemovedOptionModule [ "services" "gitea" "user" ] "The option has been moved to <services.gitea.settings.default.runUser")
-    (lib.mkRemovedOptionModule [ "services" "gitea" "configuration" ] "The option has been renamed to <services.gitea.settings>")
+    (lib.mkRemovedOptionModule [
+      "services"
+      "gitea"
+      "appName"
+    ] "The option has been moved to <services.gitea.settings.default.appName")
+    (lib.mkRemovedOptionModule [
+      "services"
+      "gitea"
+      "runMode"
+    ] "The option has been moved to <services.gitea.settings.default.runMode")
+    (lib.mkRemovedOptionModule [
+      "services"
+      "gitea"
+      "user"
+    ] "The option has been moved to <services.gitea.settings.default.runUser")
+    (lib.mkRemovedOptionModule [
+      "services"
+      "gitea"
+      "configuration"
+    ] "The option has been renamed to <services.gitea.settings>")
   ];
 
   options.services.gitea = {
@@ -264,32 +277,33 @@ in
         dst = cfg.runConfig;
       };
 
-      script = pkgs.writeShellScript "gitea-run"
-        (
-          let
-            appIni = configFormat.generate "app.ini" cfg.settings;
-          in
-          ''
-            set -x
-            export PATH=${pkgs.busybox}/bin:${pkgs.bash}/bin
+      script = pkgs.writeShellScript "gitea-run" (
+        let
+          appIni = configFormat.generate "app.ini" cfg.settings;
+        in
+        ''
+          set -x
+          export PATH=${pkgs.busybox}/bin:${pkgs.bash}/bin
 
-            cp ${appIni} ${cfg.runConfig}
-            chmod 600 ${cfg.runConfig}
-            chown ${cfg.settings.default.RUN_USER}:nogroup ${cfg.runConfig}
+          cp ${appIni} ${cfg.runConfig}
+          chmod 600 ${cfg.runConfig}
+          chown ${cfg.settings.default.RUN_USER}:nogroup ${cfg.runConfig}
 
-            ${declareSubstituteSecrets cfg.secrets { secretNotFound = "false"; }}
-            substituteSecrets ${cfg.runConfig}
-            cat ${cfg.runConfig}
+          ${declareSubstituteSecrets cfg.secrets { secretNotFound = "false"; }}
+          substituteSecrets ${cfg.runConfig}
+          cat ${cfg.runConfig}
 
-            ${lib.optionalString (cfg.package.name == pkgs.forgejo.name) ''
-              mkdir -p ${cfg.settings.server.APP_DATA_PATH}/conf
-              ln -sf ${cfg.package}/locasle ${cfg.settings.server.APP_DATA_PATH}/conf
-            ''}
+          ${lib.optionalString (cfg.package.name == pkgs.forgejo.name) ''
+            mkdir -p ${cfg.settings.server.APP_DATA_PATH}/conf
+            ln -sf ${cfg.package}/locasle ${cfg.settings.server.APP_DATA_PATH}/conf
+          ''}
 
-            export HOME=${cfg.settings.server.APP_DATA_PATH}
-            chpst -u ${cfg.settings.default.RUN_USER or "root"}:nogroup ${cfg.package}/bin/gitea -c ${cfg.runConfig}
-          ''
-        );
+          export HOME=${cfg.settings.server.APP_DATA_PATH}
+          chpst -u ${
+            cfg.settings.default.RUN_USER or "root"
+          }:nogroup ${cfg.package}/bin/gitea -c ${cfg.runConfig}
+        ''
+      );
 
       enabled = true;
     };

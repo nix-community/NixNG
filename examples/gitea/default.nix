@@ -11,7 +11,8 @@ nglib.makeSystem {
   inherit nixpkgs;
   system = "x86_64-linux";
   name = "nixng-gitea";
-  config = ({ lib, config, ... }:
+  config = (
+    { lib, config, ... }:
     {
       dumb-init = {
         enable = true;

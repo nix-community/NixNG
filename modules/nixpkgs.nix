@@ -6,7 +6,12 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ lib, config, system, ... }:
+{
+  lib,
+  config,
+  system,
+  ...
+}:
 let
   cfg = config.nixpkgs;
   inherit (lib)
@@ -15,17 +20,22 @@ let
     types
     singleton
     foldr
-  ;
+    ;
 
-  overlayType =
-    mkOptionType {
-      name = "nixpkgs-overlay";
-      description = "nixpkgs overlay";
-      check = lib.isFunction;
-      merge = lib.mergeOneOption;
-    };
+  overlayType = mkOptionType {
+    name = "nixpkgs-overlay";
+    description = "nixpkgs overlay";
+    check = lib.isFunction;
+    merge = lib.mergeOneOption;
+  };
 
-  upstreamOpts = (import "${cfg.pkgs.path}/nixos/modules/misc/nixpkgs.nix" { inherit lib; options = {}; config = {}; pkgs = {}; }).options.nixpkgs;
+  upstreamOpts =
+    (import "${cfg.pkgs.path}/nixos/modules/misc/nixpkgs.nix" {
+      inherit lib;
+      options = { };
+      config = { };
+      pkgs = { };
+    }).options.nixpkgs;
 in
 {
   options.nixpkgs = {
@@ -42,18 +52,17 @@ in
       description = ''
         Nixpkgs overlays to apply to global `pkgs`;
       '';
-      default = [];
+      default = [ ];
       type = types.listOf overlayType;
     };
   };
 
   config = {
     nixpkgs.overlays = singleton (import ../overlay);
-    _module.args.pkgs =
-      import cfg.pkgs.path {
-        inherit system;
-        overlays = config.nixpkgs.overlays;
-        config = config.nixpkgs.config;
-      };
+    _module.args.pkgs = import cfg.pkgs.path {
+      inherit system;
+      overlays = config.nixpkgs.overlays;
+      config = config.nixpkgs.config;
+    };
   };
 }

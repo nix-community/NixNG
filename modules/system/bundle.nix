@@ -6,12 +6,14 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, lib, config, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 let
-  inherit (lib)
-    mkOption
-    types
-    ;
+  inherit (lib) mkOption types;
 in
 {
   options.system.build = {
@@ -23,12 +25,9 @@ in
     };
   };
 
-  config.system.build.bundle =
-    pkgs.runCommandNoCC (config.system.name + "-bundle")
-      { }
-      ''
-        set -o pipefail
-        mkdir -p $out
-        xargs tar c < ${pkgs.writeReferencesToFile config.system.build.toplevel} | tar -xC $out/
-      '';
+  config.system.build.bundle = pkgs.runCommandNoCC (config.system.name + "-bundle") { } ''
+    set -o pipefail
+    mkdir -p $out
+    xargs tar c < ${pkgs.writeReferencesToFile config.system.build.toplevel} | tar -xC $out/
+  '';
 }

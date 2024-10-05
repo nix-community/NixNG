@@ -6,24 +6,25 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ stdenv
+{
+  stdenv,
   # Path to the nixpkgs checkout
-, path
-, meson
-, ninja
-, fetchFromGitHub
+  path,
+  meson,
+  ninja,
+  fetchFromGitHub,
 
-, python3
-, gperf
-, libcap
-, pkg-config
-, util-linux
+  python3,
+  gperf,
+  libcap,
+  pkg-config,
+  util-linux,
 
   # Required for man
-, libxslt
-, docbook_xsl
-, docbook_xml_dtd_42
-, docbook_xml_dtd_45
+  libxslt,
+  docbook_xsl,
+  docbook_xml_dtd_42,
+  docbook_xml_dtd_45,
 }:
 let
   version = "251.7";
@@ -173,7 +174,11 @@ stdenv.mkDerivation {
       patchShebangs tools test src/!(rpm)
     '';
 
-  outputs = [ "out" "man" "dev" ];
+  outputs = [
+    "out"
+    "man"
+    "dev"
+  ];
 
   doCheck = false;
 

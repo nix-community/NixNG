@@ -6,7 +6,13 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, config, lib, nglib, ... }:
+{
+  pkgs,
+  config,
+  lib,
+  nglib,
+  ...
+}:
 let
   cfg = config.services.apache2;
   runtimeConfig = "/run/cfg/apache.cfg";
@@ -33,65 +39,72 @@ in
       envsubst = lib.mkEnableOption "Run envsubst on the configuration file.";
       configuration = lib.mkOption {
         description = "Apache2 configuration";
-        type = with lib.types;
+        type =
+          with lib.types;
           let
-            self =
-              oneOf [
-                (attrsOf (oneOf [
+            self = oneOf [
+              (attrsOf (oneOf [
+                str
+                int
+                (listOf (oneOf [
                   str
                   int
-                  (listOf (oneOf [ str int (listOf (oneOf [ str int ])) ]))
-                  (attrsOf self)
+                  (listOf (oneOf [
+                    str
+                    int
+                  ]))
                 ]))
-                (listOf (oneOf [ str self ]))
-              ];
+                (attrsOf self)
+              ]))
+              (listOf (oneOf [
+                str
+                self
+              ]))
+            ];
           in
           self // { description = "loop breaker"; };
       };
     };
   };
 
+  config = lib.mkIf cfg.enable {
+    init.services.apache2 =
+      let
+        config = pkgs.writeText "apache2.cfg" (toApache cfg.configuration);
+      in
+      {
+        script = pkgs.writeShellScript "apache2-run" (
+          if cfg.envsubst then
+            ''
+              export PATH=${pkgs.envsubst}/bin:$PATH
 
-  config = lib.mkIf cfg.enable
-    {
-      init.services.apache2 =
-        let
-          config = pkgs.writeText "apache2.cfg" (toApache cfg.configuration);
-        in
-        {
-          script = pkgs.writeShellScript "apache2-run"
-            (if cfg.envsubst then
-              ''
-                export PATH=${pkgs.envsubst}/bin:$PATH
+              mkdir -p /run/cfg
+              install -o www-data -g www-data -m 0440 /dev/null ${runtimeConfig}
+              envsubst < ${config} > ${runtimeConfig}
 
-                mkdir -p /run/cfg
-                install -o www-data -g www-data -m 0440 /dev/null ${runtimeConfig}
-                envsubst < ${config} > ${runtimeConfig}
-
-                HOME=~www-data ${cfg.package}/bin/httpd \
-                  -f ${runtimeConfig} -DFOREGROUND 2>&1
-              ''
-            else
-              ''
-                HOME=~www-data ${cfg.package}/bin/httpd \
-                  -f ${config} -DFOREGROUND 2>&1
-              '');
-          enabled = true;
-        };
-
-      environment.systemPackages = [ cfg.package ];
-
-      users.users."www-data" = lib.mkIf cfg.createUserGroup {
-        description = "Apache HTTPD";
-        group = "www-data";
-        createHome = false;
-        home = "/var/empty";
-        useDefaultShell = true;
-        uid = config.ids.uids.www-data;
+              HOME=~www-data ${cfg.package}/bin/httpd \
+                -f ${runtimeConfig} -DFOREGROUND 2>&1
+            ''
+          else
+            ''
+              HOME=~www-data ${cfg.package}/bin/httpd \
+                -f ${config} -DFOREGROUND 2>&1
+            ''
+        );
+        enabled = true;
       };
 
-      users.groups."www-data" = lib.mkIf cfg.createUserGroup {
-        gid = config.ids.gids.www-data;
-      };
+    environment.systemPackages = [ cfg.package ];
+
+    users.users."www-data" = lib.mkIf cfg.createUserGroup {
+      description = "Apache HTTPD";
+      group = "www-data";
+      createHome = false;
+      home = "/var/empty";
+      useDefaultShell = true;
+      uid = config.ids.uids.www-data;
     };
+
+    users.groups."www-data" = lib.mkIf cfg.createUserGroup { gid = config.ids.gids.www-data; };
+  };
 }

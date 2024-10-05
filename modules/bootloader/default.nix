@@ -17,31 +17,36 @@ let
     "xz"
     "lzo"
     "lz4"
-  ]
-    (algo: "CONFIG_RD_${lib.toUpper algo}");
+  ] (algo: "CONFIG_RD_${lib.toUpper algo}");
 
-  filesystems = lib.genAttrs [
-    "ext4"
-    "ext3"
-    "vfat"
-    "xfs"
-    "btrfs"
-    "f2fs"
-    "zfs"
-  ]
-    (fs:
-      if fs == "zfs" then
-        throw "Not supported :) would need a patch"
-      else
-        "CONFIG_${lib.toUpper fs}_FS"
-    );
+  filesystems =
+    lib.genAttrs
+      [
+        "ext4"
+        "ext3"
+        "vfat"
+        "xfs"
+        "btrfs"
+        "f2fs"
+        "zfs"
+      ]
+      (
+        fs:
+        if fs == "zfs" then throw "Not supported :) would need a patch" else "CONFIG_${lib.toUpper fs}_FS"
+      );
 in
 {
   options.bootloader = {
     enable = lib.mkEnableOption "Enable the bootloader";
     kernelExtraConfig = lib.mkOption {
       description = "";
-      type = with lib.types; attrsOf (enum [ "y" "n" "m" ]);
+      type =
+        with lib.types;
+        attrsOf (enum [
+          "y"
+          "n"
+          "m"
+        ]);
       default = { };
     };
 
@@ -59,17 +64,17 @@ in
   };
 
   config.bootloader = lib.mkIf cfg.enable {
-    kernelExtraConfig =
-      (builtins.listToAttrs
-        (map
-          (algo:
-            { name = initrdAlgos."${algo}"; value = "y"; }
-          )
-          cfg.initrdCompression
-        ++ map
-          (fs:
-            { name = filesystems."${fs}"; value = "y"; }
-          )
-          cfg.filesystems));
+    kernelExtraConfig = (
+      builtins.listToAttrs (
+        map (algo: {
+          name = initrdAlgos."${algo}";
+          value = "y";
+        }) cfg.initrdCompression
+        ++ map (fs: {
+          name = filesystems."${fs}";
+          value = "y";
+        }) cfg.filesystems
+      )
+    );
   };
 }

@@ -10,19 +10,22 @@
 # Mozilla Public License, v. 2.0, for which the following copyright applies:
 #   Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
 
-{ pkgs, lib, config, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 let
   cfg = config.services.hydra;
-
 
   # BEGIN Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
   baseDir = "/var/lib/hydra";
 
-  hydraEnv =
-    {
-      HYDRA_CONFIG = "${baseDir}/hydra.conf";
-      HYDRA_DATA = "${baseDir}";
-    };
+  hydraEnv = {
+    HYDRA_CONFIG = "${baseDir}/hydra.conf";
+    HYDRA_DATA = "${baseDir}";
+  };
 
   env =
     {
@@ -30,18 +33,23 @@ let
       SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt";
       PGPASSFILE = "${baseDir}/pgpass";
       # NIX_REMOTE_SYSTEMS = concatStringsSep ":" cfg.buildMachinesFiles;
-    } // lib.optionalAttrs (cfg.smtpHost != null) {
+    }
+    // lib.optionalAttrs (cfg.smtpHost != null) {
       EMAIL_SENDER_TRANSPORT = "SMTP";
       EMAIL_SENDER_TRANSPORT_host = cfg.smtpHost;
-    } // hydraEnv // cfg.extraEnv;
+    }
+    // hydraEnv
+    // cfg.extraEnv;
 
-  serverEnv = env //
-    {
+  serverEnv =
+    env
+    // {
       HYDRA_TRACKER = cfg.tracker;
       XDG_CACHE_HOME = "${baseDir}/www/.cache";
       COLUMNS = "80";
       PGPASSFILE = "${baseDir}/pgpass-www"; # grrr
-    } // (lib.optionalAttrs cfg.debugServer { DBIC_TRACE = "1"; });
+    }
+    // (lib.optionalAttrs cfg.debugServer { DBIC_TRACE = "1"; });
 
   localDB = "dbi:Pg:dbname=hydra;user=hydra;";
 
@@ -49,7 +57,9 @@ let
 
   hydra-package =
     let
-      makeWrapperArgs = lib.concatStringsSep " " (lib.mapAttrsToList (key: value: "--set \"${key}\" \"${value}\"") hydraEnv);
+      makeWrapperArgs = lib.concatStringsSep " " (
+        lib.mapAttrsToList (key: value: "--set \"${key}\" \"${value}\"") hydraEnv
+      );
     in
     pkgs.buildEnv rec {
       name = "hydra-env";
@@ -69,11 +79,12 @@ let
                 rm -f "$out/bin/$prg"
                 if [ -x "$prg" ]; then
                   makeWrapper "$path/bin/$prg" "$out/bin/$prg" ${makeWrapperArgs} \
-                    ${if cfg.dbiFile == null then
+                    ${
+                      if cfg.dbiFile == null then
                         ''--set HYDRA_DBI '${localDB}' ''
                       else
                         ''--run 'export HYDRA_DBI=$(cat "${cfg.dbiFile}")' ''
-                     }
+                    }
                 fi
               fi
             done
@@ -85,32 +96,24 @@ let
 
   parser =
     let
-      valToString = v:
+      valToString =
+        v:
         if lib.isString v then
           "${v}"
         else if lib.isInt v then
           "${toString v}"
         else if lib.isBool v then
-          if v then
-            "true"
-          else
-            "false"
+          if v then "true" else "false"
         else if lib.isList v then
           lib.concatMapStringsSep " " (x: valToString x) v
         else
           abort "Invalid config, module system should have caught this!";
     in
-    config:
-    lib.concatStringsSep "\n" (lib.mapAttrsToList
-      (n: v:
-        "${n} = ${valToString v}"
-      )
-      config);
+    config: lib.concatStringsSep "\n" (lib.mapAttrsToList (n: v: "${n} = ${valToString v}") config);
 in
 {
   options.services.hydra = {
     enable = lib.mkEnableOption "Enable HydraCI";
-
 
     # BEGIN Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
     package = lib.mkOption {
@@ -215,7 +218,10 @@ in
     buildMachinesFiles = lib.mkOption {
       type = with lib.types; listOf path;
       default = "/etc/nix/machines"; # optional (config.nix.buildMachines != [])
-      example = [ "/etc/nix/machines" "/var/lib/hydra/provisioner/machines" ];
+      example = [
+        "/etc/nix/machines"
+        "/var/lib/hydra/provisioner/machines"
+      ];
       description = "List of files containing build machines.";
     };
 
@@ -256,7 +262,18 @@ in
     };
 
     config = lib.mkOption {
-      type = with lib.types; attrsOf (oneOf [ int bool str (listOf (oneOf [ int bool str ])) ]);
+      type =
+        with lib.types;
+        attrsOf (oneOf [
+          int
+          bool
+          str
+          (listOf (oneOf [
+            int
+            bool
+            str
+          ]))
+        ]);
       description = ''
         Hydra configuration
       '';
@@ -270,32 +287,29 @@ in
       gid = config.ids.gids.hydra;
     };
 
-    users.users.hydra =
-      {
-        description = "Hydra";
-        group = "hydra";
-        createHome = true;
-        home = baseDir;
-        useDefaultShell = true;
-        uid = config.ids.uids.hydra;
-      };
+    users.users.hydra = {
+      description = "Hydra";
+      group = "hydra";
+      createHome = true;
+      home = baseDir;
+      useDefaultShell = true;
+      uid = config.ids.uids.hydra;
+    };
 
-    users.users.hydra-queue-runner =
-      {
-        description = "Hydra queue runner";
-        group = "hydra";
-        useDefaultShell = true;
-        home = "${baseDir}/queue-runner"; # really only to keep SSH happy
-        uid = config.ids.uids.hydra-queue-runner;
-      };
+    users.users.hydra-queue-runner = {
+      description = "Hydra queue runner";
+      group = "hydra";
+      useDefaultShell = true;
+      home = "${baseDir}/queue-runner"; # really only to keep SSH happy
+      uid = config.ids.uids.hydra-queue-runner;
+    };
 
-    users.users.hydra-www =
-      {
-        description = "Hydra web server";
-        group = "hydra";
-        useDefaultShell = true;
-        uid = config.ids.uids.hydra-www;
-      };
+    users.users.hydra-www = {
+      description = "Hydra web server";
+      group = "hydra";
+      useDefaultShell = true;
+      uid = config.ids.uids.hydra-www;
+    };
 
     nix = {
       daemon = true;
@@ -328,44 +342,54 @@ in
           environment = env;
           jobs =
             let
-              hydra-update-gc-roots = pkgs.writeShellScript "hydra-update-gc-roots"
-                ''
-                  export PATH=${lib.makeBinPath [ pkgs.busybox pkgs.runit ]}:$PATH
+              hydra-update-gc-roots = pkgs.writeShellScript "hydra-update-gc-roots" ''
+                export PATH=${
+                  lib.makeBinPath [
+                    pkgs.busybox
+                    pkgs.runit
+                  ]
+                }:$PATH
 
-                  sv -c -w 0 once hydra-init
-                  while [[ ! -e ${baseDir}/.init-hydra ]]; do
-                    sleep 1
-                  done
+                sv -c -w 0 once hydra-init
+                while [[ ! -e ${baseDir}/.init-hydra ]]; do
+                  sleep 1
+                done
 
-                  ${hydra-package}/bin/hydra-update-gc-roots hydra-update-gc-roots
-                '';
+                ${hydra-package}/bin/hydra-update-gc-roots hydra-update-gc-roots
+              '';
             in
-            [
-              "15 2,14 * * * hydra ${hydra-update-gc-roots}"
-            ];
+            [ "15 2,14 * * * hydra ${hydra-update-gc-roots}" ];
         };
 
         hydra-support = {
           jobs =
             let
-              hydra-check-space = pkgs.writeShellScript "hydra-check-space"
-                ''
-                  export PATH=${lib.makeBinPath [ pkgs.busybox pkgs.runit ]}:$PATH
+              hydra-check-space = pkgs.writeShellScript "hydra-check-space" ''
+                export PATH=${
+                  lib.makeBinPath [
+                    pkgs.busybox
+                    pkgs.runit
+                  ]
+                }:$PATH
 
-                  if [ $(($(stat -f -c '%a' /nix/store) * $(stat -f -c '%S' /nix/store))) -lt $((${toString cfg.minimumDiskFree} * 1024**3)) ]; then
-                    echo "stopping Hydra queue runner due to lack of free space..."
-                    sv stop hydra-queue-runner
-                  fi
-                  if [ $(($(stat -f -c '%a' /nix/store) * $(stat -f -c '%S' /nix/store))) -lt $((${toString cfg.minimumDiskFreeEvaluator} * 1024**3)) ]; then
-                    echo "stopping Hydra evaluator due to lack of free space..."
-                    sv stop hydra-evaluator
-                  fi
-                '';
-              hydra-compress-logs = pkgs.writeShellScript "hydra-compress-logs"
-                ''
-                  export PATH=${lib.makeBinPath [ pkgs.bzip2 pkgs.busybox ]}:$PATH
-                  find /var/lib/hydra/build-logs -type f -name "*.drv" -mtime +3 -size +0c | xargs -r bzip2 -v -f
-                '';
+                if [ $(($(stat -f -c '%a' /nix/store) * $(stat -f -c '%S' /nix/store))) -lt $((${toString cfg.minimumDiskFree} * 1024**3)) ]; then
+                  echo "stopping Hydra queue runner due to lack of free space..."
+                  sv stop hydra-queue-runner
+                fi
+                if [ $(($(stat -f -c '%a' /nix/store) * $(stat -f -c '%S' /nix/store))) -lt $((${toString cfg.minimumDiskFreeEvaluator} * 1024**3)) ]; then
+                  echo "stopping Hydra evaluator due to lack of free space..."
+                  sv stop hydra-evaluator
+                fi
+              '';
+              hydra-compress-logs = pkgs.writeShellScript "hydra-compress-logs" ''
+                export PATH=${
+                  lib.makeBinPath [
+                    pkgs.bzip2
+                    pkgs.busybox
+                  ]
+                }:$PATH
+                find /var/lib/hydra/build-logs -type f -name "*.drv" -mtime +3 -size +0c | xargs -r bzip2 -v -f
+              '';
             in
             [
               "*/2 * * * * root ${hydra-check-space}"
@@ -409,7 +433,8 @@ in
 
       hydra-server =
         let
-          hydraCmd = "${hydra-package}/bin/hydra-server hydra-server -f -h '${cfg.listenHost}' "
+          hydraCmd =
+            "${hydra-package}/bin/hydra-server hydra-server -f -h '${cfg.listenHost}' "
             + "-p ${toString cfg.port} --max_spare_servers 5 --max_servers 25 "
             + "--max_requests 100 ${lib.optionalString cfg.debugServer "-d"}";
         in
@@ -426,68 +451,76 @@ in
           enabled = true;
         };
 
-      hydra-queue-runner =
-        {
-          environment = env // {
-            PGPASSFILE = "${baseDir}/pgpass-queue-runner"; # grrr
-            IN_SYSTEMD = "0"; # to get log severity levels
-          };
-          pwd = "${baseDir}/queue-runner";
-          script = pkgs.writeShellScript "hydra-queue-runner" ''
-            export PATH=${lib.makeBinPath [ hydra-package pkgs.nettools pkgs.openssh pkgs.bzip2 config.nix.package ]}:$PATH
-
-            sv -v -w 0 once hydra-init
-            [[ ! -e ${baseDir}/.init-hydra ]] && exit 1
-
-            export PATH=${pkgs.nettools}/bin:$PATH # Hydra runs some variant of `hostname --fqdn`, which BusyBox doesn't support
-
-            HOME=~hydra-queue-runner LOGNAME=hydra-queue-runner chpst ${lib.optionalString cfg.adjustNiceness "-n +5"} -b hydra-queue-runner -u hydra-queue-runner:hydra ${hydra-package}/bin/hydra-queue-runner -v
-            HOME=~hydra-queue-runner LOGNAME=hydra-queue-runner chpst ${lib.optionalString cfg.adjustNiceness "-n +5"} -u hydra-queue-runner:hydra ${hydra-package}/bin/hydra-queue-runner --unlock
-          '';
-          enabled = true;
+      hydra-queue-runner = {
+        environment = env // {
+          PGPASSFILE = "${baseDir}/pgpass-queue-runner"; # grrr
+          IN_SYSTEMD = "0"; # to get log severity levels
         };
+        pwd = "${baseDir}/queue-runner";
+        script = pkgs.writeShellScript "hydra-queue-runner" ''
+          export PATH=${
+            lib.makeBinPath [
+              hydra-package
+              pkgs.nettools
+              pkgs.openssh
+              pkgs.bzip2
+              config.nix.package
+            ]
+          }:$PATH
 
-      hydra-evaluator =
-        {
-          environment = env;
-          pwd = baseDir;
-          script = pkgs.writeShellScript "hydra-evaluator" ''
-            export PATH=${with pkgs; lib.makeBinPath [ hydra-package nettools jq ]}:$PATH
+          sv -v -w 0 once hydra-init
+          [[ ! -e ${baseDir}/.init-hydra ]] && exit 1
 
-            sv -v -w 0 once hydra-init
-            [[ ! -e ${baseDir}/.init-hydra ]] && exit 1
+          export PATH=${pkgs.nettools}/bin:$PATH # Hydra runs some variant of `hostname --fqdn`, which BusyBox doesn't support
 
-            export PATH=${pkgs.nettools}/bin:$PATH # Hydra runs some variant of `hostname --fqdn`, which BusyBox doesn't support
-            HOME=~hydra exec chpst ${lib.optionalString cfg.adjustNiceness "-n +5"} -b hydra-evaluator -u hydra:hydra ${hydra-package}/bin/hydra-evaluator
-          '';
-          enabled = true;
-        };
+          HOME=~hydra-queue-runner LOGNAME=hydra-queue-runner chpst ${lib.optionalString cfg.adjustNiceness "-n +5"} -b hydra-queue-runner -u hydra-queue-runner:hydra ${hydra-package}/bin/hydra-queue-runner -v
+          HOME=~hydra-queue-runner LOGNAME=hydra-queue-runner chpst ${lib.optionalString cfg.adjustNiceness "-n +5"} -u hydra-queue-runner:hydra ${hydra-package}/bin/hydra-queue-runner --unlock
+        '';
+        enabled = true;
+      };
+
+      hydra-evaluator = {
+        environment = env;
+        pwd = baseDir;
+        script = pkgs.writeShellScript "hydra-evaluator" ''
+          export PATH=${
+            with pkgs;
+            lib.makeBinPath [
+              hydra-package
+              nettools
+              jq
+            ]
+          }:$PATH
+
+          sv -v -w 0 once hydra-init
+          [[ ! -e ${baseDir}/.init-hydra ]] && exit 1
+
+          export PATH=${pkgs.nettools}/bin:$PATH # Hydra runs some variant of `hostname --fqdn`, which BusyBox doesn't support
+          HOME=~hydra exec chpst ${lib.optionalString cfg.adjustNiceness "-n +5"} -b hydra-evaluator -u hydra:hydra ${hydra-package}/bin/hydra-evaluator
+        '';
+        enabled = true;
+      };
     };
-
 
     # BEGIN Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
     services.postgresql.enable = lib.mkIf haveLocalDB true;
 
-    services.postgresql.identMap = lib.optionalString haveLocalDB
-      ''
-        hydra-users hydra hydra
-        hydra-users hydra-queue-runner hydra
-        hydra-users hydra-www hydra
-        hydra-users root hydra
-        # The postgres user is used to create the pg_trgm extension for the hydra database
-        hydra-users postgres postgres
-      '';
+    services.postgresql.identMap = lib.optionalString haveLocalDB ''
+      hydra-users hydra hydra
+      hydra-users hydra-queue-runner hydra
+      hydra-users hydra-www hydra
+      hydra-users root hydra
+      # The postgres user is used to create the pg_trgm extension for the hydra database
+      hydra-users postgres postgres
+    '';
 
-    services.postgresql.authentication = lib.optionalString haveLocalDB
-      ''
-        local hydra all ident map=hydra-users
-      '';
+    services.postgresql.authentication = lib.optionalString haveLocalDB ''
+      local hydra all ident map=hydra-users
+    '';
     # END Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
 
     services.postgresql.ensureDatabases = lib.mkIf haveLocalDB [ "hydra" ];
-    services.postgresql.ensureExtensions = lib.mkIf haveLocalDB {
-      "pg_trgm" = [ "hydra" ];
-    };
+    services.postgresql.ensureExtensions = lib.mkIf haveLocalDB { "pg_trgm" = [ "hydra" ]; };
     services.postgresql.ensureUsers = lib.mkIf haveLocalDB [
       {
         name = "hydra";

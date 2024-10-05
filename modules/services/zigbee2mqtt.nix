@@ -6,16 +6,21 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, config, lib, nglib, ... }:
+{
+  pkgs,
+  config,
+  lib,
+  nglib,
+  ...
+}:
 let
   cfg = config.services.zigbee2mqtt;
   format = pkgs.formats.yaml { };
 
-  configDir = pkgs.runCommandNoCC "zigbee2mqtt-config-dir" { }
-    ''
-      mkdir -p $out
-      ln -s ${format.generate "configuration.yaml" cfg.config} $out/configuration.yaml
-    '';
+  configDir = pkgs.runCommandNoCC "zigbee2mqtt-config-dir" { } ''
+    mkdir -p $out
+    ln -s ${format.generate "configuration.yaml" cfg.config} $out/configuration.yaml
+  '';
 in
 {
   options.services.zigbee2mqtt = {
@@ -53,30 +58,24 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    services.zigbee2mqtt.config = nglib.mkDefaultRec
-      {
-        http.server_port = "8123";
-      };
+    services.zigbee2mqtt.config = nglib.mkDefaultRec { http.server_port = "8123"; };
 
     init.services.zigbee2mqtt = {
-      script = pkgs.writeShellScript "zigbee2mqtt-run"
-        ''
-          mkdir -p /var/zigbee2mqtt/
-          cp '${configDir}'/* /var/zigbee2mqtt/
-          ${lib.optionalString cfg.envsubst
-            ''
-              rm /var/zigbee2mqtt/configuration.yaml
-              ${pkgs.envsubst}/bin/envsubst \
-                < '${configDir}/configuration.yaml' \
-                > /var/zigbee2mqtt/configuration.yaml
-            ''
-          }
+      script = pkgs.writeShellScript "zigbee2mqtt-run" ''
+        mkdir -p /var/zigbee2mqtt/
+        cp '${configDir}'/* /var/zigbee2mqtt/
+        ${lib.optionalString cfg.envsubst ''
+          rm /var/zigbee2mqtt/configuration.yaml
+          ${pkgs.envsubst}/bin/envsubst \
+            < '${configDir}/configuration.yaml' \
+            > /var/zigbee2mqtt/configuration.yaml
+        ''}
 
-          chown -R ${cfg.user}:${cfg.group} /var/zigbee2mqtt/
-          chmod -R u=rwX,g=r-X,o= /var/zigbee2mqtt/
+        chown -R ${cfg.user}:${cfg.group} /var/zigbee2mqtt/
+        chmod -R u=rwX,g=r-X,o= /var/zigbee2mqtt/
 
-          ZIGBEE2MQTT_DATA="/var/zigbee2mqtt/" chpst -u ${cfg.user}:${cfg.group} -b zigbee2mqtt ${cfg.package}/bin/zigbee2mqtt
-        '';
+        ZIGBEE2MQTT_DATA="/var/zigbee2mqtt/" chpst -u ${cfg.user}:${cfg.group} -b zigbee2mqtt ${cfg.package}/bin/zigbee2mqtt
+      '';
       enabled = true;
     };
 
@@ -91,8 +90,6 @@ in
       uid = config.ids.uids.zigbee2mqtt;
     };
 
-    users.groups.${cfg.group} = nglib.mkDefaultRec {
-      gid = config.ids.gids.zigbee2mqtt;
-    };
+    users.groups.${cfg.group} = nglib.mkDefaultRec { gid = config.ids.gids.zigbee2mqtt; };
   };
 }

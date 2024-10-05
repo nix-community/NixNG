@@ -6,12 +6,17 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ nglib, nixpkgs, nixng }:
+{
+  nglib,
+  nixpkgs,
+  nixng,
+}:
 nglib.makeSystem {
   inherit nixpkgs;
   system = "x86_64-linux";
   name = "nixng-gitea-sane";
-  config = ({ lib, config, ... }:
+  config = (
+    { lib, config, ... }:
     {
       dumb-init = {
         enable = true;
@@ -63,7 +68,7 @@ nglib.makeSystem {
           };
         };
 
-        settings = {};
+        settings = { };
       };
     }
   );

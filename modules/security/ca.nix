@@ -6,24 +6,29 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ config, lib, pkgs, nglib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  nglib,
+  ...
+}:
 let
   cfg = config.security.ca;
 
-  cacertPackage = pkgs.cacert.override {
-    blacklist = cfg.certificateBlacklist;
-  };
+  cacertPackage = pkgs.cacert.override { blacklist = cfg.certificateBlacklist; };
 
-  caCertificates = pkgs.runCommand "ca-certificates.crt"
-    {
-      files =
-        cfg.certificateFiles ++
-        [ (builtins.toFile "extra.crt" (lib.concatStringsSep "\n" cfg.certificates)) ];
-      preferLocalBuild = true;
-    }
-    ''
-      cat $files > $out
-    '';
+  caCertificates =
+    pkgs.runCommand "ca-certificates.crt"
+      {
+        files = cfg.certificateFiles ++ [
+          (builtins.toFile "extra.crt" (lib.concatStringsSep "\n" cfg.certificates))
+        ];
+        preferLocalBuild = true;
+      }
+      ''
+        cat $files > $out
+      '';
 in
 {
   options.security.ca = {

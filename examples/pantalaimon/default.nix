@@ -11,7 +11,8 @@ nglib.makeSystem {
   inherit nixpkgs;
   system = "x86_64-linux";
   name = "nixng-pantalaimon";
-  config = ({ pkgs, ... }:
+  config = (
+    { pkgs, ... }:
     {
       dumb-init = {
         enable = true;
@@ -24,8 +25,7 @@ nglib.makeSystem {
       services.pantalaimon = {
         enable = true;
 
-        package = (pkgs.pantalaimon.override
-          { enableDbusUi = false; }).overrideAttrs (old: {
+        package = (pkgs.pantalaimon.override { enableDbusUi = false; }).overrideAttrs (old: {
           version = "0.10.2";
           src = pkgs.fetchFromGitHub {
             owner = "matrix-org";
@@ -37,21 +37,20 @@ nglib.makeSystem {
         });
 
         config = {
-          Default =
-            {
-              LogLevel = "Debug";
-              SSL = "True";
-              Notifications = "Off";
-            };
+          Default = {
+            LogLevel = "Debug";
+            SSL = "True";
+            Notifications = "Off";
+          };
 
-          Clockwork =
-            {
-              Homeserver = "https://matrix.org";
-              ListenAddress = "0.0.0.0";
-              ListenPort = 80;
-              SSL = "False";
-            };
+          Clockwork = {
+            Homeserver = "https://matrix.org";
+            ListenAddress = "0.0.0.0";
+            ListenPort = 80;
+            SSL = "False";
+          };
         };
       };
-    });
+    }
+  );
 }

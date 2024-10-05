@@ -11,15 +11,14 @@ nglib.makeSystem {
   inherit nixpkgs;
   system = "x86_64-linux";
   name = "nixng-postfix";
-  config = ({ pkgs, config, ... }:
+  config = (
+    { pkgs, config, ... }:
     let
-      pgsql = cfg:
-        "pgsql:" +
-        pkgs.writeText "pgsql-virtual-mailbox-domains.cf"
-          (nglib.generators.postfix.toMainCnf cfg);
-      dovecotExt = name: cfg:
-        pkgs.writeText (name + ".conf.ext")
-          (nglib.generators.toDovecot cfg);
+      pgsql =
+        cfg:
+        "pgsql:"
+        + pkgs.writeText "pgsql-virtual-mailbox-domains.cf" (nglib.generators.postfix.toMainCnf cfg);
+      dovecotExt = name: cfg: pkgs.writeText (name + ".conf.ext") (nglib.generators.toDovecot cfg);
     in
     {
       config = {
@@ -74,8 +73,7 @@ nglib.makeSystem {
           package = pkgs.postgresql_12;
 
           config = {
-            unix_socket_directories =
-              "/run/postgresql/, /var/spool/postfix/run/postgresql/";
+            unix_socket_directories = "/run/postgresql/, /var/spool/postfix/run/postgresql/";
           };
 
           initialScript = pkgs.writeText "init.sql" ''
@@ -121,15 +119,16 @@ nglib.makeSystem {
               ('1','webmaster@example.org','[password-hash]');
           '';
           ensureDatabases = [ "mailserver" ];
-          ensureUsers =
-            [{
+          ensureUsers = [
+            {
               name = "dovecot";
               ensurePermissions = { };
             }
-              {
-                name = "postfix";
-                ensurePermissions = { };
-              }];
+            {
+              name = "postfix";
+              ensurePermissions = { };
+            }
+          ];
         };
 
         services.socklog = {
@@ -139,11 +138,10 @@ nglib.makeSystem {
 
         services.dovecot = {
           enable = true;
-          package = pkgs.dovecot.override
-            {
-              withSQLite = false;
-              withPgSQL = true;
-            };
+          package = pkgs.dovecot.override {
+            withSQLite = false;
+            withPgSQL = true;
+          };
 
           config = {
             # auth
@@ -188,120 +186,109 @@ nglib.makeSystem {
 
             passdb."" = {
               driver = "sql";
-              args = dovecotExt "dovecot-sql"
-                {
-                  driver = "pgsql";
-                  connect = "host=/run/postgresql dbname=mailserver user=dovecot";
-                  default_pass_scheme = "SHA512-CRYPT";
-                  password_query =
-                    ''
-                      SELECT email AS user, password, \
-                      'vmail' AS userdb_uid, 'vmail' AS userdb_gid, \
-                      CONCAT('/var/mail/vhosts/domain.com/',SPLIT_PART(email,'@',1)) AS userdb_home, \
-                      CONCAT('*:storage=', quota) AS userdb_quota_rule \
-                      FROM virtual_users WHERE email='%u';
-                    '';
-                  user_query =
-                    ''
-                      SELECT CONCAT('/var/mail/vhosts/domain.com/',SPLIT_PART(email,'@',1)) AS home, \
-                      'vmail' AS uid, 'vmail' AS gid, CONCAT('*:storage=', quota) AS quota_rule \
-                      FROM virtual_users WHERE email='%u';
-                      iterate_query = SELECT SPLIT_PART(email,'@',1) AS username, \
-                      SPLIT_PART(email,'@',2) AS domain \
-                      FROM virtual_user;
-                    '';
-                };
+              args = dovecotExt "dovecot-sql" {
+                driver = "pgsql";
+                connect = "host=/run/postgresql dbname=mailserver user=dovecot";
+                default_pass_scheme = "SHA512-CRYPT";
+                password_query = ''
+                  SELECT email AS user, password, \
+                  'vmail' AS userdb_uid, 'vmail' AS userdb_gid, \
+                  CONCAT('/var/mail/vhosts/domain.com/',SPLIT_PART(email,'@',1)) AS userdb_home, \
+                  CONCAT('*:storage=', quota) AS userdb_quota_rule \
+                  FROM virtual_users WHERE email='%u';
+                '';
+                user_query = ''
+                  SELECT CONCAT('/var/mail/vhosts/domain.com/',SPLIT_PART(email,'@',1)) AS home, \
+                  'vmail' AS uid, 'vmail' AS gid, CONCAT('*:storage=', quota) AS quota_rule \
+                  FROM virtual_users WHERE email='%u';
+                  iterate_query = SELECT SPLIT_PART(email,'@',1) AS username, \
+                  SPLIT_PART(email,'@',2) AS domain \
+                  FROM virtual_user;
+                '';
+              };
             };
 
             userdb."" = {
               driver = "sql";
-              args = dovecotExt "dovecot-sql"
-                {
-                  driver = "pgsql";
-                  connect = "host=/run/postgresql dbname=mailserver user=dovecot";
-                  default_pass_scheme = "SHA512-CRYPT";
-                  password_query =
-                    ''
-                      SELECT email AS user, password, \
-                      'vmail' AS userdb_uid, 'vmail' AS userdb_gid, \
-                      CONCAT('/var/mail/vhosts/domain.com/',SPLIT_PART(email,'@',1)) AS userdb_home, \
-                      CONCAT('*:storage=', quota) AS userdb_quota_rule \
-                      FROM virtual_users WHERE email='%u';
-                    '';
-                  user_query =
-                    ''
-                      SELECT CONCAT('/var/mail/vhosts/domain.com/',SPLIT_PART(email,'@',1)) AS home, \
-                      'vmail' AS uid, 'vmail' AS gid, CONCAT('*:storage=', quota) AS quota_rule \
-                      FROM virtual_users WHERE email='%u';
-                      iterate_query = SELECT SPLIT_PART(email,'@',1) AS username, \
-                      SPLIT_PART(email,'@',2) AS domain \
-                      FROM virtual_user;
-                    '';
-                };
+              args = dovecotExt "dovecot-sql" {
+                driver = "pgsql";
+                connect = "host=/run/postgresql dbname=mailserver user=dovecot";
+                default_pass_scheme = "SHA512-CRYPT";
+                password_query = ''
+                  SELECT email AS user, password, \
+                  'vmail' AS userdb_uid, 'vmail' AS userdb_gid, \
+                  CONCAT('/var/mail/vhosts/domain.com/',SPLIT_PART(email,'@',1)) AS userdb_home, \
+                  CONCAT('*:storage=', quota) AS userdb_quota_rule \
+                  FROM virtual_users WHERE email='%u';
+                '';
+                user_query = ''
+                  SELECT CONCAT('/var/mail/vhosts/domain.com/',SPLIT_PART(email,'@',1)) AS home, \
+                  'vmail' AS uid, 'vmail' AS gid, CONCAT('*:storage=', quota) AS quota_rule \
+                  FROM virtual_users WHERE email='%u';
+                  iterate_query = SELECT SPLIT_PART(email,'@',1) AS username, \
+                  SPLIT_PART(email,'@',2) AS domain \
+                  FROM virtual_user;
+                '';
+              };
             };
           };
         };
 
         services.postfix = {
-          package = pkgs.postfix.override
-            {
-              withPgSQL = true;
-              withLDAP = false;
-              postgresql = pkgs.postgresql_12;
-            };
+          package = pkgs.postfix.override {
+            withPgSQL = true;
+            withLDAP = false;
+            postgresql = pkgs.postgresql_12;
+          };
           enable = true;
 
           masterConfig = { };
 
-          mainConfig =
-            {
-              compatibility_level = 3;
-              mydomain = "example.org";
-              myorigin = "$mydomain";
-              myhostname = "mail.example.org";
+          mainConfig = {
+            compatibility_level = 3;
+            mydomain = "example.org";
+            myorigin = "$mydomain";
+            myhostname = "mail.example.org";
 
-              alias_maps = "inline:{ root=root }";
+            alias_maps = "inline:{ root=root }";
 
-              mydestination =
-                [
-                  "localhost"
-                  "mail.example.org"
-                ];
+            mydestination = [
+              "localhost"
+              "mail.example.org"
+            ];
 
-              mynetworks_style = "host";
-              relay_domains = "";
+            mynetworks_style = "host";
+            relay_domains = "";
 
-              virtual_mailbox_domains = pgsql
-                {
-                  user = "postfix";
-                  hosts = "/run/postgresql/";
-                  dbname = "mailserver";
-                  query = "SELECT 1 FROM virtual_domains WHERE name='%s'";
-                };
-
-              virtual_mailbox_maps = pgsql
-                {
-                  user = "postfix";
-                  hosts = "/run/postgresql/";
-                  dbname = "mailserver";
-                  query = "SELECT 1 FROM virtual_users WHERE email='%s'";
-                };
-
-              virtual_alias_maps = pgsql
-                {
-                  user = "postfix";
-                  hosts = "/run/postgresql/";
-                  dbname = "mailserver";
-                  query = "SELECT destination FROM virtual_aliases WHERE source='%s'";
-                };
-              virtual_mailbox_base = "/var/mail/vhosts";
-              virtual_minimum_uid = 100;
-              virtual_uid_maps = "static:5000";
-              virtual_gid_maps = "static:5000";
-
-              virtual_transport = "lmtp:unix:/var/spool/postfix/private/dovecot-lmtp";
+            virtual_mailbox_domains = pgsql {
+              user = "postfix";
+              hosts = "/run/postgresql/";
+              dbname = "mailserver";
+              query = "SELECT 1 FROM virtual_domains WHERE name='%s'";
             };
+
+            virtual_mailbox_maps = pgsql {
+              user = "postfix";
+              hosts = "/run/postgresql/";
+              dbname = "mailserver";
+              query = "SELECT 1 FROM virtual_users WHERE email='%s'";
+            };
+
+            virtual_alias_maps = pgsql {
+              user = "postfix";
+              hosts = "/run/postgresql/";
+              dbname = "mailserver";
+              query = "SELECT destination FROM virtual_aliases WHERE source='%s'";
+            };
+            virtual_mailbox_base = "/var/mail/vhosts";
+            virtual_minimum_uid = 100;
+            virtual_uid_maps = "static:5000";
+            virtual_gid_maps = "static:5000";
+
+            virtual_transport = "lmtp:unix:/var/spool/postfix/private/dovecot-lmtp";
+          };
         };
       };
-    });
+    }
+  );
 }

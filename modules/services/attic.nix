@@ -1,4 +1,10 @@
-{ pkgs, lib, nglib, config, ... }:
+{
+  pkgs,
+  lib,
+  nglib,
+  config,
+  ...
+}:
 let
   cfg = config.services.attic;
   atticd = lib.getExe cfg.package;
@@ -28,12 +34,13 @@ in
         options = {
           storage = {
             type = lib.mkOption {
-              type = lib.types.enum [ "local" "s3" ];
+              type = lib.types.enum [
+                "local"
+                "s3"
+              ];
             };
 
-            path = lib.mkOption {
-              type = lib.types.str;
-            };
+            path = lib.mkOption { type = lib.types.str; };
           };
         };
       };
@@ -86,8 +93,6 @@ in
       uid = config.ids.uids.attic;
     };
 
-    users.groups.${cfg.group} = nglib.mkDefaultRec {
-      gid = config.ids.gids.attic;
-    };
+    users.groups.${cfg.group} = nglib.mkDefaultRec { gid = config.ids.gids.attic; };
   };
 }

@@ -6,14 +6,21 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, config, lib, nglib, ... }:
+{
+  pkgs,
+  config,
+  lib,
+  nglib,
+  ...
+}:
 let
   cfg = config.services.dovecot;
 
   modulesDir = pkgs.symlinkJoin {
     name = "dovecot-modules";
-    paths = map (pkg: "${cfg.package}/lib/dovecot")
-      ([ cfg.package ] ++ map (module: module.override { dovecot = cfg.package; }) cfg.modules);
+    paths = map (pkg: "${cfg.package}/lib/dovecot") (
+      [ cfg.package ] ++ map (module: module.override { dovecot = cfg.package; }) cfg.modules
+    );
   };
 
   inherit (config) ids;
@@ -71,16 +78,24 @@ in
       };
 
       config = lib.mkOption {
-        type = with lib.types;
+        type =
+          with lib.types;
           let
-            self = attrsOf (nullOr (oneOf [
-              str
-              int
-              package
-              bool
-              (listOf (oneOf [ str int package bool ]))
-              (attrsOf self)
-            ]));
+            self = attrsOf (
+              nullOr (oneOf [
+                str
+                int
+                package
+                bool
+                (listOf (oneOf [
+                  str
+                  int
+                  package
+                  bool
+                ]))
+                (attrsOf self)
+              ])
+            );
           in
           self // { description = "loop breaker"; };
         description = "Dovecot configuration entries in Nix format.";
@@ -89,16 +104,24 @@ in
       };
 
       extConfig = lib.mkOption {
-        type = with lib.types;
+        type =
+          with lib.types;
           let
-            self = attrsOf (nullOr (oneOf [
-              str
-              int
-              package
-              bool
-              (listOf (oneOf [ str int package bool ]))
-              (attrsOf self)
-            ]));
+            self = attrsOf (
+              nullOr (oneOf [
+                str
+                int
+                package
+                bool
+                (listOf (oneOf [
+                  str
+                  int
+                  package
+                  bool
+                ]))
+                (attrsOf self)
+              ])
+            );
           in
           self // { description = "loop breaker"; };
         description = "Extra config files to generate, if you pass in a config attrset, you can access the generated file via the `config.services.dovecot.extConfig.<name>` attribute.";
@@ -108,89 +131,80 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable
-    {
-      users.users."dovecot" = lib.mkIf (cfg.user == "dovecot") {
-        uid = ids.uids.dovecot;
-        description = "Dovecot user.";
-        group = "dovecot";
-      };
-      users.groups."dovecot" = lib.mkIf (cfg.group == "dovecot") {
-        gid = ids.gids.dovecot;
-      };
-      users.users."vmail" = lib.mkIf (cfg.mailUser == "vmail") {
-        uid = ids.uids.vmail;
-        description = "vmail user.";
-        group = "vmail";
-      };
-      users.groups."vmail" = lib.mkIf (cfg.mailGroup == "vmail") {
-        gid = ids.gids.vmail;
-      };
-      users.users."dovenull" = lib.mkIf (cfg.loginUser == "dovenull") {
-        uid = ids.uids.dovenull;
-        description = "Dovecot untrusted login user.";
-        group = "dovenull";
-      };
-      users.groups."dovenull" = lib.mkIf (cfg.loginUser == "dovenull") {
-        gid = ids.gids.dovenull;
-      };
-
-      environment.systemPackages = [ cfg.package ];
-
-      services.dovecot = {
-        config = {
-          default_login_user = lib.mkIf (cfg.loginUser != null) cfg.loginUser;
-          default_internal_user = lib.mkIf (cfg.user != null) cfg.user;
-          default_internal_group = lib.mkIf (cfg.group != null) cfg.group;
-
-          auth_mechanisms = lib.mkDefault "plain";
-
-          namespace."inbox" = {
-            inbox = true;
-
-            mailbox."Drafts" = {
-              special_use = "\\Drafts";
-            };
-
-            mailbox."Junk" = {
-              special_use = "\\Junk";
-            };
-
-            mailbox."Trash" = {
-              special_use = "\\Trash";
-            };
-
-            mailbox."Sent" = {
-              special_use = "\\Sent";
-            };
-
-            mailbox."Sent Messages" = {
-              special_use = "\\Sent";
-            };
-          };
-        };
-      };
-
-      init.services.dovecot =
-        {
-          ensureSomething.link."modules" = lib.mkDefault {
-            src = modulesDir;
-            dst = "/etc/dovecot/modules";
-            persistent = false;
-          };
-
-          ensureSomething.link."config" = lib.mkDefault {
-            src = cfg.config;
-            dst = "/etc/dovecot/dovecot.conf";
-            persistent = false;
-          };
-
-          script = pkgs.writeShellScript "dovecot-run"
-            ''
-              echo ${cfg.package}/sbin/dovecot -F
-              ${cfg.package}/sbin/dovecot -F
-            '';
-          enabled = true;
-        };
+  config = lib.mkIf cfg.enable {
+    users.users."dovecot" = lib.mkIf (cfg.user == "dovecot") {
+      uid = ids.uids.dovecot;
+      description = "Dovecot user.";
+      group = "dovecot";
     };
+    users.groups."dovecot" = lib.mkIf (cfg.group == "dovecot") { gid = ids.gids.dovecot; };
+    users.users."vmail" = lib.mkIf (cfg.mailUser == "vmail") {
+      uid = ids.uids.vmail;
+      description = "vmail user.";
+      group = "vmail";
+    };
+    users.groups."vmail" = lib.mkIf (cfg.mailGroup == "vmail") { gid = ids.gids.vmail; };
+    users.users."dovenull" = lib.mkIf (cfg.loginUser == "dovenull") {
+      uid = ids.uids.dovenull;
+      description = "Dovecot untrusted login user.";
+      group = "dovenull";
+    };
+    users.groups."dovenull" = lib.mkIf (cfg.loginUser == "dovenull") { gid = ids.gids.dovenull; };
+
+    environment.systemPackages = [ cfg.package ];
+
+    services.dovecot = {
+      config = {
+        default_login_user = lib.mkIf (cfg.loginUser != null) cfg.loginUser;
+        default_internal_user = lib.mkIf (cfg.user != null) cfg.user;
+        default_internal_group = lib.mkIf (cfg.group != null) cfg.group;
+
+        auth_mechanisms = lib.mkDefault "plain";
+
+        namespace."inbox" = {
+          inbox = true;
+
+          mailbox."Drafts" = {
+            special_use = "\\Drafts";
+          };
+
+          mailbox."Junk" = {
+            special_use = "\\Junk";
+          };
+
+          mailbox."Trash" = {
+            special_use = "\\Trash";
+          };
+
+          mailbox."Sent" = {
+            special_use = "\\Sent";
+          };
+
+          mailbox."Sent Messages" = {
+            special_use = "\\Sent";
+          };
+        };
+      };
+    };
+
+    init.services.dovecot = {
+      ensureSomething.link."modules" = lib.mkDefault {
+        src = modulesDir;
+        dst = "/etc/dovecot/modules";
+        persistent = false;
+      };
+
+      ensureSomething.link."config" = lib.mkDefault {
+        src = cfg.config;
+        dst = "/etc/dovecot/dovecot.conf";
+        persistent = false;
+      };
+
+      script = pkgs.writeShellScript "dovecot-run" ''
+        echo ${cfg.package}/sbin/dovecot -F
+        ${cfg.package}/sbin/dovecot -F
+      '';
+      enabled = true;
+    };
+  };
 }

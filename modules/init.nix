@@ -12,90 +12,105 @@ let
 
   log = lib.mkOption {
     description = "Logging settings.";
-    type = lib.types.nullOr (lib.types.submodule ({ config, ... }:
-      {
-        options = {
-          file = lib.mkOption {
-            description = "Log to a plain file, without rotation.";
-            type = lib.types.nullOr (lib.types.submodule {
-              options = {
-                dst = lib.mkOption {
-                  description = "The file to which to log to.";
-                  type = lib.types.path;
-                };
-                rotate = lib.mkOption {
-                  description = "The size after which the file should rotated in kilo bytes.";
-                  type = lib.types.int;
-                  default = 0; # 1 MB
-                };
-              };
-            });
-            default = null;
-          };
-          syslog = lib.mkOption {
-            description = "Log via syslog, either to a UDS or over TCP/UDP.";
-            type = lib.types.nullOr (lib.types.submodule ({ config, ... }:
-              let
-                cfg = config;
-              in
-              {
-                options = {
-                  type = lib.mkOption {
-                    description = "Syslog type, UDS, TCP, or UDP.";
-                    type = lib.types.enum [ "uds" "tcp" "udp" ];
+    type = lib.types.nullOr (
+      lib.types.submodule (
+        { config, ... }:
+        {
+          options = {
+            file = lib.mkOption {
+              description = "Log to a plain file, without rotation.";
+              type = lib.types.nullOr (
+                lib.types.submodule {
+                  options = {
+                    dst = lib.mkOption {
+                      description = "The file to which to log to.";
+                      type = lib.types.path;
+                    };
+                    rotate = lib.mkOption {
+                      description = "The size after which the file should rotated in kilo bytes.";
+                      type = lib.types.int;
+                      default = 0; # 1 MB
+                    };
                   };
-                  dst = lib.mkOption {
-                    description = "The endpoint to log to, format depends on the type.";
-                    type = lib.types.str;
-                  };
-                  time = lib.mkOption {
-                    description = "Whether the complete sender timestamp should be included in log messages";
-                    type = lib.types.bool;
-                    default = false;
-                  };
-                  host = lib.mkOption {
-                    description = "Whether the hostname should be included in log messages.";
-                    type = lib.types.bool;
-                    default = true;
-                  };
-                  timeQuality = lib.mkOption {
-                    description = "Whether time quality information should be included in the log messages.";
-                    type = lib.types.bool;
-                    default = false;
-                  };
-                  tag = lib.mkOption {
-                    description = "Every message will be marked with this tag.";
-                    type = with lib.types; nullOr str;
-                    default = null;
-                  };
-                  priority = lib.mkOption {
-                    description = "Mark every message with a priority.";
-                    type = with lib.types; nullOr str;
-                    default = null;
-                  };
-                };
+                }
+              );
+              default = null;
+            };
+            syslog = lib.mkOption {
+              description = "Log via syslog, either to a UDS or over TCP/UDP.";
+              type = lib.types.nullOr (
+                lib.types.submodule (
+                  { config, ... }:
+                  let
+                    cfg = config;
+                  in
+                  {
+                    options = {
+                      type = lib.mkOption {
+                        description = "Syslog type, UDS, TCP, or UDP.";
+                        type = lib.types.enum [
+                          "uds"
+                          "tcp"
+                          "udp"
+                        ];
+                      };
+                      dst = lib.mkOption {
+                        description = "The endpoint to log to, format depends on the type.";
+                        type = lib.types.str;
+                      };
+                      time = lib.mkOption {
+                        description = "Whether the complete sender timestamp should be included in log messages";
+                        type = lib.types.bool;
+                        default = false;
+                      };
+                      host = lib.mkOption {
+                        description = "Whether the hostname should be included in log messages.";
+                        type = lib.types.bool;
+                        default = true;
+                      };
+                      timeQuality = lib.mkOption {
+                        description = "Whether time quality information should be included in the log messages.";
+                        type = lib.types.bool;
+                        default = false;
+                      };
+                      tag = lib.mkOption {
+                        description = "Every message will be marked with this tag.";
+                        type = with lib.types; nullOr str;
+                        default = null;
+                      };
+                      priority = lib.mkOption {
+                        description = "Mark every message with a priority.";
+                        type = with lib.types; nullOr str;
+                        default = null;
+                      };
+                    };
 
-                config = {
-                  dst =
-                    if cfg.type == "uds" then
-                      lib.mkDefault "/dev/log"
-                    else if cfg.type == "tcp" || cfg.type == "udp" then
-                      lib.mkDefault "127.0.0.1:514"
-                    else
-                      abort "Unknown syslog type, this should have been caught by the module system!";
-                };
-              }));
-            default = null;
+                    config = {
+                      dst =
+                        if cfg.type == "uds" then
+                          lib.mkDefault "/dev/log"
+                        else if cfg.type == "tcp" || cfg.type == "udp" then
+                          lib.mkDefault "127.0.0.1:514"
+                        else
+                          abort "Unknown syslog type, this should have been caught by the module system!";
+                    };
+                  }
+                )
+              );
+              default = null;
+            };
           };
-        };
-        config = { };
-      }));
+          config = { };
+        }
+      )
+    );
     default = { };
   };
   ensureSomething = lib.mkOption {
     description = "Files or directories which need to exist before service is started, no overwriting though.";
     default = { };
-    type = with lib.types;
+    type =
+      with lib.types;
       submodule {
         options = {
           link = lib.mkOption {
@@ -186,7 +201,10 @@ let
               options = {
                 type = lib.mkOption {
                   description = "Whether to create a direcotroy or file.";
-                  type = enum [ "directory" "file" ];
+                  type = enum [
+                    "directory"
+                    "file"
+                  ];
                 };
                 mode = lib.mkOption {
                   description = "Mode to set for the new creation, if set to `null`, its up to the implementation.";
@@ -234,54 +252,61 @@ in
       type = lib.types.path;
     };
     services = lib.mkOption {
-      type = lib.types.attrsOf (lib.types.submodule {
-        options = {
-          dependencies = lib.mkOption {
-            description = "Service dependencies";
-            type = with lib.types; listOf str;
-            default = [ ];
+      type = lib.types.attrsOf (
+        lib.types.submodule {
+          options = {
+            dependencies = lib.mkOption {
+              description = "Service dependencies";
+              type = with lib.types; listOf str;
+              default = [ ];
+            };
+
+            inherit ensureSomething log;
+
+            shutdownOnExit = lib.mkEnableOption "Whether the init system should enter shutdown when this particular service exits";
+
+            script = lib.mkOption {
+              description = "Service script to start the program.";
+              type = lib.types.path;
+              default = "";
+            };
+
+            finish = lib.mkOption {
+              description = "Script to run upon service stop.";
+              type = with lib.types; nullOr path;
+              default = null;
+            };
+
+            enabled = lib.mkOption {
+              description = "Whether the service should run on startup.";
+              type = lib.types.bool;
+              default = false;
+            };
+
+            environment = lib.mkOption {
+              description = ''
+                The environment variables that will be added to the default ones prior to running <option>script</option>
+                and <option>finish</option>.
+              '';
+              type =
+                with lib.types;
+                attrsOf (oneOf [
+                  str
+                  int
+                ]);
+              default = { };
+            };
+
+            pwd = lib.mkOption {
+              description = ''
+                Directory in which both <option>script</option> and <option>finish</option> will be ran.
+              '';
+              type = lib.types.str;
+              default = "/var/empty";
+            };
           };
-
-          inherit ensureSomething log;
-
-          shutdownOnExit = lib.mkEnableOption "Whether the init system should enter shutdown when this particular service exits";
-
-          script = lib.mkOption {
-            description = "Service script to start the program.";
-            type = lib.types.path;
-            default = "";
-          };
-
-          finish = lib.mkOption {
-            description = "Script to run upon service stop.";
-            type = with lib.types; nullOr path;
-            default = null;
-          };
-
-          enabled = lib.mkOption {
-            description = "Whether the service should run on startup.";
-            type = lib.types.bool;
-            default = false;
-          };
-
-          environment = lib.mkOption {
-            description = ''
-              The environment variables that will be added to the default ones prior to running <option>script</option>
-              and <option>finish</option>.
-            '';
-            type = with lib.types; attrsOf (oneOf [ str int ]);
-            default = { };
-          };
-
-          pwd = lib.mkOption {
-            description = ''
-              Directory in which both <option>script</option> and <option>finish</option> will be ran.
-            '';
-            type = lib.types.str;
-            default = "/var/empty";
-          };
-        };
-      });
+        }
+      );
       description = "Service definitions.";
       default = { };
     };
@@ -289,22 +314,23 @@ in
 
   config = {
     # TODO add assertions for this module
-    assertions = lib.flatten (lib.mapAttrsToList
-      (n: v:
-        [{
+    assertions = lib.flatten (
+      lib.mapAttrsToList (n: v: [
+        {
           assertion =
             let
-              selectedCount =
-                (lib.count (x: x) (lib.mapAttrsToList (n: v: if v == null then false else true) v.log));
+              selectedCount = (
+                lib.count (x: x) (lib.mapAttrsToList (n: v: if v == null then false else true) v.log)
+              );
             in
             selectedCount == 1 || selectedCount == 0;
           message = "You can only select one log type, in service ${n}.";
         }
-          {
-            assertion = (v.log.file.rotate.rotate or 0) >= 0;
-            message = "init.service.<name>.log.file.rotate can't be less than 0";
-          }]
-      )
-      cfg.services);
+        {
+          assertion = (v.log.file.rotate.rotate or 0) >= 0;
+          message = "init.service.<name>.log.file.rotate can't be less than 0";
+        }
+      ]) cfg.services
+    );
   };
 }

@@ -6,10 +6,15 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, lib, config, nglib, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  nglib,
+  ...
+}:
 let
-  inherit
-    (lib)
+  inherit (lib)
     getVersion
     versionAtLeast
     isString
@@ -39,27 +44,20 @@ let
 
   parser =
     let
-      valToString = v:
+      valToString =
+        v:
         if isString v then
           "${v}"
         else if isInt v then
           "${toString v}"
         else if isBool v then
-          if v then
-            "true"
-          else
-            "false"
+          if v then "true" else "false"
         else if isList v then
           concatMapStringsSep " " (x: valToString x) v
         else
           abort "Invalid config, module system should have caught this!";
     in
-    config:
-    concatStringsSep "\n" (mapAttrsToList
-      (n: v:
-        "${n} = ${valToString v}"
-      )
-      config);
+    config: concatStringsSep "\n" (mapAttrsToList (n: v: "${n} = ${valToString v}") config);
 in
 {
   options.nix = {
@@ -87,16 +85,25 @@ in
       description = ''
         Contents of <literal>nix.conf</literal>, represented using an attrset containing strings, bools, ints, or lists of strings, bools, or ints.
       '';
-      type = with types; attrsOf (oneOf [ str int bool (listOf (oneOf [ str int bool ])) ]);
-      example =
-        {
-          sandbox = true;
-          require-sigs = true;
-          cores = 0;
-        };
+      type =
+        with types;
+        attrsOf (oneOf [
+          str
+          int
+          bool
+          (listOf (oneOf [
+            str
+            int
+            bool
+          ]))
+        ]);
+      example = {
+        sandbox = true;
+        require-sigs = true;
+        cores = 0;
+      };
       default = { };
-      apply = x:
-        builtins.toFile "nix.conf" (parser x);
+      apply = x: builtins.toFile "nix.conf" (parser x);
     };
 
     loadNixDb = mkOption {
@@ -113,9 +120,7 @@ in
         The Nix Path, basically channels.
       '';
       type = with types; listOf str;
-      default = [
-        "nixpkgs=${pkgs.path}"
-      ];
+      default = [ "nixpkgs=${pkgs.path}" ];
     };
 
     persistNix = mkOption {
@@ -140,8 +145,12 @@ in
 
   config = mkIf cfg.enable {
     system.createNixRegistration = mkIf cfg.loadNixDb true;
-    system.activation.loadNixDb = mkIf cfg.loadNixDb
-      (nglib.dag.dagEntryAfter [ "currentSystem" "users" ]
+    system.activation.loadNixDb = mkIf cfg.loadNixDb (
+      nglib.dag.dagEntryAfter
+        [
+          "currentSystem"
+          "users"
+        ]
         ''
           export PATH=${pkgs.busybox}/bin:${cfg.package}/bin
 
@@ -150,33 +159,32 @@ in
             nix-store --load-db < /run/current-system/registration
             ls /nix/var/nix
           fi
-        '');
-
-    system.activation.persistNix = mkIf (cfg.persistNix != null)
-      (nglib.dag.dagEntryAfter [ "loadNixDb" ]
         ''
-          export PATH=${pkgs.busybox}/bin:${cfg.package}/bin:${pkgs.utillinux}/bin
+    );
 
-          mkdir -p ${cfg.persistNix}
-          USER=root GROUP=root nix copy --no-check-sigs --all --to local?root=${cfg.persistNix}
-          mount -o bind ${cfg.persistNix}/nix /nix
-        '');
+    system.activation.persistNix = mkIf (cfg.persistNix != null) (
+      nglib.dag.dagEntryAfter [ "loadNixDb" ] ''
+        export PATH=${pkgs.busybox}/bin:${cfg.package}/bin:${pkgs.utillinux}/bin
 
+        mkdir -p ${cfg.persistNix}
+        USER=root GROUP=root nix copy --no-check-sigs --all --to local?root=${cfg.persistNix}
+        mount -o bind ${cfg.persistNix}/nix /nix
+      ''
+    );
 
     users = {
-      users = mkMerge (map
-        (x:
-          {
-            "nixbld${toString x}" = {
-              uid = 30000 + x;
-              group = "nixbld";
-              home = "/var/empty";
-              createHome = false;
-              description = "Nix build user ${toString x}";
-              shell = "${pkgs.busybox}/bin/nologin";
-            };
-          })
-        (range 0 cfg.buildUserCount));
+      users = mkMerge (
+        map (x: {
+          "nixbld${toString x}" = {
+            uid = 30000 + x;
+            group = "nixbld";
+            home = "/var/empty";
+            createHome = false;
+            description = "Nix build user ${toString x}";
+            shell = "${pkgs.busybox}/bin/nologin";
+          };
+        }) (range 0 cfg.buildUserCount)
+      );
 
       groups.nixbld.gid = 30000;
     };
@@ -196,19 +204,25 @@ in
       extra-sandbox-paths = [ ];
       substituters = [ "https://cache.nixos.org/" ];
       trusted-substituters = [ ];
-      trusted-public-keys =
-        [ "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" ];
+      trusted-public-keys = [ "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" ];
       auto-optimise-store = false;
       require-sigs = true;
       allowed-users = "*";
       builders = [ ];
 
       system-features = mkDefault (
-        [ "nixos-test" "benchmark" "big-parallel" "kvm" ] ++
-        optionals (pkgs.hostPlatform.platform ? gcc.arch) (
+        [
+          "nixos-test"
+          "benchmark"
+          "big-parallel"
+          "kvm"
+        ]
+        ++ optionals (pkgs.hostPlatform.platform ? gcc.arch) (
           # a builder can run code for `platform.gcc.arch` and inferior architectures
-          [ "gccarch-${pkgs.hostPlatform.platform.gcc.arch}" ] ++
-          map (x: "gccarch-${x}") lib.systems.architectures.inferiors.${pkgs.hostPlatform.platform.gcc.arch}
+          [ "gccarch-${pkgs.hostPlatform.platform.gcc.arch}" ]
+          ++ map (
+            x: "gccarch-${x}"
+          ) lib.systems.architectures.inferiors.${pkgs.hostPlatform.platform.gcc.arch}
         )
       );
 

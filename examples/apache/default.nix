@@ -11,7 +11,8 @@ nglib.makeSystem {
   inherit nixpkgs;
   system = "x86_64-linux";
   name = "nixng-apache";
-  config = ({ pkgs, config, ... }:
+  config = (
+    { pkgs, config, ... }:
     {
       config = {
         dumb-init = {
@@ -31,12 +32,30 @@ nglib.makeSystem {
           configuration = [
             {
               LoadModule = [
-                [ "mpm_event_module" "modules/mod_mpm_event.so" ]
-                [ "log_config_module" "modules/mod_log_config.so" ]
-                [ "unixd_module" "modules/mod_unixd.so" ]
-                [ "authz_core_module" "modules/mod_authz_core.so" ]
-                [ "dir_module" "modules/mod_dir.so" ]
-                [ "mime_module" "modules/mod_mime.so" ]
+                [
+                  "mpm_event_module"
+                  "modules/mod_mpm_event.so"
+                ]
+                [
+                  "log_config_module"
+                  "modules/mod_log_config.so"
+                ]
+                [
+                  "unixd_module"
+                  "modules/mod_unixd.so"
+                ]
+                [
+                  "authz_core_module"
+                  "modules/mod_authz_core.so"
+                ]
+                [
+                  "dir_module"
+                  "modules/mod_dir.so"
+                ]
+                [
+                  "mime_module"
+                  "modules/mod_mime.so"
+                ]
               ];
             }
             {
@@ -61,9 +80,16 @@ nglib.makeSystem {
 
             {
               AddType = [
-                [ "image/svg+xml" "svg" "svgz" ]
+                [
+                  "image/svg+xml"
+                  "svg"
+                  "svgz"
+                ]
               ];
-              AddEncoding = [ "gzip" "svgz" ];
+              AddEncoding = [
+                "gzip"
+                "svgz"
+              ];
 
               TypesConfig = "${pkgs.apacheHttpd}/conf/mime.types";
             }
@@ -71,7 +97,10 @@ nglib.makeSystem {
             {
               Directory = {
                 "/" = {
-                  Require = [ "all" "denied" ];
+                  Require = [
+                    "all"
+                    "denied"
+                  ];
                   Options = "SymlinksIfOwnerMatch";
                 };
               };
@@ -80,8 +109,14 @@ nglib.makeSystem {
                 "*:80" = {
                   Directory = {
                     "/var/www" = {
-                      Require = [ "all" "granted" ];
-                      Options = [ "-Indexes" "+FollowSymlinks" ];
+                      Require = [
+                        "all"
+                        "granted"
+                      ];
+                      Options = [
+                        "-Indexes"
+                        "+FollowSymlinks"
+                      ];
                       DirectoryIndex = "\${DIRECTORY_INDEX:-index.html}";
                     };
                   };
@@ -91,5 +126,6 @@ nglib.makeSystem {
           ];
         };
       };
-    });
+    }
+  );
 }

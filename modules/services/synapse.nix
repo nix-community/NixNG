@@ -6,7 +6,12 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, config, lib, ... }:
+{
+  pkgs,
+  config,
+  lib,
+  ...
+}:
 let
   cfg = config.services.synapse;
 
@@ -27,33 +32,41 @@ let
     listToAttrs
     mkEnableOption
     optional
-  ;
+    ;
 
-  configFormat = pkgs.formats.yaml {};
+  configFormat = pkgs.formats.yaml { };
 
-  workerDefaults = { config, name, ... }: {
-    package = mkDefault cfg.package;
-    settings = mapAttrs (_: mkDefault) {
-      worker_name = "worker-" + name;
-      worker_log_config = "/dev/stdout";
+  workerDefaults =
+    { config, name, ... }:
+    {
+      package = mkDefault cfg.package;
+      settings = mapAttrs (_: mkDefault) {
+        worker_name = "worker-" + name;
+        worker_log_config = "/dev/stdout";
+      };
+
+      arguments = {
+        "config-path" = singleton (configFormat.generate "worker-${name}.yaml" config.settings);
+      };
     };
 
-    arguments = {
-      "config-path" = singleton (configFormat.generate "worker-${name}.yaml" config.settings);
-    };
-  };
+  mainDefaults =
+    { config, name, ... }:
+    {
+      package = mkDefault pkgs.matrix-synapse;
 
-  mainDefaults = { config, name, ... }: {
-    package = mkDefault pkgs.matrix-synapse;
-
-    arguments = {
-      "config-path" = singleton (configFormat.generate "worker-${name}.yaml" config.settings);
+      arguments = {
+        "config-path" = singleton (configFormat.generate "worker-${name}.yaml" config.settings);
+      };
     };
-  };
 
   instanceSubmodule =
     defaults:
-    { config, name ? "", ... }@args:
+    {
+      config,
+      name ? "",
+      ...
+    }@args:
     {
       options = {
         package = mkOption {
@@ -65,19 +78,24 @@ let
 
         settings = mkOption {
           type = configFormat.type;
-          default = {};
+          default = { };
           description = ''
             Configuration for this worker.
           '';
         };
 
         arguments = mkOption {
-          type = with types;
+          type =
+            with types;
             let
-              values = [ str package int ];
+              values = [
+                str
+                package
+                int
+              ];
             in
-              attrsOf (oneOf ([ (listOf (oneOf values)) ] ++ values));
-          default = {};
+            attrsOf (oneOf ([ (listOf (oneOf values)) ] ++ values));
+          default = { };
           description = ''
             Arguments for this worker.
           '';
@@ -87,21 +105,20 @@ let
       config = defaults args;
     };
 
-  synapseService =
-    name: cfg: bin:
-    {
-      enabled = true;
-      shutdownOnExit = true;
-      script = pkgs.writeShellScript "synapse-worker-${name}.sh"
-        ''
-          ${cfg.package}/bin/${bin} \
-            ${concatStringsSep " \\\n  " (flip mapAttrsToList cfg.arguments (n: v:
-              if isList v then
-                concatMapStringsSep " \\\n  " (x: "--${n} \"${x}\"") v
-              else
-                "--${n} \"${v}\""))}
-        '';
-   };
+  synapseService = name: cfg: bin: {
+    enabled = true;
+    shutdownOnExit = true;
+    script = pkgs.writeShellScript "synapse-worker-${name}.sh" ''
+      ${cfg.package}/bin/${bin} \
+        ${
+          concatStringsSep " \\\n  " (
+            flip mapAttrsToList cfg.arguments (
+              n: v: if isList v then concatMapStringsSep " \\\n  " (x: "--${n} \"${x}\"") v else "--${n} \"${v}\""
+            )
+          )
+        }
+    '';
+  };
 in
 {
   options = {
@@ -114,7 +131,7 @@ in
               enable = mkEnableOption "Enable main synapse process";
               workers = mkOption {
                 type = types.attrsOf (types.submodule (instanceSubmodule workerDefaults));
-                default = {};
+                default = { };
                 description = ''
                   Synapse worker instances.
                 '';
@@ -123,7 +140,7 @@ in
           }
         ];
       };
-      default = {};
+      default = { };
       description = ''
         Synapse main instance.
       '';
@@ -131,17 +148,12 @@ in
   };
 
   config = {
-    init.services = listToAttrs ((flip mapAttrsToList cfg.workers
-      (name: value:
-        nameValuePair
-          "synapse-worker-${name}"
-          (synapseService name value "synapse_worker")
+    init.services = listToAttrs (
+      (flip mapAttrsToList cfg.workers (
+        name: value: nameValuePair "synapse-worker-${name}" (synapseService name value "synapse_worker")
 
-      ))  ++ (optional cfg.enable
-        (nameValuePair
-          "synapse"
-          (synapseService "main" cfg "synapse_homeserver"))
-      )
+      ))
+      ++ (optional cfg.enable (nameValuePair "synapse" (synapseService "main" cfg "synapse_homeserver")))
     );
   };
 }

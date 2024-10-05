@@ -10,18 +10,30 @@
 # Mozilla Public License, v. 2.0, for which the following copyright applies:
 #   Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
 
-{ pkgs, lib, config, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 let
   cfg = config.services.postgresql;
 
   # BEGIN Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
-  toStr = value:
-    if true == value then "yes"
-    else if false == value then "no"
-    else if lib.isString value then "'${lib.replaceStrings ["'"] ["''"] value}'"
-    else toString value;
+  toStr =
+    value:
+    if true == value then
+      "yes"
+    else if false == value then
+      "no"
+    else if lib.isString value then
+      "'${lib.replaceStrings [ "'" ] [ "''" ] value}'"
+    else
+      toString value;
 
-  configFile = pkgs.writeTextDir "postgresql.conf" (lib.concatStringsSep "\n" (lib.mapAttrsToList (n: v: "${n} = ${toStr v}") cfg.config));
+  configFile = pkgs.writeTextDir "postgresql.conf" (
+    lib.concatStringsSep "\n" (lib.mapAttrsToList (n: v: "${n} = ${toStr v}") cfg.config)
+  );
 in
 {
   options = {
@@ -94,7 +106,10 @@ in
       initdbArgs = lib.mkOption {
         type = with lib.types; listOf str;
         default = [ ];
-        example = [ "--data-checksums" "--allow-group-access" ];
+        example = [
+          "--data-checksums"
+          "--allow-group-access"
+        ];
         description = ''
           Additional arguments passed to <literal>initdb</literal> during data dir
           initialisation.
@@ -102,7 +117,12 @@ in
       };
 
       initialScript = lib.mkOption {
-        type = with lib.types; nullOr (oneOf [ package str ]);
+        type =
+          with lib.types;
+          nullOr (oneOf [
+            package
+            str
+          ]);
         default = null;
         description = ''
           A file containing SQL statements to execute on first startup.
@@ -121,8 +141,12 @@ in
       };
 
       ensureDatabases = lib.mkOption {
-        type = with lib.types;
-          oneOf [ (listOf str) (attrsOf (attrsOf str)) ];
+        type =
+          with lib.types;
+          oneOf [
+            (listOf str)
+            (attrsOf (attrsOf str))
+          ];
         default = [ ];
         description = ''
           Ensures that the specified databases exist.
@@ -139,45 +163,47 @@ in
       };
 
       ensureUsers = lib.mkOption {
-        type = with lib.types; listOf (submodule {
-          options = {
-            name = lib.mkOption {
-              type = str;
-              description = ''
-                Name of the user to ensure.
-              '';
+        type =
+          with lib.types;
+          listOf (submodule {
+            options = {
+              name = lib.mkOption {
+                type = str;
+                description = ''
+                  Name of the user to ensure.
+                '';
+              };
+              ensurePermissions = lib.mkOption {
+                type = attrsOf str;
+                default = { };
+                description = ''
+                  Permissions to ensure for the user, specified as an attribute set.
+                  The attribute names specify the database and tables to grant the permissions for.
+                  The attribute values specify the permissions to grant. You may specify one or
+                  multiple comma-separated SQL privileges here.
+                  For more information on how to specify the target
+                  and on which privileges exist, see the
+                  <link xlink:href="https://www.postgresql.org/docs/current/sql-grant.html">GRANT syntax</link>.
+                  The attributes are used as <code>GRANT ''${attrName} ON ''${attrValue}</code>.
+                '';
+                example = lib.literalExample ''
+                  {
+                    "DATABASE \"nextcloud\"" = "ALL PRIVILEGES";
+                    "ALL TABLES IN SCHEMA public" = "ALL PRIVILEGES";
+                  }
+                '';
+              };
+              ensureDBOwnership = lib.mkOption {
+                type = bool;
+                default = false;
+                description = lib.mdDoc ''
+                  Grants the  user ownership to a database with the same name.
+                  This database must be defined manually in
+                  [](#opt-services.postgresql.ensureDatabases).
+                '';
+              };
             };
-            ensurePermissions = lib.mkOption {
-              type = attrsOf str;
-              default = { };
-              description = ''
-                Permissions to ensure for the user, specified as an attribute set.
-                The attribute names specify the database and tables to grant the permissions for.
-                The attribute values specify the permissions to grant. You may specify one or
-                multiple comma-separated SQL privileges here.
-                For more information on how to specify the target
-                and on which privileges exist, see the
-                <link xlink:href="https://www.postgresql.org/docs/current/sql-grant.html">GRANT syntax</link>.
-                The attributes are used as <code>GRANT ''${attrName} ON ''${attrValue}</code>.
-              '';
-              example = lib.literalExample ''
-                {
-                  "DATABASE \"nextcloud\"" = "ALL PRIVILEGES";
-                  "ALL TABLES IN SCHEMA public" = "ALL PRIVILEGES";
-                }
-              '';
-            };
-            ensureDBOwnership = lib.mkOption {
-              type = bool;
-              default = false;
-              description = lib.mdDoc ''
-                Grants the  user ownership to a database with the same name.
-                This database must be defined manually in
-                [](#opt-services.postgresql.ensureDatabases).
-              '';
-            };
-          };
-        });
+          });
         default = [ ];
         description = ''
           Ensures that the specified users exist and have at least the ensured permissions.
@@ -237,7 +263,14 @@ in
       };
 
       config = lib.mkOption {
-        type = with lib.types; attrsOf (oneOf [ bool float int str ]);
+        type =
+          with lib.types;
+          attrsOf (oneOf [
+            bool
+            float
+            int
+            str
+          ]);
         default = { };
         description = ''
           PostgreSQL configuration. Refer to
@@ -296,23 +329,21 @@ in
 
     services.postgresql.dataDir = lib.mkDefault "/var/lib/postgresql/${cfg.package.psqlSchema}";
 
-    services.postgresql.authentication = lib.mkAfter
-      ''
-        # Generated file; do not edit!
-        local all all              peer
-        host  all all 127.0.0.1/32 md5
-        host  all all ::1/128      md5
-      '';
+    services.postgresql.authentication = lib.mkAfter ''
+      # Generated file; do not edit!
+      local all all              peer
+      host  all all 127.0.0.1/32 md5
+      host  all all ::1/128      md5
+    '';
 
-    users.users.postgres =
-      {
-        uid = config.ids.uids.postgres;
-        group = "postgres";
-        description = "PostgreSQL server user";
-        createHome = false;
-        home = "${cfg.dataDir}";
-        useDefaultShell = true;
-      };
+    users.users.postgres = {
+      uid = config.ids.uids.postgres;
+      group = "postgres";
+      description = "PostgreSQL server user";
+      createHome = false;
+      home = "${cfg.dataDir}";
+      useDefaultShell = true;
+    };
 
     users.groups.postgres.gid = config.ids.gids.postgres;
 
@@ -380,35 +411,59 @@ in
           sleep 0.1
         done
 
-        ${lib.concatMapStrings ({ database, options }: ''
-          $PSQL -tAc "SELECT 1 FROM pg_database WHERE datname = '${database}'" | grep -q 1 || $PSQL -tAc 'CREATE DATABASE "${database}" ${if options != "" then "WITH " + options else ""}'
-        '')
-          ((if lib.isList cfg.ensureDatabases then
-            map (x: { database = x; options = ""; })
-           else
-             lib.mapAttrsToList (k: v: { database = k; options = lib.concatStringsSep " " (lib.mapAttrsToList (k: v: "${k} = \"${v}\"") v); }))
-          cfg.ensureDatabases)}
+        ${lib.concatMapStrings
+          (
+            { database, options }:
+            ''
+              $PSQL -tAc "SELECT 1 FROM pg_database WHERE datname = '${database}'" | grep -q 1 || $PSQL -tAc 'CREATE DATABASE "${database}" ${
+                if options != "" then "WITH " + options else ""
+              }'
+            ''
+          )
+          (
+            (
+              if lib.isList cfg.ensureDatabases then
+                map (x: {
+                  database = x;
+                  options = "";
+                })
+              else
+                lib.mapAttrsToList (
+                  k: v: {
+                    database = k;
+                    options = lib.concatStringsSep " " (lib.mapAttrsToList (k: v: "${k} = \"${v}\"") v);
+                  }
+                )
+            )
+              cfg.ensureDatabases
+          )
+        }
 
         ${lib.concatMapStrings (user: ''
           $PSQL -tAc "SELECT 1 FROM pg_roles WHERE rolname='${user.name}'" | grep -q 1 || $PSQL -tAc 'CREATE USER "${user.name}"'
-          ${lib.concatStringsSep "\n" (lib.mapAttrsToList (database: permission: ''
-            $PSQL -tAc 'GRANT ${permission} ON ${database} TO "${user.name}"'
-          '') user.ensurePermissions)}
+          ${lib.concatStringsSep "\n" (
+            lib.mapAttrsToList (database: permission: ''
+              $PSQL -tAc 'GRANT ${permission} ON ${database} TO "${user.name}"'
+            '') user.ensurePermissions
+          )}
           ${lib.optionalString user.ensureDBOwnership ''$PSQL -tAc 'ALTER DATABASE "${user.name}" OWNER TO "${user.name}";' ''}
         '') cfg.ensureUsers}
 
-        ${lib.concatStrings (lib.mapAttrsToList (extension: schemas:
-          lib.concatMapStrings (schema:
-            ''
+        ${lib.concatStrings (
+          lib.mapAttrsToList (
+            extension: schemas:
+            lib.concatMapStrings (schema: ''
               $PSQL -tAc "create extension if not exists ${extension}" ${schema}
-            ''
-          ) schemas
-        ) cfg.ensureExtensions)}
+            '') schemas
+          ) cfg.ensureExtensions
+        )}
 
         if test -e "${cfg.dataDir}/.first_startup"; then
-          ${lib.optionalString (cfg.initialScript != null) ''
-            $PSQL -f "${cfg.initialScript}" -d postgres
-          ''}
+          ${
+            lib.optionalString (cfg.initialScript != null) ''
+              $PSQL -f "${cfg.initialScript}" -d postgres
+            ''
+          }
           rm -f "${cfg.dataDir}/.first_startup"
         fi
 

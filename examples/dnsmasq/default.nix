@@ -4,29 +4,31 @@ nglib.makeSystem {
   system = "x86_64-linux";
   name = "nixng-dnsmasq";
 
-  config = { ... }: {
-    dumb-init = {
-      enable = true;
-      type.services = { };
-    };
+  config =
+    { ... }:
+    {
+      dumb-init = {
+        enable = true;
+        type.services = { };
+      };
 
-    init.services.dnsmasq = {
-      shutdownOnExit = true;
-    };
+      init.services.dnsmasq = {
+        shutdownOnExit = true;
+      };
 
-    services.dnsmasq = {
-      enable = true;
+      services.dnsmasq = {
+        enable = true;
 
-      settings = {
-        address = [
-          "/test1.example.com/192.0.2.42"
-          "/test2.example.com/198.51.100.42"
-        ];
+        settings = {
+          address = [
+            "/test1.example.com/192.0.2.42"
+            "/test2.example.com/198.51.100.42"
+          ];
 
-        server = "203.0.113.42";
-        no-resolv = true;
-        expand-hosts = true;
+          server = "203.0.113.42";
+          no-resolv = true;
+          expand-hosts = true;
+        };
       };
     };
-  };
 }

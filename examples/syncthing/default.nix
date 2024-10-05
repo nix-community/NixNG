@@ -11,7 +11,8 @@ nglib.makeSystem {
   inherit nixpkgs;
   system = "x86_64-linux";
   name = "nixng-syncthing";
-  config = ({ ... }:
+  config = (
+    { ... }:
     {
       dumb-init = {
         enable = true;
@@ -25,5 +26,6 @@ nglib.makeSystem {
         enable = true;
         guiAddress = "http://0.0.0.0:8384/";
       };
-    });
+    }
+  );
 }
