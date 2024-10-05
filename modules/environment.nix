@@ -16,7 +16,7 @@ in
       default = { };
       example = { EDITOR = "vim"; BROWSER = "firefox"; };
       type = with lib.types; attrsOf (either str (listOf str));
-      apply = lib.mkApply
+      apply = nglib.mkApply
         (x: lib.concatStringsSep " "
           (lib.mapAttrsToList (n: v: "${n}=" + (if lib.isList v then lib.concatStringsSep ":" v else v)) x));
     };
@@ -34,7 +34,7 @@ in
           Shell script fragments, concataned into /etc/profile.
         '';
         type = with lib.types; listOf str;
-        apply = lib.mkApply
+        apply = nglib.mkApply
           (x: pkgs.writeShellScript "profile" (lib.concatStringsSep "\n" x));
         default = [ ];
       };
