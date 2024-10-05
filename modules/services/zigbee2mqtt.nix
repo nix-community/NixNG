@@ -53,7 +53,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    services.zigbee2mqtt.config = lib.mkDefaultRec
+    services.zigbee2mqtt.config = nglib.mkDefaultRec
       {
         http.server_port = "8123";
       };
