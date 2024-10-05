@@ -7,7 +7,21 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { lib }:
-with lib;
+let
+  inherit
+    (lib)
+    isAttrs
+    concatStringsSep
+    concatMapStringsSep
+    mapAttrsToList
+    isString
+    isInt
+    isStorePath
+    isList
+    isBool
+    all
+    ;
+in
 rec {
   toApache = cfg:
     if isAttrs cfg then

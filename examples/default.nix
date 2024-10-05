@@ -9,7 +9,8 @@
 { nglib, nixpkgs, nixng }:
 let
   examples =
-    { "gitea" = ./gitea;
+    {
+      "gitea" = ./gitea;
       "gitea-sane" = ./gitea/sane.nix;
       "apache" = ./apache;
       "nginx" = ./nginx;
@@ -28,4 +29,4 @@ let
       "attic" = ./attic;
     };
 in
-  nixpkgs.lib.mapAttrs (_: v: import v { inherit nixpkgs nglib nixng; }) examples
+nixpkgs.lib.mapAttrs (_: v: import v { inherit nixpkgs nglib nixng; }) examples

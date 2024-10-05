@@ -7,69 +7,68 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, lib, config, ... }:
-with lib;
 let
   cfg = config.services.gitea;
   ids = config.ids;
 
-  configFormat = pkgs.formats.ini {};
+  configFormat = pkgs.formats.ini { };
 
   defaultUser = "gitea";
 
   giteaSecrets = {
     options = {
-      secretKeyFile = mkOption {
+      secretKeyFile = lib.mkOption {
         description = ''
           Path to a file containing Gitea's secret key, on one line.
           If non-<literal>null</literal>, the contents of this file will
           substituted into the generated configuration file in-place of
           <literal>#secretKey#</literal>.
         '';
-        type = with types; nullOr path;
+        type = with lib.types; nullOr path;
         default = null;
       };
-      internalTokenFile = mkOption {
+      internalTokenFile = lib.mkOption {
         description = ''
           Path to a file containing Gitea's internal token, on one line.
           If non-<literal>null</literal>, the contents of this file will
           substituted into the generated configuration file in-place of
           <literal>#internalToken#</literal>.
         '';
-        type = with types; nullOr path;
+        type = with lib.types; nullOr path;
         default = null;
       };
-      jwtSecretFile = mkOption {
+      jwtSecretFile = lib.mkOption {
         description = ''
           Path to a file containing Gitea's JWT secret, on one line.
           If non-<literal>null</literal>, the contents of this file
           will substituted into the generated configuration file in-place
           of <literal>#jwtSecret#</literal>.
         '';
-        type = with types; nullOr path;
+        type = with lib.types; nullOr path;
         default = null;
       };
-      lfsJwtSecretFile = mkOption {
+      lfsJwtSecretFile = lib.mkOption {
         description = ''
           Path to a file containing Gitea's LFS JWT secret, on one line.
           If non-<literal>null</literal>, the contents of this file will
           substituted into the generated configuration file in-place of
           <literal>#lfsJwtSecret#</literal>.
         '';
-        type = with types; nullOr path;
+        type = with lib.types; nullOr path;
         default = null;
       };
 
-      databaseUserFile = mkOption {
+      databaseUserFile = lib.mkOption {
         description = ''
           Path to a file containing user with which Gitea should connect
           to it's database, on one line. If non-<literal>null</literal>,
           the contents of this file will substituted into the generated
           configuration file in-place of <literal>#databaseUser#</literal>.
         '';
-        type = with types; nullOr path;
+        type = with lib.types; nullOr path;
         default = null;
       };
-      databasePasswordFile = mkOption {
+      databasePasswordFile = lib.mkOption {
         description = ''
           Path to a file containing password with which Gitea should
           connect to it's database, on one line. If
@@ -77,43 +76,43 @@ let
           substituted into the generated configuration file in-place
           of <literal>#databasePassword#</literal>.
         '';
-        type = with types; nullOr path;
+        type = with lib.types; nullOr path;
         default = null;
       };
-      databaseHostFile = mkOption {
+      databaseHostFile = lib.mkOption {
         description = ''
           Path to a file containing database host to which Gitea should
           connect, on one line. If non-<literal>null</literal>, the
           contents of this file will substituted into the generated
           configuration file in-place of <literal>#databaseHost#</literal>.
         '';
-        type = with types; nullOr path;
+        type = with lib.types; nullOr path;
         default = null;
       };
     };
   };
 
-  secretModule = {name, ...}: {
+  secretModule = { name, ... }: {
     options = {
-      source = mkOption {
-        type = types.attrTag {
-          file = mkOption {
-            type = types.path;
+      source = lib.mkOption {
+        type = lib.types.attrTag {
+          file = lib.mkOption {
+            type = lib.types.path;
           };
 
-          environment = mkOption {
-            type = types.str;
+          environment = lib.mkOption {
+            type = lib.types.str;
           };
         };
       };
 
-      generate = mkOption {
-        type = types.str;
+      generate = lib.mkOption {
+        type = lib.types.str;
         default = "false";
       };
 
-      placeholder = mkOption {
-        type = types.str;
+      placeholder = lib.mkOption {
+        type = lib.types.str;
         default = name;
       };
     };
@@ -123,7 +122,7 @@ let
     attrs.${a};
 
   tagCase = a: attrs:
-    attrs.${head (attrNames a)};
+    attrs.${lib.head (lib.attrNames a)};
 
   fromMaybe = maybe: value:
     if maybe == null then
@@ -133,10 +132,10 @@ let
 
   declareSubstituteSecrets =
     secrets:
-    {
-      targetNotFound ? "_targetNotFound_default",
-      secretNotUsed ? "_secretNotUsed_default",
-      secretNotFound ? "_secretNotFound_default",
+    { targetNotFound ? "_targetNotFound_default"
+    , secretNotUsed ? "_secretNotUsed_default"
+    , secretNotFound ? "_secretNotFound_default"
+    ,
     }:
     ''
       function _targetNotFound_default() {
@@ -168,7 +167,7 @@ let
           ${targetNotFound} "$_target"
         fi
 
-        ${concatMapStringsSep "\n" (secret:
+        ${lib.concatMapStringsSep "\n" (secret:
           ''
             local _placeholder="${secret.placeholder}"
             grep "@$_placeholder@" "$_target" || ${secretNotUsed} "$_target" "$_placeholder"
@@ -193,34 +192,34 @@ let
 
             sed -i "s,@${secret.placeholder}@,$_secret,g" "$_target"
           ''
-        ) (attrValues secrets)}
+        ) (lib.attrValues secrets)}
       }
     '';
 in
 {
   imports = [
-    (mkRemovedOptionModule [ "services" "gitea" "appName" ] "The option has been moved to <services.gitea.settings.default.appName")
-    (mkRemovedOptionModule [ "services" "gitea" "runMode" ] "The option has been moved to <services.gitea.settings.default.runMode")
-    (mkRemovedOptionModule [ "services" "gitea" "user" ] "The option has been moved to <services.gitea.settings.default.runUser")
-    (mkRemovedOptionModule [ "services" "gitea" "configuration" ] "The option has been renamed to <services.gitea.settings>")
+    (lib.mkRemovedOptionModule [ "services" "gitea" "appName" ] "The option has been moved to <services.gitea.settings.default.appName")
+    (lib.mkRemovedOptionModule [ "services" "gitea" "runMode" ] "The option has been moved to <services.gitea.settings.default.runMode")
+    (lib.mkRemovedOptionModule [ "services" "gitea" "user" ] "The option has been moved to <services.gitea.settings.default.runUser")
+    (lib.mkRemovedOptionModule [ "services" "gitea" "configuration" ] "The option has been renamed to <services.gitea.settings>")
   ];
 
   options.services.gitea = {
-    enable = mkEnableOption "Enable Gitea service.";
+    enable = lib.mkEnableOption "Enable Gitea service.";
 
-    package = mkOption {
+    package = lib.mkOption {
       description = "Gitea package.";
-      type = types.package;
+      type = lib.types.package;
       default = pkgs.gitea;
     };
 
-    secrets = mkOption {
+    secrets = lib.mkOption {
       description = "Gitea secrets.";
-      type = types.attrsOf (types.submodule secretModule);
+      type = lib.types.attrsOf (lib.types.submodule secretModule);
       default = { };
     };
 
-    settings = mkOption {
+    settings = lib.mkOption {
       description = ''
         Gitea configuration.
       '';
@@ -233,17 +232,17 @@ in
       '';
     };
 
-    runConfig = mkOption {
+    runConfig = lib.mkOption {
       description = ''
         Path to Gitea's runtime generated configuration, with secrets.
       '';
-      type = types.path;
+      type = lib.types.path;
       default = "/var/run/gitea/app.ini";
     };
     # add explicit path settings and ensure them, also add to config but only as defaults
   };
 
-  config = mkIf cfg.enable {
+  config = lib.mkIf cfg.enable {
     services.gitea.settings = {
       server.STATIC_ROOT_PATH = "${cfg.package.data}";
     };
@@ -270,26 +269,26 @@ in
           let
             appIni = configFormat.generate "app.ini" cfg.settings;
           in
-            ''
-              set -x
-              export PATH=${pkgs.busybox}/bin:${pkgs.bash}/bin
+          ''
+            set -x
+            export PATH=${pkgs.busybox}/bin:${pkgs.bash}/bin
 
-              cp ${appIni} ${cfg.runConfig}
-              chmod 600 ${cfg.runConfig}
-              chown ${cfg.settings.default.RUN_USER}:nogroup ${cfg.runConfig}
+            cp ${appIni} ${cfg.runConfig}
+            chmod 600 ${cfg.runConfig}
+            chown ${cfg.settings.default.RUN_USER}:nogroup ${cfg.runConfig}
 
-              ${declareSubstituteSecrets cfg.secrets { secretNotFound = "false"; }}
-              substituteSecrets ${cfg.runConfig}
-              cat ${cfg.runConfig}
+            ${declareSubstituteSecrets cfg.secrets { secretNotFound = "false"; }}
+            substituteSecrets ${cfg.runConfig}
+            cat ${cfg.runConfig}
 
-              ${optionalString (cfg.package.name == pkgs.forgejo.name) ''
-                mkdir -p ${cfg.settings.server.APP_DATA_PATH}/conf
-                ln -sf ${cfg.package}/locasle ${cfg.settings.server.APP_DATA_PATH}/conf
-              ''}
+            ${lib.optionalString (cfg.package.name == pkgs.forgejo.name) ''
+              mkdir -p ${cfg.settings.server.APP_DATA_PATH}/conf
+              ln -sf ${cfg.package}/locasle ${cfg.settings.server.APP_DATA_PATH}/conf
+            ''}
 
-              export HOME=${cfg.settings.server.APP_DATA_PATH}
-              chpst -u ${cfg.settings.default.RUN_USER or "root"}:nogroup ${cfg.package}/bin/gitea -c ${cfg.runConfig}
-            ''
+            export HOME=${cfg.settings.server.APP_DATA_PATH}
+            chpst -u ${cfg.settings.default.RUN_USER or "root"}:nogroup ${cfg.package}/bin/gitea -c ${cfg.runConfig}
+          ''
         );
 
       enabled = true;
@@ -297,7 +296,7 @@ in
 
     environment.systemPackages = [ cfg.package ];
 
-    users.users."gitea" = mkIf ((cfg.settings.default.RUN_USER or "root") == defaultUser) {
+    users.users."gitea" = lib.mkIf ((cfg.settings.default.RUN_USER or "root") == defaultUser) {
       uid = ids.uids.gitea;
       description = "Gitea user";
     };

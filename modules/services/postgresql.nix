@@ -11,7 +11,6 @@
 #   Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
 
 { pkgs, lib, config, ... }:
-with lib;
 let
   cfg = config.services.postgresql;
 
@@ -19,27 +18,27 @@ let
   toStr = value:
     if true == value then "yes"
     else if false == value then "no"
-    else if isString value then "'${lib.replaceStrings ["'"] ["''"] value}'"
+    else if lib.isString value then "'${lib.replaceStrings ["'"] ["''"] value}'"
     else toString value;
 
-  configFile = pkgs.writeTextDir "postgresql.conf" (concatStringsSep "\n" (mapAttrsToList (n: v: "${n} = ${toStr v}") cfg.config));
+  configFile = pkgs.writeTextDir "postgresql.conf" (lib.concatStringsSep "\n" (lib.mapAttrsToList (n: v: "${n} = ${toStr v}") cfg.config));
 in
 {
   options = {
     services.postgresql = {
 
-      enable = mkEnableOption "PostgreSQL Server";
+      enable = lib.mkEnableOption "PostgreSQL Server";
 
-      package = mkOption {
-        type = types.package;
-        example = literalExample "pkgs.postgresql_11";
+      package = lib.mkOption {
+        type = lib.types.package;
+        example = lib.literalExample "pkgs.postgresql_11";
         description = ''
           PostgreSQL package to use.
         '';
       };
 
-      port = mkOption {
-        type = types.int;
+      port = lib.mkOption {
+        type = lib.types.int;
         default = 5432;
         description = ''
           The port on which PostgreSQL listens.
@@ -47,14 +46,14 @@ in
         apply = toString;
       };
 
-      checkConfig = mkOption {
-        type = types.bool;
+      checkConfig = lib.mkOption {
+        type = lib.types.bool;
         default = true;
         description = "Check the syntax of the configuration file at compile time";
       };
 
-      dataDir = mkOption {
-        type = types.path;
+      dataDir = lib.mkOption {
+        type = lib.types.path;
         defaultText = "/var/lib/postgresql/\${config.services.postgresql.package.psqlSchema}";
         example = "/var/lib/postgresql/11";
         description = ''
@@ -65,8 +64,8 @@ in
         '';
       };
 
-      authentication = mkOption {
-        type = types.lines;
+      authentication = lib.mkOption {
+        type = lib.types.lines;
         default = "";
         description = ''
           Defines how users authenticate themselves to the server. See the
@@ -82,8 +81,8 @@ in
         '';
       };
 
-      identMap = mkOption {
-        type = types.lines;
+      identMap = lib.mkOption {
+        type = lib.types.lines;
         default = "";
         description = ''
           Defines the mapping from system users to database users.
@@ -92,8 +91,8 @@ in
         '';
       };
 
-      initdbArgs = mkOption {
-        type = with types; listOf str;
+      initdbArgs = lib.mkOption {
+        type = with lib.types; listOf str;
         default = [ ];
         example = [ "--data-checksums" "--allow-group-access" ];
         description = ''
@@ -102,16 +101,16 @@ in
         '';
       };
 
-      initialScript = mkOption {
-        type = with types; nullOr (oneOf [ package str ]);
+      initialScript = lib.mkOption {
+        type = with lib.types; nullOr (oneOf [ package str ]);
         default = null;
         description = ''
           A file containing SQL statements to execute on first startup.
         '';
       };
 
-      ensureExtensions = mkOption {
-        type = with types; attrsOf (listOf str);
+      ensureExtensions = lib.mkOption {
+        type = with lib.types; attrsOf (listOf str);
         default = { };
         description = ''
           Ensure that the specified extensions exist.
@@ -121,8 +120,8 @@ in
         };
       };
 
-      ensureDatabases = mkOption {
-        type = with types;
+      ensureDatabases = lib.mkOption {
+        type = with lib.types;
           oneOf [ (listOf str) (attrsOf (attrsOf str)) ];
         default = [ ];
         description = ''
@@ -131,7 +130,7 @@ in
           option is changed. This means that databases created once through this option or
           otherwise have to be removed manually.
         '';
-        example = literalExample ''
+        example = lib.literalExample ''
           [
             "gitea" = { encoding = UTF-8; }
             "hydra"
@@ -139,17 +138,17 @@ in
         '';
       };
 
-      ensureUsers = mkOption {
-        type = types.listOf (types.submodule {
+      ensureUsers = lib.mkOption {
+        type = with lib.types; listOf (submodule {
           options = {
-            name = mkOption {
-              type = types.str;
+            name = lib.mkOption {
+              type = str;
               description = ''
                 Name of the user to ensure.
               '';
             };
-            ensurePermissions = mkOption {
-              type = types.attrsOf types.str;
+            ensurePermissions = lib.mkOption {
+              type = attrsOf str;
               default = { };
               description = ''
                 Permissions to ensure for the user, specified as an attribute set.
@@ -161,17 +160,17 @@ in
                 <link xlink:href="https://www.postgresql.org/docs/current/sql-grant.html">GRANT syntax</link>.
                 The attributes are used as <code>GRANT ''${attrName} ON ''${attrValue}</code>.
               '';
-              example = literalExample ''
+              example = lib.literalExample ''
                 {
                   "DATABASE \"nextcloud\"" = "ALL PRIVILEGES";
                   "ALL TABLES IN SCHEMA public" = "ALL PRIVILEGES";
                 }
               '';
             };
-            ensureDBOwnership = mkOption {
-              type = types.bool;
+            ensureDBOwnership = lib.mkOption {
+              type = bool;
               default = false;
-              description = mdDoc ''
+              description = lib.mdDoc ''
                 Grants the  user ownership to a database with the same name.
                 This database must be defined manually in
                 [](#opt-services.postgresql.ensureDatabases).
@@ -188,7 +187,7 @@ in
           option is changed. This means that users created and permissions assigned once through this option or
           otherwise have to be removed manually.
         '';
-        example = literalExample ''
+        example = lib.literalExample ''
           [
             {
               name = "nextcloud";
@@ -206,8 +205,8 @@ in
         '';
       };
 
-      enableTCPIP = mkOption {
-        type = types.bool;
+      enableTCPIP = lib.mkOption {
+        type = lib.types.bool;
         default = false;
         description = ''
           Whether PostgreSQL should listen on all network interfaces.
@@ -216,8 +215,8 @@ in
         '';
       };
 
-      logLinePrefix = mkOption {
-        type = types.str;
+      logLinePrefix = lib.mkOption {
+        type = lib.types.str;
         default = "Postgres [%p] ";
         example = "%m [%p] ";
         description = ''
@@ -227,18 +226,18 @@ in
         '';
       };
 
-      extraPlugins = mkOption {
-        type = types.listOf types.path;
+      extraPlugins = lib.mkOption {
+        type = with lib.types; listOf path;
         default = [ ];
-        example = literalExample "with pkgs.postgresql_11.pkgs; [ postgis pg_repack ]";
+        example = lib.literalExample "with pkgs.postgresql_11.pkgs; [ postgis pg_repack ]";
         description = ''
           List of PostgreSQL plugins. PostgreSQL version for each plugin should
           match version for <literal>services.postgresql.package</literal> value.
         '';
       };
 
-      config = mkOption {
-        type = with types; attrsOf (oneOf [ bool float int str ]);
+      config = lib.mkOption {
+        type = with lib.types; attrsOf (oneOf [ bool float int str ]);
         default = { };
         description = ''
           PostgreSQL configuration. Refer to
@@ -249,7 +248,7 @@ in
             escaped with two single quotes as described by the upstream documentation linked above.
           </para></note>
         '';
-        example = literalExample ''
+        example = lib.literalExample ''
           {
             log_connections = true;
             log_statement = "all";
@@ -260,16 +259,16 @@ in
         '';
       };
 
-      recoveryConfig = mkOption {
-        type = types.nullOr types.lines;
+      recoveryConfig = lib.mkOption {
+        type = with lib.types; nullOr lines;
         default = null;
         description = ''
           Contents of the <filename>recovery.conf</filename> file.
         '';
       };
 
-      superUser = mkOption {
-        type = types.str;
+      superUser = lib.mkOption {
+        type = lib.types.str;
         default = "postgres";
         internal = true;
         readOnly = true;
@@ -282,8 +281,8 @@ in
   };
   # END Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
 
-  config = mkIf cfg.enable {
-    environment.systemPackages = with pkgs; [ cfg.package ];
+  config = lib.mkIf cfg.enable {
+    environment.systemPackages = [ cfg.package ];
 
     # BEGIN Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
     services.postgresql.config = {
@@ -295,9 +294,9 @@ in
       port = cfg.port;
     };
 
-    services.postgresql.dataDir = mkDefault "/var/lib/postgresql/${cfg.package.psqlSchema}";
+    services.postgresql.dataDir = lib.mkDefault "/var/lib/postgresql/${cfg.package.psqlSchema}";
 
-    services.postgresql.authentication = mkAfter
+    services.postgresql.authentication = lib.mkAfter
       ''
         # Generated file; do not edit!
         local all all              peer
@@ -361,13 +360,13 @@ in
            rm -f ${cfg.dataDir}/*.conf
 
            # Initialize the database
-           chpst -u postgres:postgres ${cfg.package}/bin/initdb -U ${cfg.superUser} ${concatStringsSep " " cfg.initdbArgs}
+           chpst -u postgres:postgres ${cfg.package}/bin/initdb -U ${cfg.superUser} ${lib.concatStringsSep " " cfg.initdbArgs}
 
            touch ${cfg.dataDir}/.first_startup
         fi
 
         ln -sfn ${configFile}/postgresql.conf ${cfg.dataDir}/postgresql.conf
-        ${optionalString (cfg.recoveryConfig != null) ''
+        ${lib.optionalString (cfg.recoveryConfig != null) ''
           ln -sfn "${pkgs.writeText "recovery.conf" cfg.recoveryConfig}" \
           "${cfg.dataDir}/recovery.conf"
         ''}
@@ -381,25 +380,25 @@ in
           sleep 0.1
         done
 
-        ${concatMapStrings ({ database, options }: ''
+        ${lib.concatMapStrings ({ database, options }: ''
           $PSQL -tAc "SELECT 1 FROM pg_database WHERE datname = '${database}'" | grep -q 1 || $PSQL -tAc 'CREATE DATABASE "${database}" ${if options != "" then "WITH " + options else ""}'
         '')
-          ((if isList cfg.ensureDatabases then
+          ((if lib.isList cfg.ensureDatabases then
             map (x: { database = x; options = ""; })
            else
-             mapAttrsToList (k: v: { database = k; options = concatStringsSep " " (mapAttrsToList (k: v: "${k} = \"${v}\"") v); }))
+             lib.mapAttrsToList (k: v: { database = k; options = lib.concatStringsSep " " (lib.mapAttrsToList (k: v: "${k} = \"${v}\"") v); }))
           cfg.ensureDatabases)}
 
-        ${concatMapStrings (user: ''
+        ${lib.concatMapStrings (user: ''
           $PSQL -tAc "SELECT 1 FROM pg_roles WHERE rolname='${user.name}'" | grep -q 1 || $PSQL -tAc 'CREATE USER "${user.name}"'
-          ${concatStringsSep "\n" (mapAttrsToList (database: permission: ''
+          ${lib.concatStringsSep "\n" (lib.mapAttrsToList (database: permission: ''
             $PSQL -tAc 'GRANT ${permission} ON ${database} TO "${user.name}"'
           '') user.ensurePermissions)}
-          ${optionalString user.ensureDBOwnership ''$PSQL -tAc 'ALTER DATABASE "${user.name}" OWNER TO "${user.name}";' ''}
+          ${lib.optionalString user.ensureDBOwnership ''$PSQL -tAc 'ALTER DATABASE "${user.name}" OWNER TO "${user.name}";' ''}
         '') cfg.ensureUsers}
 
-        ${concatStrings (mapAttrsToList (extension: schemas:
-          concatMapStrings (schema:
+        ${lib.concatStrings (lib.mapAttrsToList (extension: schemas:
+          lib.concatMapStrings (schema:
             ''
               $PSQL -tAc "create extension if not exists ${extension}" ${schema}
             ''
@@ -407,7 +406,7 @@ in
         ) cfg.ensureExtensions)}
 
         if test -e "${cfg.dataDir}/.first_startup"; then
-          ${optionalString (cfg.initialScript != null) ''
+          ${lib.optionalString (cfg.initialScript != null) ''
             $PSQL -f "${cfg.initialScript}" -d postgres
           ''}
           rm -f "${cfg.dataDir}/.first_startup"

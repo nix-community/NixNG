@@ -7,7 +7,6 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { config, lib, ... }:
-with lib;
 let
   cfg = config.bootloader;
 
@@ -39,27 +38,27 @@ let
 in
 {
   options.bootloader = {
-    enable = mkEnableOption "Enable the bootloader";
-    kernelExtraConfig = mkOption {
+    enable = lib.mkEnableOption "Enable the bootloader";
+    kernelExtraConfig = lib.mkOption {
       description = "";
-      type = types.attrsOf (types.enum [ "y" "n" "m" ]);
+      type = with lib.types; attrsOf (enum [ "y" "n" "m" ]);
       default = { };
     };
 
-    initrdCompression = mkOption {
+    initrdCompression = lib.mkOption {
       description = "Supported compression algorithms for initrd";
-      type = types.listOf (types.enum (builtins.attrNames initrdAlgos));
+      type = with lib.types; listOf (enum (builtins.attrNames initrdAlgos));
       default = [ ];
     };
 
-    filesystems = mkOption {
+    filesystems = lib.mkOption {
       description = "Supported filesystems for initrd";
-      type = types.listOf (types.enum (builtins.attrNames filesystems));
+      type = with lib.types; listOf (enum (builtins.attrNames filesystems));
       default = [ ];
     };
   };
 
-  config.bootloader = mkIf cfg.enable {
+  config.bootloader = lib.mkIf cfg.enable {
     kernelExtraConfig =
       (builtins.listToAttrs
         (map

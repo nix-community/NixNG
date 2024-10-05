@@ -7,26 +7,25 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, config, lib, ... }:
-with lib;
 let
   cfg = config.services.jmusicbot;
 in
 {
   options.services.jmusicbot = {
-    enable = mkEnableOption "Enable JMusicBot";
+    enable = lib.mkEnableOption "Enable JMusicBot";
 
-    package = mkOption {
+    package = lib.mkOption {
       description = "JMusicBot package to use.";
       default = pkgs.jmusicbot;
-      type = types.package;
+      type = lib.types.package;
     };
 
-    config = mkOption {
+    config = lib.mkOption {
       description = ''
         JMusicBot configuration file in Nix form. <link>https://github.com/jagrosh/MusicBot/wiki/Example-Config</link>
         This configuration file will be ran through envsubst, therefore "''${ENV_VAR}" works as you'd expect.
       '';
-      example = literalExample ''
+      example = lib.literalExample ''
         {
           token = "BOT_TOKEN";
           owner = 1254789614;
@@ -37,51 +36,51 @@ in
           };
         }
       '';
-      type = with types; attrsOf (oneOf [ str int bool (attrsOf (listOf str)) ]);
+      type = with lib.types; attrsOf (oneOf [ str int bool (attrsOf (listOf str)) ]);
       apply = x:
         pkgs.writeText "jmusicbot-config.txt"
-          (concatMapStringsSep "\n"
+          (lib.concatMapStringsSep "\n"
             (
               { name, value }:
-              if isString value then
+              if lib.isString value then
                 "${name} = \"${value}\""
-              else if isInt value then
+              else if lib.isInt value then
                 "${name} = ${toString value}"
-              else if isBool value then
+              else if lib.isBool value then
                 if value then
                   "${name} = true"
                 else
                   "${name} = false"
-              else if isAttrs value then
+              else if lib.isAttrs value then
                 "${name} {"
                 +
-                concatMapStringsSep "\n" (
+                lib.concatMapStringsSep "\n" (
                   { name, value }:
-                  "${name} = [ ${concatStringsSep ", " value} ]"
+                  "${name} = [ ${lib.concatStringsSep ", " value} ]"
                 )
                 +
                 "}"
               else
                 throw "Type error"
             )
-            (mapAttrsToList nameValuePair x));
+            (lib.mapAttrsToList lib.nameValuePair x));
     };
 
-    user = mkOption {
+    user = lib.mkOption {
       description = "User to run JMusicBot under.";
       default = "jmusicbot";
-      type = types.str;
+      type = lib.types.str;
     };
 
-    group = mkOption {
+    group = lib.mkOption {
       description = "Group to run JMusicBot under.";
       default = "jmusicbot";
-      type = types.str;
+      type = lib.types.str;
     };
   };
 
-  config = mkIf cfg.enable {
-    users.users.${cfg.user} = mapAttrs (_: mkDefault) {
+  config = lib.mkIf cfg.enable {
+    users.users.${cfg.user} = lib.mapAttrs (_: lib.mkDefault) {
       description = "JMusicBot";
       group = cfg.group;
       home = "/var/empty";
@@ -91,10 +90,10 @@ in
     };
 
     users.groups.${cfg.group} = {
-      gid = mkDefault config.ids.gids.jmusicbot;
+      gid = lib.mkDefault config.ids.gids.jmusicbot;
     };
 
-    environment.systemPackages = with pkgs; [ cfg.package ];
+    environment.systemPackages = [ cfg.package ];
 
     init.services.jmusicbot =
       {

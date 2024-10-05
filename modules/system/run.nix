@@ -7,14 +7,13 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, lib, config, ... }:
-with lib;
 {
   options.system.build = {
-    runDocker = mkOption {
+    runDocker = lib.mkOption {
       description = ''
           A script which will run the system in docker using nix store bind mounts.
         '';
-      type = types.path;
+      type = lib.types.path;
     };
   };
 

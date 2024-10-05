@@ -1,6 +1,12 @@
 lib:
-let this =
-  { makeSystem = import ./make-system.nix { nglib = this; overlay = import ../overlay;  };
+let
+  inherit
+    (lib)
+    types
+    ;
+  this =
+  {
+    makeSystem = import ./make-system.nix { nglib = this; overlay = import ../overlay;  };
     dag = import ./dag.nix { inherit lib; };
     generators = import ./generators.nix { inherit lib; };
     mkDefaultRec = lib.mapAttrsRecursive (_: v: lib.mkDefault v);
@@ -10,34 +16,10 @@ let this =
         applied = fun x;
       };
 
-    mkTmpfilesOption = name: description:
-      lib.mkOption {
-        default = {};
-        type = with lib.types;
-          attrsOf (listOf (listOf str));
-        description = ''
-          A lists of lists. The first list corresponds to the individual entries
-          and the most inner one corresponds to the individual fields in use by `tmpfiles.conf`.
-
-          ${description}
-        '';
-        example = ''
-          [
-            # Type  Path          Mode   User   Group   Age   Argument...
-            [ "d"     "/run/user"   "0755" "root" "root"  "10d" "-" ]
-            [ "L"     "/tmp/foobar" "-"    "-"    "-"     "-"   "/dev/null" ]
-          ]
-        '';
-        apply = with lib;
-          this.mkApply (x:
-            pkgs.writeText name
-              (concatMapStringsSep "\n" (concatStringsSep " ")));
-      };
-
     mkDagOption = description:
       lib.mkOption {
         inherit description;
-        type = with lib.types; attrsOf (submodule {
+        type = types.attrsOf (types.submodule {
           options = {
             data = lib.mkOption {
               description = ''

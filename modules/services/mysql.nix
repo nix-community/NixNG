@@ -11,7 +11,6 @@
 #   Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
 
 { pkgs, lib, config, ... }:
-with lib;
 let
   cfg = config.services.mysql;
 
@@ -21,25 +20,25 @@ let
     "--user=${cfg.user} --datadir=${cfg.dataDir} --basedir=${cfg.package}";
 
   configFile = pkgs.writeText "my.cnf" (
-    generators.toINI { listsAsDuplicateKeys = true; } cfg.config
+    lib.generators.toINI { listsAsDuplicateKeys = true; } cfg.config
   );
 in
 {
   options.services.mysql =
     {
-      enable = mkEnableOption "MySQL Server";
+      enable = lib.mkEnableOption "MySQL Server";
 
-      package = mkOption {
-        type = types.package;
-        example = literalExample "pkgs.mariadb";
+      package = lib.mkOption {
+        type = lib.types.package;
+        example = lib.literalExample "pkgs.mariadb";
         description = ''
           MySQL package to use. You can also use MariaDB and this module will re-adjust.
         '';
         default = pkgs.mariadb;
       };
 
-      port = mkOption {
-        type = types.int;
+      port = lib.mkOption {
+        type = lib.types.int;
         default = 3306;
         description = ''
           The port on which MariaDB listens.
@@ -47,37 +46,37 @@ in
         apply = toString;
       };
 
-      bind = mkOption {
-        type = types.nullOr types.str;
+      bind = lib.mkOption {
+        type = with lib.types; nullOr str;
         default = null;
-        example = literalExample "127.0.0.1";
+        example = lib.literalExample "127.0.0.1";
         description = ''
           Address to bind to.
         '';
       };
 
-      user = mkOption {
-        type = types.str;
+      user = lib.mkOption {
+        type = lib.types.str;
         default = "mysql";
         description = "User account under which MySQL runs.";
       };
 
-      group = mkOption {
-        type = types.str;
+      group = lib.mkOption {
+        type = lib.types.str;
         default = "mysql";
         description = "Group under which MySQL runs.";
       };
 
-      dataDir = mkOption {
-        type = types.path;
+      dataDir = lib.mkOption {
+        type = lib.types.path;
         default = "/var/lib/mysql";
         description = "Location where MySQL stores its table files.";
       };
 
-      config = mkOption {
-        type = with types; attrsOf (attrsOf (oneOf [ bool int str (listOf str) ]));
+      config = lib.mkOption {
+        type = with lib.types; attrsOf (attrsOf (oneOf [ bool int str (listOf str) ]));
         default = { };
-        example = literalExample
+        example = lib.literalExample
           ''
             {
               mysqld = {
@@ -94,16 +93,16 @@ in
           '';
       };
 
-      initialScript = mkOption {
-        type = with types; nullOr (oneOf [ package str ]);
+      initialScript = lib.mkOption {
+        type = with lib.types; nullOr (oneOf [ package str ]);
         default = null;
         description = ''
           A file containing SQL statements to execute on first startup.
         '';
       };
 
-      ensureDatabases = mkOption {
-        type = types.listOf types.str;
+      ensureDatabases = lib.mkOption {
+        type = with lib.types; listOf str;
         default = [ ];
         description = ''
           Ensures that the specified databases exist.
@@ -117,26 +116,26 @@ in
         ];
       };
 
-      ensureUsers = mkOption {
-        type = types.listOf (types.submodule {
+      ensureUsers = lib.mkOption {
+        type = lib.types.listOf (lib.types.submodule {
           options = {
-            name = mkOption {
-              type = types.str;
+            name = lib.mkOption {
+              type = lib.types.str;
               description = ''
                 Name of the user to ensure.
               '';
             };
 
-            address = mkOption {
-              type = types.str;
+            address = lib.mkOption {
+              type = lib.types.str;
               description = ''
                 Address of the user to ensure.
               '';
               default = "localhost";
             };
 
-            ensurePermissions = mkOption {
-              type = types.attrsOf types.str;
+            ensurePermissions = lib.mkOption {
+              type = with lib.types; attrsOf str;
               default = { };
               description = ''
                 Permissions to ensure for the user, specified as an attribute set.
@@ -148,7 +147,7 @@ in
                 <link xlink:href="https://mariadb.com/kb/en/library/grant/">GRANT syntax</link>.
                 The attributes are used as <code>GRANT ''${attrName} ON ''${attrValue}</code>.
               '';
-              example = literalExample ''
+              example = lib.literalExample ''
                 {
                   "database.*" = "ALL PRIVILEGES";
                   "*.*" = "SELECT, LOCK TABLES";
@@ -166,7 +165,7 @@ in
           option is changed. This means that users created and permissions assigned once through this option or
           otherwise have to be removed manually.
         '';
-        example = literalExample ''
+        example = lib.literalExample ''
           [
             {
               name = "nextcloud";
@@ -185,15 +184,15 @@ in
       };
     };
 
-  config = mkIf cfg.enable
+  config = lib.mkIf cfg.enable
     {
       services.mysql.config.mysqld = {
         datadir = cfg.dataDir;
-        bind-address = mkIf (cfg.bind != null) cfg.bind;
+        bind-address = lib.mkIf (cfg.bind != null) cfg.bind;
         port = cfg.port;
       };
 
-      users.users.mysql = mapAttrs (_: mkDefault)
+      users.users.mysql = lib.mapAttrs (_: lib.mkDefault)
         {
           uid = config.ids.uids.mysql;
           group = "mysql";
@@ -205,7 +204,7 @@ in
 
       users.groups.mysql.gid = config.ids.gids.mysql;
 
-      environment.systemPackages = with pkgs; [ cfg.package ];
+      environment.systemPackages = [ cfg.package ];
 
       init.services.mysql = {
         ensureSomething.create."dataDir" = {
@@ -246,7 +245,7 @@ in
               echo "GRANT ALL PRIVILEGES ON *.* TO '${cfg.user}'@'localhost' WITH GRANT OPTION;"
             ) | ${cfg.package}/bin/mysql -u root -N
 
-            ${optionalString (cfg.initialScript != null)
+            ${lib.optionalString (cfg.initialScript != null)
               ''
                 # Execute initial script
                 # using toString to avoid copying the file to nix store if given as path instead of string,
@@ -257,17 +256,17 @@ in
               rm ${cfg.dataDir}/.first_startup
           fi
           echo "creating users and databases"
-          ${optionalString (cfg.ensureDatabases != []) ''
+          ${lib.optionalString (cfg.ensureDatabases != []) ''
             (
-            ${concatMapStrings (database: ''
+            ${lib.concatMapStrings (database: ''
               echo "CREATE DATABASE IF NOT EXISTS \`${database}\`;"
             '') cfg.ensureDatabases}
             ) | ${cfg.package}/bin/mysql -N -u root
           ''}
-          ${concatMapStrings (user:
+          ${lib.concatMapStrings (user:
             ''
               ( echo "CREATE USER IF NOT EXISTS '${user.name}'@'${user.address}' IDENTIFIED WITH ${if isMariaDB then "unix_socket" else "auth_socket"};"
-                ${concatStringsSep "\n" (mapAttrsToList (database: permission: ''
+                ${lib.concatStringsSep "\n" (lib.mapAttrsToList (database: permission: ''
                   echo "GRANT ${permission} ON ${database} TO '${user.name}'@'${user.address}';"
                 '') user.ensurePermissions)}
               ) | ${cfg.package}/bin/mysql -N -u root

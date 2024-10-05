@@ -10,11 +10,10 @@
 , writeShellScript
 }:
 { n, s, cfgInit }:
-with lib;
 writeShellScript "${n}-finish" ''
-  ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
+  ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
     with cv;
-    optionalString (!cv.persistent) ''
+    lib.optionalString (!cv.persistent) ''
       if [[ -e ${dst} ]] ; then
         echo '${n}: removing non-presistent `${dst}`'
         rm -v ${dst}
@@ -22,9 +21,9 @@ writeShellScript "${n}-finish" ''
     ''
   ) s.ensureSomething.link)}
 
-  ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
+  ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
     with cv;
-    optionalString (!cv.persistent) ''
+    lib.optionalString (!cv.persistent) ''
       if [[ -e ${dst} ]] ; then
         echo '${n}: removing non-presistent `${dst}`'
         rm -rv ${dst}
@@ -32,13 +31,13 @@ writeShellScript "${n}-finish" ''
     ''
   ) s.ensureSomething.copy)}
 
-  ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
+  ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
     abort "linkFarm is not implemented yet in runit!"
   ) s.ensureSomething.linkFarm)}
 
-  ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
+  ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
     with cv;
-    optionalString (!cv.persistent) ''
+    lib.optionalString (!cv.persistent) ''
       if [[ -e ${dst} ]] ; then
         echo '${n}: removing non-persistent `${dst}`'
         rm -rv '${dst}'
@@ -46,9 +45,9 @@ writeShellScript "${n}-finish" ''
     ''
   ) s.ensureSomething.exec)}
 
-  ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
+  ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
     with cv;
-    optionalString (!cv.persistent) ''
+    lib.optionalString (!cv.persistent) ''
       if [[ -e ${dst} ]] ; then
         echo '${n}: removing non-persistent `${dst}`'
 
@@ -67,10 +66,10 @@ writeShellScript "${n}-finish" ''
 
   (
     cd ${s.pwd}
-    ${optionalString (s.environment != {}) "export ${concatStringsSep " " (mapAttrsToList (n: v: "${n}=${v}") s.environment)}"}
-    ${optionalString (s.finish != null && !s.shutdownOnExit) "exec ${s.finish}"}
-    ${optionalString (s.finish != null && s.shutdownOnExit) "${s.finish}"}
+    ${lib.optionalString (s.environment != {}) "export ${lib.concatStringsSep " " (lib.mapAttrsToList (n: v: "${n}=${v}") s.environment)}"}
+    ${lib.optionalString (s.finish != null && !s.shutdownOnExit) "exec ${s.finish}"}
+    ${lib.optionalString (s.finish != null && s.shutdownOnExit) "${s.finish}"}
   )
 
-  ${optionalString (s.shutdownOnExit) ("exec ${cfgInit.shutdown}")}
+  ${lib.optionalString (s.shutdownOnExit) ("exec ${cfgInit.shutdown}")}
 ''

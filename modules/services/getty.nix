@@ -7,15 +7,14 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, config, lib, ... }:
-with lib;
 let
   cfg = config.services.getty;
 
   optionsApplyFn = x:
-    if isString x then
+    if lib.isString x then
       x
-    else if isList x then
-      concatMapStringsSep " " optionsApplyFn x
+    else if lib.isList x then
+      lib.concatMapStringsSep " " optionsApplyFn x
     else
       toString x;
   optionsCreateArgument = k: v:
@@ -25,59 +24,59 @@ let
       ''"--${k}"'';
 in
 {
-  options.services.getty = mkOption {
+  options.services.getty = lib.mkOption {
     description = "All of the agettys";
-    type = types.attrsOf (types.submodule {
+    type = lib.types.attrsOf (lib.types.submodule {
       options = {
-        port = mkOption {
+        port = lib.mkOption {
           description = "TTY port.";
-          type = types.str;
+          type = lib.types.str;
         };
 
-        baudrate = mkOption {
+        baudrate = lib.mkOption {
           description = "TTY baud rate.";
-          type = with types;
+          type = with lib.types;
             nullOr (oneOf [ (listOf int) int str ]);
           default = null;
         };
 
-        term = mkOption {
+        term = lib.mkOption {
           description = "TTY terminal name.";
-          type = types.str;
+          type = lib.types.str;
           default = "vt220";
         };
 
-        options = mkOption {
+        options = lib.mkOption {
           description = "Extra options passed to the binary.";
-          type = with types;
+          type = with lib.types;
             let
               values = [ int str bool path (listOf (oneOf [ int str bool path ])) ];
             in
-              attrsOf (nullOr (oneOf values));
-          default = {};
+            attrsOf (nullOr (oneOf values));
+          default = { };
         };
 
-        package = mkOption {
+        package = lib.mkOption {
           description = "getty package.";
-          type = types.path;
+          type = lib.types.path;
           default = pkgs.util-linuxSystemdFree;
         };
       };
     });
     default = { };
   };
-  config.init.services =  mapAttrs'
-    (name: getty: nameValuePair "getty-${name}"
+  config.init.services = lib.mapAttrs'
+    (name: getty: lib.nameValuePair "getty-${name}"
       {
         script = with getty;
           pkgs.writeShellScript "getty-${name}-run"
             ''
               exec ${package}/sbin/agetty \
                  "${port}" \
-                 ${concatStringsSep " " (mapAttrsToList optionsCreateArgument options)}
-                 "${optionalString
+                 ${lib.concatStringsSep " " (lib.mapAttrsToList optionsCreateArgument options)}
+                 "${lib.optionalString
                    (baudrate != null)
-                   (if isList baudrate then
+                   (if lib.isList baudrate then
                      concatMapStringsSep "," toString baudrate
                     else
                       toString baudrate)}" \

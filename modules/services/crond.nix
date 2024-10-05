@@ -7,23 +7,22 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { config, nglib, lib, pkgs, ... }:
-with lib;
 let
   cfg = config.services.crond;
 in
 {
   options.services.crond = {
-    enable = mkEnableOption "Enable crond, the daemon to execute scheduled commands, specifically cronie.";
-    package = mkOption {
-      type = types.package;
+    enable = lib.mkEnableOption "Enable crond, the daemon to execute scheduled commands, specifically cronie.";
+    package = lib.mkOption {
+      type = lib.types.package;
       description = "The package which contains a cron implementation.";
       default = pkgs.cronie;
     };
 
-    crontabs = mkOption {
-      type = with types; attrsOf (submodule {
+    crontabs = lib.mkOption {
+      type = with lib.types; attrsOf (submodule {
         options = {
-          environment = mkOption {
+          environment = lib.mkOption {
             type = attrsOf str;
             description = ''
               A set of environment variable to set for this specific crontab.
@@ -35,7 +34,7 @@ in
             '';
             default = { };
           };
-          jobs = mkOption {
+          jobs = lib.mkOption {
             type = listOf str;
             description = ''
               A list of job entries, in the usual cron format.
@@ -69,16 +68,16 @@ in
       apply = x:
         let
           cronfiles =
-            (mapAttrsToList
+            (lib.mapAttrsToList
               (n: v: pkgs.writeText n
                 ''
-                  ${concatStringsSep "\n" (mapAttrsToList (n: v: ''"${n}"="${v}"'') v.environment)}
-                  ${concatStringsSep "\n" v.jobs}
+                  ${lib.concatStringsSep "\n" (lib.mapAttrsToList (n: v: ''"${n}"="${v}"'') v.environment)}
+                  ${lib.concatStringsSep "\n" v.jobs}
                 '')
               x);
         in
         pkgs.runCommandNoCCLocal "cron.d" { } ''
-          CRONFILES="${concatStringsSep " " cronfiles}"
+          CRONFILES="${lib.concatStringsSep " " cronfiles}"
           mkdir -p $out
           for cronfile in $CRONFILES ; do
             ln -s "$cronfile" $out/$(basename "$cronfile")
@@ -87,7 +86,7 @@ in
     };
   };
 
-  config = mkIf cfg.enable {
+  config = lib.mkIf cfg.enable {
     system.activation."crond" = nglib.dag.dagEntryAnywhere
       ''
         export PATH=${pkgs.busybox}/bin
@@ -104,6 +103,6 @@ in
         enabled = true;
       };
 
-    environment.systemPackages = with pkgs; [ cfg.package ];
+    environment.systemPackages = [ cfg.package ];
   };
 }

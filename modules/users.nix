@@ -7,8 +7,23 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { nglib, lib, pkgs, config, ... }:
-with lib;
 let
+  inherit
+    (lib)
+    mkIf
+    mkDefault
+    mkOption
+    types
+    concatMapStringsSep
+    filter
+    mapAttrsToList
+    mkMerge
+    optionalAttrs
+    flatten
+    singleton
+    concatStringsSep
+    ;
+
   ids = config.ids;
   cfg = config.users;
 

@@ -7,33 +7,32 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, config, lib, nglib, ... }:
-with lib;
 let
   cfg = config.services.certbot;
 
   domainOptions = {
     options = {
-      extraDomains = mkOption {
+      extraDomains = lib.mkOption {
         description = "Extra domains to add to the generated certificate.";
-        type = with types; listOf str;
+        type = with lib.types; listOf str;
         default = [ ];
       };
 
-      webroot = mkOption {
+      webroot = lib.mkOption {
         description = ''
           The path to the webroot where certbot should use for the ACME
           challenge.
         '';
-        type = types.str;
+        type = lib.types.str;
       };
 
-      email = mkOption {
-        type = types.str;
+      email = lib.mkOption {
+        type = lib.types.str;
         description = "Contact email address for the CA to be able to reach you.";
       };
 
-      server = mkOption {
-        type = types.nullOr types.str;
+      server = lib.mkOption {
+        type = with lib.types; nullOr str;
         default = null;
         description = ''
           ACME Directory Resource URI. Defaults to Let's Encrypt's
@@ -42,19 +41,19 @@ let
         '';
       };
 
-      postScript = mkOption {
+      postScript = lib.mkOption {
         description = ''
           a shell script to run after certbot.
         '';
-        type = types.nullOr types.str;
+        type = with lib.types; nullOr str;
         default = null;
       };
 
-      extraOptions = mkOption {
+      extraOptions = lib.mkOption {
         description = ''
           Extra command line options passed to certbot upon activation.
         '';
-        type = types.nullOr types.str;
+        type = with lib.types; nullOr str;
         default = null;
       };
     };
@@ -63,33 +62,33 @@ in
 {
   options = {
     services.certbot = {
-      enable = mkEnableOption "Onable certbot, certificate management tool.";
-      package = mkOption {
+      enable = lib.mkEnableOption "Onable certbot, certificate management tool.";
+      package = lib.mkOption {
         description = "certbot package.";
-        type = types.package;
+        type = lib.types.package;
         default = pkgs.certbot;
       };
 
-      domains = mkOption {
+      domains = lib.mkOption {
         description = "Oomains for which, certbot will fetch certificates.";
-        type = with types; attrsOf (submodule domainOptions);
+        type = with lib.types; attrsOf (submodule domainOptions);
         default = { };
       };
 
-      acceptTerms = mkOption {
+      acceptTerms = lib.mkOption {
         description = ''
           Accept the CA's terms of service. The default provider is Let's Encrypt,
           you can find their ToS at <link xlink:href="https://letsencrypt.org/repository/"/>.
         '';
-        type = types.bool;
+        type = lib.types.bool;
         default = false;
       };
     };
   };
 
-  config = mkIf cfg.enable {
+  config = lib.mkIf cfg.enable {
     services.crond = {
-      enable = mkDefault true;
+      enable = lib.mkDefault true;
 
       crontabs.certbot = {
         jobs =
@@ -114,11 +113,11 @@ in
       }
     ];
 
-    environment.systemPackages = with pkgs; [ cfg.package ];
+    environment.systemPackages = [ cfg.package ];
 
     system.activation.certbot = nglib.dag.dagEntryAfter
       [ "createbaseenv" "users" ]
-      (concatStringsSep "\n" (mapAttrsToList
+      (lib.concatStringsSep "\n" (lib.mapAttrsToList
         (n: v:
           pkgs.writeShellScript n ''
             ${pkgs.busybox}/bin/mkdir -p ${v.webroot}
@@ -126,13 +125,13 @@ in
               --standalone \
               -d ${n} \
               -n \
-              ${optionalString (v.server != null) ("--server" + v.server)} \
+              ${lib.optionalString (v.server != null) ("--server" + v.server)} \
               --email ${v.email} \
               --agree-tos \
-              ${optionalString (v.extraOptions != null) v.extraOptions} \
-              ${concatMapStringsSep " " (d: "-d " + d) v.extraDomains}
+              ${lib.optionalString (v.extraOptions != null) v.extraOptions} \
+              ${lib.concatMapStringsSep " " (d: "-d " + d) v.extraDomains}
 
-              ${optionalString (v.postScript != null) v.postScript}
+              ${lib.optionalString (v.postScript != null) v.postScript}
           '')
         cfg.domains));
   };

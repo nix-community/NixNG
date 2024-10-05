@@ -7,16 +7,15 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { lib, ... }:
-with lib;
 {
   options.ids = {
-    uids = mkOption {
+    uids = lib.mkOption {
       description = "A username to uid map, used for keeping track of assigned uids.";
-      type = with types; attrsOf int;
+      type = with lib.types; attrsOf int;
     };
-    gids = mkOption {
+    gids = lib.mkOption {
       description = "A groupname to gid map, used for keeping track of assigned gids.";
-      type = with types; attrsOf int;
+      type = with lib.types; attrsOf int;
     };
   };
 

@@ -7,21 +7,20 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, lib, config, nglib, ... }:
-with lib;
 let
   cfg = config.iana;
 in
 {
   options.iana = {
-    enable = mkOption {
+    enable = lib.mkOption {
       description = "Enable /etc/services creation.";
-      type = types.bool;
+      type = lib.types.bool;
       default = true;
     };
 
-    package = mkOption {
+    package = lib.mkOption {
       description = "iana package.";
-      type = types.package;
+      type = lib.types.package;
       default = pkgs.iana-etc;
     };
   };

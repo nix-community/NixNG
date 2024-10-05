@@ -7,52 +7,51 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, lib, config, nglib, ... }:
-with lib; with nglib;
 let
   cfg = config.environment;
 in
 {
   options.environment = {
-    variables = mkOption {
+    variables = lib.mkOption {
       default = { };
       example = { EDITOR = "vim"; BROWSER = "firefox"; };
-      type = with types; attrsOf (either str (listOf str));
-      apply = mkApply
-        (x: concatStringsSep " "
-          (mapAttrsToList (n: v: "${n}=" + (if isList v then concatStringsSep ":" v else v)) x));
+      type = with lib.types; attrsOf (either str (listOf str));
+      apply = nglib.mkApply
+        (x: lib.concatStringsSep " "
+          (lib.mapAttrsToList (n: v: "${n}=" + (if lib.isList v then lib.concatStringsSep ":" v else v)) x));
     };
 
     shell = {
-      enable = mkOption {
+      enable = lib.mkOption {
         description = ''
           Enable the packages needed to get a shell.
         '';
-        type = types.bool;
+        type = lib.types.bool;
         default = true;
       };
-      profile = mkOption {
+      profile = lib.mkOption {
         description = ''
           Shell script fragments, concataned into /etc/profile.
         '';
-        type = with types; listOf str;
-        apply = mkApply
-          (x: pkgs.writeShellScript "profile" (concatStringsSep "\n" x));
+        type = with lib.types; listOf str;
+        apply = nglib.mkApply
+          (x: pkgs.writeShellScript "profile" (lib.concatStringsSep "\n" x));
         default = [ ];
       };
     };
 
-    createBaseEnv = mkOption {
+    createBaseEnv = lib.mkOption {
       description = ''
         Create /bin/sh, /usr/bin/env, /var/empty, and /tmp.
       '';
-      type = types.bool;
+      type = lib.types.bool;
       default = true;
     };
 
-    systemPackages = mkOption {
+    systemPackages = lib.mkOption {
       description = "Packages globally added to PATH";
       default = [ ];
-      type = with types; listOf package;
+      type = with lib.types; listOf package;
     };
   };
 
@@ -61,8 +60,8 @@ in
 
     environment.shell.profile = [
       ''
-        ${optionalString (cfg.variables.applied != "") "export ${cfg.variables.applied}"}
-        export PATH="$PATH"':${makeBinPath cfg.systemPackages}'
+        ${lib.optionalString (cfg.variables.applied != "") "export ${cfg.variables.applied}"}
+        export PATH="$PATH"':${lib.makeBinPath cfg.systemPackages}'
       ''
     ];
 
@@ -74,7 +73,7 @@ in
       mv /etc/.profile.tmp /etc/profile # atomically replace /etc/profile
     '';
 
-    system.activation.createBaseEnv = mkIf cfg.createBaseEnv
+    system.activation.createBaseEnv = lib.mkIf cfg.createBaseEnv
       (nglib.dag.dagEntryAnywhere
         ''
           export PATH=${pkgs.busybox}/bin

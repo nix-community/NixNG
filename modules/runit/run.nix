@@ -10,9 +10,8 @@
 , writeShellScript
 }:
 { n, s }:
-with lib;
 writeShellScript "${n}-run" ''
-  ${concatStringsSep "\n" (map (dependency:
+  ${lib.concatStringsSep "\n" (map (dependency:
     ''
       if ! sv check "${dependency}" ; then
         exit -1
@@ -20,7 +19,7 @@ writeShellScript "${n}-run" ''
     ''
   ) s.dependencies)}
 
-  ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
+  ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
     with cv;
       ''
         if ! [[ -e ${dst} ]] ; then
@@ -31,7 +30,7 @@ writeShellScript "${n}-run" ''
       ''
   ) s.ensureSomething.link)}
 
-  ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
+  ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
     with cv;
     ''
       if ! [[ -e ${dst} ]] ; then
@@ -42,11 +41,11 @@ writeShellScript "${n}-run" ''
     ''
   ) s.ensureSomething.copy)}
 
-  ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
+  ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
     abort "linkFarm is not implemented yet in runit!"
   ) s.ensureSomething.linkFarm)}
 
-  ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
+  ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
     with cv;
     ''
       if ! [[ -e ${dst} ]] ; then
@@ -62,7 +61,7 @@ writeShellScript "${n}-run" ''
     ''
   ) s.ensureSomething.exec)}
 
-  ${concatStringsSep "\n" (mapAttrsToList (cn: cv:
+  ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
     with cv;
     ''
       if ! [[ -e ${dst} ]] ; then
@@ -80,12 +79,12 @@ writeShellScript "${n}-run" ''
          }
 
         chown ${owner} ${dst}
-        ${optionalString (mode != null) "chmod ${mode} ${dst}"}
+        ${lib.optionalString (mode != null) "chmod ${mode} ${dst}"}
       fi
     ''
   ) s.ensureSomething.create)}
 
   cd ${s.pwd}
-  ${optionalString (s.environment != {}) "export ${concatStringsSep " " (mapAttrsToList (n: v: "${n}=${v}") s.environment)}"}
+  ${lib.optionalString (s.environment != {}) "export ${lib.concatStringsSep " " (lib.mapAttrsToList (n: v: "${n}=${v}") s.environment)}"}
   exec ${s.script}
 ''

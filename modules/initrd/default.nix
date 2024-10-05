@@ -7,20 +7,19 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, lib, config, nglib, ... }:
-with lib;
 let
   cfg = config.initrd;
 in
 {
   options.initrd = {
-    enable = mkEnableOption "Enable initrd as init";
+    enable = lib.mkEnableOption "Enable initrd as init";
   };
 
-  config.init = mkMerge [
+  config.init = lib.mkMerge [
     {
       availableInits = [ "initrd" ];
     }
-    (mkIf cfg.enable {
+    (lib.mkIf cfg.enable {
       type = "initrd";
       script = nglib.writeSubstitutedShellScript {
         name = "init";
