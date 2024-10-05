@@ -1,9 +1,11 @@
-{ ripgrep
-, runCommand
-, self
-, lib
+{
+  ripgrep,
+  runCommand,
+  self,
+  lib,
 }:
-{ allowed ? [ ]
+{
+  allowed ? [ ],
 }:
 let
   allowed' = lib.pipe allowed [
@@ -11,12 +13,7 @@ let
     (lib.concatStringsSep "|")
   ];
 in
-runCommand "with-lib-check.sh"
-{
-  nativeBuildInputs = [
-    ripgrep
-  ];
-} ''
+runCommand "with-lib-check.sh" { nativeBuildInputs = [ ripgrep ]; } ''
   [ "$(rg "with lib;" -n ${self} | rg -v "${allowed'}" | tee $out | wc -l)" -le 1 ] \
     || ( cat $out ; exit 1 ) \
     && exit 0

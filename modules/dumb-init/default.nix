@@ -6,7 +6,12 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, lib, config, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 let
   cfg = config.dumb-init;
   cfgRunit = config.runit;
@@ -16,13 +21,9 @@ let
     let
       user = config.users.users."${cfg.type.shell.user}";
     in
-    if user.useDefaultShell then
-      config.users.defaultUserShell
-    else
-      user.shell;
+    if user.useDefaultShell then config.users.defaultUserShell else user.shell;
 
-  sigellConfig = overrides:
-    pkgs.writeText "sigell.json" (builtins.toJSON (cfg.sigell // overrides));
+  sigellConfig = overrides: pkgs.writeText "sigell.json" (builtins.toJSON (cfg.sigell // overrides));
 in
 {
   options.dumb-init = {
@@ -55,15 +56,17 @@ in
 
           shell = lib.mkOption {
             description = "Run a bash shell, without any services.";
-            type = with lib.types; nullOr (submodule {
-              options = {
-                user = lib.mkOption {
-                  description = "Which user to start the shell under.";
-                  type = str;
-                  default = "root";
+            type =
+              with lib.types;
+              nullOr (submodule {
+                options = {
+                  user = lib.mkOption {
+                    description = "Which user to start the shell under.";
+                    type = str;
+                    default = "root";
+                  };
                 };
-              };
-            });
+              });
             default = null;
           };
         };
@@ -73,62 +76,65 @@ in
 
   config = {
     init = lib.mkMerge [
-      {
-        availableInits = [ "dumb-init" ];
-      }
+      { availableInits = [ "dumb-init" ]; }
       (lib.mkIf cfg.enable {
         type = "dumb-init";
-        shutdown = pkgs.writeShellScript "dum-init-shutdown"
-          ''
-            kill -SIGHUP 1
-          '';
+        shutdown = pkgs.writeShellScript "dum-init-shutdown" ''
+          kill -SIGHUP 1
+        '';
         script =
           let
-            runit = pkgs.writeShellScript "init"
-              ''
-                export PATH=${pkgs.busybox}/bin
-                _system_config="@systemConfig@"
+            runit = pkgs.writeShellScript "init" ''
+              export PATH=${pkgs.busybox}/bin
+              _system_config="@systemConfig@"
 
-                function _sig_hup() {
-                  kill -HUP $_init_system
+              function _sig_hup() {
+                kill -HUP $_init_system
 
-                  echo "Shutting down"
+                echo "Shutting down"
 
-                  _all_pids="$(ps aux | grep "[r]unsv " | tr -s ' ' | cut -f 2 -d ' ')"
-                  start_ts=$(date +%s)
-                  while ! [ -z "$_all_pids" ] ; do
-                      now_ts=$(date +%s)
-                      if [ $(( now_ts - start_ts )) -gt 60 ]; then
-                          echo "Shutdown timeout."
-                          break
-                      fi
-                      _all_pids="$(ps aux | grep "[r]unsv " | tr -s ' ' | cut -f 2 -d ' ')"
-                      echo $_all_pids
-                      sleep 1
-                  done
+                _all_pids="$(ps aux | grep "[r]unsv " | tr -s ' ' | cut -f 2 -d ' ')"
+                start_ts=$(date +%s)
+                while ! [ -z "$_all_pids" ] ; do
+                    now_ts=$(date +%s)
+                    if [ $(( now_ts - start_ts )) -gt 60 ]; then
+                        echo "Shutdown timeout."
+                        break
+                    fi
+                    _all_pids="$(ps aux | grep "[r]unsv " | tr -s ' ' | cut -f 2 -d ' ')"
+                    echo $_all_pids
+                    sleep 1
+                done
 
-                  exit 0
+                exit 0
+              }
+              trap _sig_hup SIGHUP
+
+              "$_system_config/activation"
+              # exec ${cfg.package}/bin/dumb-init --rewrite 15:1 --single-child -- \
+              ${sigell [ "${cfgRunit.stages.stage-2}" ]} &
+              _init_system="$!"
+              wait "$_init_system"
+
+            '';
+            shell = pkgs.writeShellScript "init" ''
+              export PATH=${pkgs.busybox}/bin:${pkgs.bash}/bin
+              _system_config="@systemConfig@"
+
+              "$_system_config/activation"
+              . /etc/profile
+              exec ${cfg.package}/bin/dumb-init -- \
+                ${
+                  sigell [
+                    "su"
+                    "${cfg.type.shell.user}"
+                    "-c"
+                    "${userShell} \"$@\""
+                  ]
                 }
-                trap _sig_hup SIGHUP
-
-                "$_system_config/activation"
-                # exec ${cfg.package}/bin/dumb-init --rewrite 15:1 --single-child -- \
-                ${sigell [ "${cfgRunit.stages.stage-2}" ]} &
-                _init_system="$!"
-                wait "$_init_system"
-
-              '';
-            shell = pkgs.writeShellScript "init"
-              ''
-                export PATH=${pkgs.busybox}/bin:${pkgs.bash}/bin
-                _system_config="@systemConfig@"
-
-                "$_system_config/activation"
-                . /etc/profile
-                exec ${cfg.package}/bin/dumb-init -- \
-                  ${sigell ["su" "${cfg.type.shell.user}" "-c" "${userShell} \"$@\"" ]}
-              '';
-            sigell = cmd:
+            '';
+            sigell =
+              cmd:
               if cfg.sigell != null then
                 "${pkgs.sigell}/bin/sigell ${sigellConfig { command = cmd; }}"
               else
@@ -143,15 +149,17 @@ in
       })
     ];
 
-    assertions = lib.mkIf cfg.enable ([
-      {
-        assertion = lib.count (x: x) (lib.mapAttrsToList (n: v: v != null) cfg.type) == 1;
-        message = "Please select exactly one dumb-init type.";
-      }
-    ] ++ (lib.optional (cfg.type.shell != null)
-      {
+    assertions = lib.mkIf cfg.enable (
+      [
+        {
+          assertion = lib.count (x: x) (lib.mapAttrsToList (n: v: v != null) cfg.type) == 1;
+          message = "Please select exactly one dumb-init type.";
+        }
+      ]
+      ++ (lib.optional (cfg.type.shell != null) {
         assertion = cfgUsers.users ? "${cfg.type.shell.user}";
         message = "User ${cfg.type.shell.user} does not exist!";
-      }));
+      })
+    );
   };
 }

@@ -6,7 +6,12 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, config, lib, ... }:
+{
+  pkgs,
+  config,
+  lib,
+  ...
+}:
 let
   cfg = config.services.pantalaimon;
 
@@ -45,7 +50,14 @@ in
             };
         }
       '';
-      type = with lib.types; attrsOf (attrsOf (oneOf [ string int ]));
+      type =
+        with lib.types;
+        attrsOf (
+          attrsOf (oneOf [
+            string
+            int
+          ])
+        );
       apply = x: with pkgs; writeText "pantalaimon.conf" (lib.generators.toINI { } x);
     };
 
@@ -77,22 +89,20 @@ in
 
     environment.systemPackages = [ cfg.package ];
 
-    init.services.pantalaimon =
-      {
-        ensureSomething.create."dataDir" = {
-          type = "directory";
-          mode = "770";
-          owner = "${cfg.user}:${cfg.group}";
-          dst = dataDir;
-          persistent = true;
-        };
-
-        script = pkgs.writeShellScript "pantalaimon-run"
-          ''
-            echo AAAA
-            ${cfg.package}/bin/pantalaimon -c ${cfg.config}
-          '';
-        enabled = true;
+    init.services.pantalaimon = {
+      ensureSomething.create."dataDir" = {
+        type = "directory";
+        mode = "770";
+        owner = "${cfg.user}:${cfg.group}";
+        dst = dataDir;
+        persistent = true;
       };
+
+      script = pkgs.writeShellScript "pantalaimon-run" ''
+        echo AAAA
+        ${cfg.package}/bin/pantalaimon -c ${cfg.config}
+      '';
+      enabled = true;
+    };
   };
 }

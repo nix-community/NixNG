@@ -6,7 +6,13 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, config, lib, nglib, ... }:
+{
+  pkgs,
+  config,
+  lib,
+  nglib,
+  ...
+}:
 let
   cfg = config.services.certbot;
 
@@ -93,10 +99,9 @@ in
       crontabs.certbot = {
         jobs =
           let
-            script = pkgs.writeShellScript "certbot-renew"
-              ''
-                ${cfg.package}/bin/certbot renew
-              '';
+            script = pkgs.writeShellScript "certbot-renew" ''
+              ${cfg.package}/bin/certbot renew
+            '';
           in
           [ "0 0 * * * root ${script}" ];
       };
@@ -115,24 +120,32 @@ in
 
     environment.systemPackages = [ cfg.package ];
 
-    system.activation.certbot = nglib.dag.dagEntryAfter
-      [ "createbaseenv" "users" ]
-      (lib.concatStringsSep "\n" (lib.mapAttrsToList
-        (n: v:
-          pkgs.writeShellScript n ''
-            ${pkgs.busybox}/bin/mkdir -p ${v.webroot}
-            ${cfg.package}/bin/certbot certonly \
-              --standalone \
-              -d ${n} \
-              -n \
-              ${lib.optionalString (v.server != null) ("--server" + v.server)} \
-              --email ${v.email} \
-              --agree-tos \
-              ${lib.optionalString (v.extraOptions != null) v.extraOptions} \
-              ${lib.concatMapStringsSep " " (d: "-d " + d) v.extraDomains}
+    system.activation.certbot =
+      nglib.dag.dagEntryAfter
+        [
+          "createbaseenv"
+          "users"
+        ]
+        (
+          lib.concatStringsSep "\n" (
+            lib.mapAttrsToList (
+              n: v:
+              pkgs.writeShellScript n ''
+                ${pkgs.busybox}/bin/mkdir -p ${v.webroot}
+                ${cfg.package}/bin/certbot certonly \
+                  --standalone \
+                  -d ${n} \
+                  -n \
+                  ${lib.optionalString (v.server != null) ("--server" + v.server)} \
+                  --email ${v.email} \
+                  --agree-tos \
+                  ${lib.optionalString (v.extraOptions != null) v.extraOptions} \
+                  ${lib.concatMapStringsSep " " (d: "-d " + d) v.extraDomains}
 
-              ${lib.optionalString (v.postScript != null) v.postScript}
-          '')
-        cfg.domains));
+                  ${lib.optionalString (v.postScript != null) v.postScript}
+              ''
+            ) cfg.domains
+          )
+        );
   };
 }

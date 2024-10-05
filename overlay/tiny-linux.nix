@@ -8,13 +8,14 @@
 
 # TODO use linuxManualConfig instead of buildLinux
 
-{ buildLinux
-, linux
-, pkg-config
-, ncurses
-, writeText
-, lib
-, extraConfig ? { }
+{
+  buildLinux,
+  linux,
+  pkg-config,
+  ncurses,
+  writeText,
+  lib,
+  extraConfig ? { },
 }:
 let
   configfile = writeText "config" ''
@@ -27,48 +28,50 @@ let
     kernelPatches = [ ];
     allowImportFromDerivation = true;
   };
-  self =
-    origKernel.overrideAttrs (old: {
-      buildFlags = [
-        "KBUILD_BUILD_VERSION=1-NixNG"
-        "bzImage"
-        "vmlinux"
-      ];
-      configurePhase = ''
-        runHook preConfigure
+  self = origKernel.overrideAttrs (old: {
+    buildFlags = [
+      "KBUILD_BUILD_VERSION=1-NixNG"
+      "bzImage"
+      "vmlinux"
+    ];
+    configurePhase = ''
+      runHook preConfigure
 
-        mkdir build
-        export buildRoot="$(pwd)/build"
+      mkdir build
+      export buildRoot="$(pwd)/build"
 
-        echo "manual-config configurePhase buildRoot=$buildRoot pwd=$PWD"
+      echo "manual-config configurePhase buildRoot=$buildRoot pwd=$PWD"
 
-        runHook postConfigure
+      runHook postConfigure
 
-        # make $makeFlags "''${makeFlagsArray[@]}" mrproper
+      # make $makeFlags "''${makeFlagsArray[@]}" mrproper
 
-        make $makeFlags "''${makeFlagsArray[@]}" tinyconfig
-        if [[ -f $buildRoot/.config ]] ; then
-          cat ${configfile} >> $buildRoot/.config
-          cat $buildRoot/.config
-        else
-          echo "$buildRoot/.config is empty, not appending"
-          exit 1
-        fi
-        echo $buildFlags
+      make $makeFlags "''${makeFlagsArray[@]}" tinyconfig
+      if [[ -f $buildRoot/.config ]] ; then
+        cat ${configfile} >> $buildRoot/.config
+        cat $buildRoot/.config
+      else
+        echo "$buildRoot/.config is empty, not appending"
+        exit 1
+      fi
+      echo $buildFlags
 
-        # make $makeFlags "''${makeFlagsArray[@]}" prepare
+      # make $makeFlags "''${makeFlagsArray[@]}" prepare
 
-        # Note: https://github.com/NixOS/nixpkgs/blob/9c213398b312e0f0bb9cdf05090fd20223a82ad0/pkgs/os-specific/linux/kernel/manual-config.nix#L166
-        buildFlagsArray+=("KBUILD_BUILD_TIMESTAMP=$(date -u -d @$SOURCE_DATE_EPOCH)")
+      # Note: https://github.com/NixOS/nixpkgs/blob/9c213398b312e0f0bb9cdf05090fd20223a82ad0/pkgs/os-specific/linux/kernel/manual-config.nix#L166
+      buildFlagsArray+=("KBUILD_BUILD_TIMESTAMP=$(date -u -d @$SOURCE_DATE_EPOCH)")
 
-        ls build
-      '';
+      ls build
+    '';
 
-      buildPhase = "";
+    buildPhase = "";
 
-      postInstall = "";
+    postInstall = "";
 
-      nativeBuildInputs = old.nativeBuildInputs ++ [ pkg-config ncurses ];
-    });
+    nativeBuildInputs = old.nativeBuildInputs ++ [
+      pkg-config
+      ncurses
+    ];
+  });
 in
 self

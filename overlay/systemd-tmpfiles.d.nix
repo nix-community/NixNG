@@ -6,9 +6,7 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ stdenv
-, systemdStandalone
-}:
+{ stdenv, systemdStandalone }:
 stdenv.mkDerivation {
   inherit (systemdStandalone) pname version;
 
@@ -20,7 +18,10 @@ stdenv.mkDerivation {
   dontInstall = false;
   dontFixup = true;
 
-  outputs = [ "out" "man" ];
+  outputs = [
+    "out"
+    "man"
+  ];
 
   installPhase = ''
     install ${systemdStandalone}/bin/systemd-tmpfiles.standalone -Dt $out/bin

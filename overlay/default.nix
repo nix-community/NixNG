@@ -24,32 +24,29 @@ in
     systemdSupport = false;
     pamSupport = true;
   };
-  runit = prev.runit.overrideAttrs
-    (old:
-      {
-        src = final.fetchFromGitHub {
-          owner = "blatt-linux";
-          repo = "runit";
-          rev = "f3843594034e8347a94595d891e5c74178962c7d";
-          sha256 = "sha256-Ln5yuaxYCflZQnE58Gmm5WSfsmf+8+whyRIB3Pl8PCo=";
-        };
-        sourceRoot = "";
+  runit = prev.runit.overrideAttrs (old: {
+    src = final.fetchFromGitHub {
+      owner = "blatt-linux";
+      repo = "runit";
+      rev = "f3843594034e8347a94595d891e5c74178962c7d";
+      sha256 = "sha256-Ln5yuaxYCflZQnE58Gmm5WSfsmf+8+whyRIB3Pl8PCo=";
+    };
+    sourceRoot = "";
 
-        doCheck = false;
+    doCheck = false;
 
-        nativeBuildInputs = with prev; [
-          makeWrapper
-        ];
-        fixupPhase = ''
-          wrapProgram $out/bin/sv \
-            --set SVDIR "/service/"
-        '';
-      });
+    nativeBuildInputs = with prev; [ makeWrapper ];
+    fixupPhase = ''
+      wrapProgram $out/bin/sv \
+        --set SVDIR "/service/"
+    '';
+  });
 
-  inherit (callPackage ./trivial-builders.nix {})
+  inherit (callPackage ./trivial-builders.nix { })
     writeSubstitutedFile
     writeSubstitutedShellScript
-    writeSubstitutedShellScriptBin;
+    writeSubstitutedShellScriptBin
+    ;
 
   # inherit
   #   (nixpkgsTrivialBuilders)

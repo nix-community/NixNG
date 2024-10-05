@@ -6,7 +6,13 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, config, lib, nglib, ... }:
+{
+  pkgs,
+  config,
+  lib,
+  nglib,
+  ...
+}:
 let
   cfg = config.services.nginx;
   runtimeConfig = "/run/cfg/nginx.cfg";
@@ -35,71 +41,79 @@ in
       envsubst = lib.mkEnableOption "Run envsubst on the configuration file.";
       configuration = lib.mkOption {
         description = "Nginx configuration";
-        type = with lib.types;
+        type =
+          with lib.types;
           let
-            self =
-              oneOf [
-                (attrsOf (oneOf [
+            self = oneOf [
+              (attrsOf (oneOf [
+                str
+                int
+                (listOf (oneOf [
                   str
                   int
-                  (listOf (oneOf [ str int (listOf (oneOf [ str int ])) ]))
-                  (attrsOf self)
+                  (listOf (oneOf [
+                    str
+                    int
+                  ]))
                 ]))
-                (listOf (oneOf [ str self ]))
-              ];
+                (attrsOf self)
+              ]))
+              (listOf (oneOf [
+                str
+                self
+              ]))
+            ];
           in
           self // { description = "loop breaker"; };
       };
     };
   };
 
-  config = lib.mkIf cfg.enable
-    {
-      init.services.nginx =
-        let
-          config = pkgs.writeText "nginx.cfg" (toNginx cfg.configuration);
-        in
-        {
-          ensureSomething.create."cache" = {
-            type = "directory";
-            mode = "750";
-            owner = "${cfg.user}:${cfg.group}";
-            dst = "/var/cache/nginx/";
-            persistent = false;
-          };
-          script = pkgs.writeShellScript "nginx-run"
-            (if cfg.envsubst then
-              ''
-                export PATH=${pkgs.envsubst}/bin:$PATH
-
-                mkdir -p /run/cfg
-                install -o nginx -g nginx -m 0440 /dev/null ${runtimeConfig}
-                envsubst < ${config} > ${runtimeConfig}
-
-                HOME=~nginx ${cfg.package}/bin/nginx \
-                  -c ${runtimeConfig}
-              ''
-            else
-              ''
-                HOME=~nginx ${cfg.package}/bin/nginx \
-                  -c ${config}
-              '');
-          enabled = true;
+  config = lib.mkIf cfg.enable {
+    init.services.nginx =
+      let
+        config = pkgs.writeText "nginx.cfg" (toNginx cfg.configuration);
+      in
+      {
+        ensureSomething.create."cache" = {
+          type = "directory";
+          mode = "750";
+          owner = "${cfg.user}:${cfg.group}";
+          dst = "/var/cache/nginx/";
+          persistent = false;
         };
+        script = pkgs.writeShellScript "nginx-run" (
+          if cfg.envsubst then
+            ''
+              export PATH=${pkgs.envsubst}/bin:$PATH
 
-      environment.systemPackages = [ cfg.package ];
+              mkdir -p /run/cfg
+              install -o nginx -g nginx -m 0440 /dev/null ${runtimeConfig}
+              envsubst < ${config} > ${runtimeConfig}
 
-      users.users.${cfg.user} = nglib.mkDefaultRec {
-        description = "Nginx";
-        group = cfg.group;
-        createHome = false;
-        home = "/var/empty";
-        useDefaultShell = true;
-        uid = config.ids.uids.nginx;
+              HOME=~nginx ${cfg.package}/bin/nginx \
+                -c ${runtimeConfig}
+            ''
+          else
+            ''
+              HOME=~nginx ${cfg.package}/bin/nginx \
+                -c ${config}
+            ''
+        );
+        enabled = true;
       };
 
-      users.groups.${cfg.group} = nglib.mkDefaultRec {
-        gid = config.ids.gids.nginx;
-      };
+    environment.systemPackages = [ cfg.package ];
+
+    users.users.${cfg.user} = nglib.mkDefaultRec {
+      description = "Nginx";
+      group = cfg.group;
+      createHome = false;
+      home = "/var/empty";
+      useDefaultShell = true;
+      uid = config.ids.uids.nginx;
     };
+
+    users.groups.${cfg.group} = nglib.mkDefaultRec { gid = config.ids.gids.nginx; };
+  };
 }

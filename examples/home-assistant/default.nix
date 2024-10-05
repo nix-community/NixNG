@@ -11,7 +11,8 @@ nglib.makeSystem {
   inherit nixpkgs;
   system = "x86_64-linux";
   name = "nixng-home-assistant";
-  config = ({ pkgs, config, ... }:
+  config = (
+    { pkgs, config, ... }:
     {
       config = {
         dumb-init = {
@@ -26,49 +27,48 @@ nglib.makeSystem {
         services.home-assistant = {
           enable = true;
           envsubst = true;
-          config =
-            { default_config = {};
-              http.server_port = "8123";
-              logger.default = "info";
-              homeassistant =
-                { name = "Home";
-                  latitude = "0";
-                  longitude = "0";
-                  elevation = "0";
-                  # currency = "EUR";
-                  unit_system = "metric";
-                  time_zone = "Europe/Amsterdam";
-                  internal_url = "http://localhost:8123/";
-                };
-              frontend.themes =
-                { };
+          config = {
+            default_config = { };
+            http.server_port = "8123";
+            logger.default = "info";
+            homeassistant = {
+              name = "Home";
+              latitude = "0";
+              longitude = "0";
+              elevation = "0";
+              # currency = "EUR";
+              unit_system = "metric";
+              time_zone = "Europe/Amsterdam";
+              internal_url = "http://localhost:8123/";
             };
+            frontend.themes = { };
+          };
           package =
-            (pkgs.home-assistant.override
-              { extraComponents =
-                  [ "http"
-                    "homeassistant"
-                    "image"
-                    "person"
-                    "cloud"
-                    "onboarding"
-                    "frontend"
-                    "met"
-                    "zha"
-                    "mobile_app"
-                    "dhcp"
-                    "logbook"
-                    "history"
-                    "ssdp"
-                    "mqtt"
-                  ];
-                extraPackages = ps: with ps;
-                  [ xmodem
-                  ];
-              }).overridePythonAttrs (old:
-                { doCheck = false;
-                });
+            (pkgs.home-assistant.override {
+              extraComponents = [
+                "http"
+                "homeassistant"
+                "image"
+                "person"
+                "cloud"
+                "onboarding"
+                "frontend"
+                "met"
+                "zha"
+                "mobile_app"
+                "dhcp"
+                "logbook"
+                "history"
+                "ssdp"
+                "mqtt"
+              ];
+              extraPackages = ps: with ps; [ xmodem ];
+            }).overridePythonAttrs
+              (old: {
+                doCheck = false;
+              });
         };
       };
-    });
+    }
+  );
 }

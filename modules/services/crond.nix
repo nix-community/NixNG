@@ -6,7 +6,13 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ config, nglib, lib, pkgs, ... }:
+{
+  config,
+  nglib,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.services.crond;
 in
@@ -20,34 +26,36 @@ in
     };
 
     crontabs = lib.mkOption {
-      type = with lib.types; attrsOf (submodule {
-        options = {
-          environment = lib.mkOption {
-            type = attrsOf str;
-            description = ''
-              A set of environment variable to set for this specific crontab.
-            '';
-            example = ''
-              {
-                MAILTO="root";
-              }
-            '';
-            default = { };
+      type =
+        with lib.types;
+        attrsOf (submodule {
+          options = {
+            environment = lib.mkOption {
+              type = attrsOf str;
+              description = ''
+                A set of environment variable to set for this specific crontab.
+              '';
+              example = ''
+                {
+                  MAILTO="root";
+                }
+              '';
+              default = { };
+            };
+            jobs = lib.mkOption {
+              type = listOf str;
+              description = ''
+                A list of job entries, in the usual cron format.
+              '';
+              example = ''
+                [
+                  "5 0 * * * www-data rm /var/log/{httpd.access,httpd.error}"
+                ]
+              '';
+              default = [ ];
+            };
           };
-          jobs = lib.mkOption {
-            type = listOf str;
-            description = ''
-              A list of job entries, in the usual cron format.
-            '';
-            example = ''
-              [
-                "5 0 * * * www-data rm /var/log/{httpd.access,httpd.error}"
-              ]
-            '';
-            default = [ ];
-          };
-        };
-      });
+        });
       description = ''
         Defines cron jobs, allows for the creation of multiple files and entries.
       '';
@@ -65,16 +73,18 @@ in
         }
       '';
 
-      apply = x:
+      apply =
+        x:
         let
-          cronfiles =
-            (lib.mapAttrsToList
-              (n: v: pkgs.writeText n
-                ''
-                  ${lib.concatStringsSep "\n" (lib.mapAttrsToList (n: v: ''"${n}"="${v}"'') v.environment)}
-                  ${lib.concatStringsSep "\n" v.jobs}
-                '')
-              x);
+          cronfiles = (
+            lib.mapAttrsToList (
+              n: v:
+              pkgs.writeText n ''
+                ${lib.concatStringsSep "\n" (lib.mapAttrsToList (n: v: ''"${n}"="${v}"'') v.environment)}
+                ${lib.concatStringsSep "\n" v.jobs}
+              ''
+            ) x
+          );
         in
         pkgs.runCommandNoCCLocal "cron.d" { } ''
           CRONFILES="${lib.concatStringsSep " " cronfiles}"
@@ -87,21 +97,19 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    system.activation."crond" = nglib.dag.dagEntryAnywhere
-      ''
-        export PATH=${pkgs.busybox}/bin
+    system.activation."crond" = nglib.dag.dagEntryAnywhere ''
+      export PATH=${pkgs.busybox}/bin
 
-        mkdir -p /etc /var/run /var/spool/cron /var/cron
-        ln -s ${cfg.crontabs}/ /etc/cron.d
+      mkdir -p /etc /var/run /var/spool/cron /var/cron
+      ln -s ${cfg.crontabs}/ /etc/cron.d
+    '';
+
+    init.services.crond = {
+      script = ''
+        ${cfg.package}/bin/crond -n -x ext,sch,misc
       '';
-
-    init.services.crond =
-      {
-        script = ''
-          ${cfg.package}/bin/crond -n -x ext,sch,misc
-        '';
-        enabled = true;
-      };
+      enabled = true;
+    };
 
     environment.systemPackages = [ cfg.package ];
   };

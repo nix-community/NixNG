@@ -6,7 +6,13 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, lib, config, nglib, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  nglib,
+  ...
+}:
 let
   cfg = config.initrd;
 in
@@ -16,9 +22,7 @@ in
   };
 
   config.init = lib.mkMerge [
-    {
-      availableInits = [ "initrd" ];
-    }
+    { availableInits = [ "initrd" ]; }
     (lib.mkIf cfg.enable {
       type = "initrd";
       script = nglib.writeSubstitutedShellScript {

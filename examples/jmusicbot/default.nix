@@ -11,7 +11,8 @@ nglib.makeSystem {
   inherit nixpkgs;
   system = "x86_64-linux";
   name = "nixng-jmusicbot";
-  config = ({ ... }:
+  config = (
+    { ... }:
     {
       dumb-init = {
         enable = true;
@@ -30,5 +31,6 @@ nglib.makeSystem {
           owner = "\${BOT_OWNER}";
         };
       };
-    });
+    }
+  );
 }

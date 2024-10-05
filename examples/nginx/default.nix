@@ -11,7 +11,8 @@ nglib.makeSystem {
   inherit nixpkgs;
   system = "x86_64-linux";
   name = "nixng-nginx";
-  config = ({ pkgs, config, ... }:
+  config = (
+    { pkgs, config, ... }:
     {
       config = {
         dumb-init = {
@@ -39,7 +40,10 @@ nglib.makeSystem {
                 worker_connections = 128;
               };
 
-              error_log = [ "/dev/stderr" "info" ];
+              error_log = [
+                "/dev/stderr"
+                "info"
+              ];
               pid = "/nginx.pid";
 
               http."" = {
@@ -47,7 +51,10 @@ nglib.makeSystem {
                 include = "${pkgs.nginx}/conf/mime.types";
                 charset = "utf-8";
 
-                access_log = [ "/dev/stdout" "combined" ];
+                access_log = [
+                  "/dev/stdout"
+                  "combined"
+                ];
 
                 server."" = {
                   server_name = "localhost";
@@ -62,5 +69,6 @@ nglib.makeSystem {
           ];
         };
       };
-    });
+    }
+  );
 }

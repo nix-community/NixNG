@@ -6,13 +6,14 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, lib, config, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}:
 let
-  inherit
-    (lib)
-    mkOption
-    types
-    ;
+  inherit (lib) mkOption types;
 
   cfg = config.system;
 in
@@ -20,21 +21,21 @@ in
   options.system.build = {
     ociImage = mkOption {
       description = ''
-          OCI compatible image.
-        '';
+        OCI compatible image.
+      '';
       type = types.submodule {
         options = {
           build = mkOption {
             description = ''
-                A path to a OCI image in a gziped tarball.
-              '';
+              A path to a OCI image in a gziped tarball.
+            '';
             type = types.path;
           };
           stream = mkOption {
             description = ''
-                A script which builds an OCI image and outputs what it builds
-                into stdout without saving to disk.
-              '';
+              A script which builds an OCI image and outputs what it builds
+              into stdout without saving to disk.
+            '';
             type = types.path;
           };
         };
@@ -52,16 +53,14 @@ in
 
           config = {
             StopSignal = "SIGCONT";
-            Entrypoint =
-              [
-                "${config.system.build.toplevel}/init"
-              ];
+            Entrypoint = [ "${config.system.build.toplevel}/init" ];
           };
         };
       in
-        with pkgs; {
-          build = dockerTools.buildLayeredImage ociConfig;
-          stream = dockerTools.streamLayeredImage ociConfig;
-        };
+      with pkgs;
+      {
+        build = dockerTools.buildLayeredImage ociConfig;
+        stream = dockerTools.streamLayeredImage ociConfig;
+      };
   };
 }

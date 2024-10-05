@@ -6,7 +6,12 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, config, lib, ... }:
+{
+  pkgs,
+  config,
+  lib,
+  ...
+}:
 let
   cfg = config.services.jmusicbot;
 in
@@ -36,34 +41,33 @@ in
           };
         }
       '';
-      type = with lib.types; attrsOf (oneOf [ str int bool (attrsOf (listOf str)) ]);
-      apply = x:
-        pkgs.writeText "jmusicbot-config.txt"
-          (lib.concatMapStringsSep "\n"
-            (
-              { name, value }:
-              if lib.isString value then
-                "${name} = \"${value}\""
-              else if lib.isInt value then
-                "${name} = ${toString value}"
-              else if lib.isBool value then
-                if value then
-                  "${name} = true"
-                else
-                  "${name} = false"
-              else if lib.isAttrs value then
-                "${name} {"
-                +
-                lib.concatMapStringsSep "\n" (
-                  { name, value }:
-                  "${name} = [ ${lib.concatStringsSep ", " value} ]"
-                )
-                +
-                "}"
-              else
-                throw "Type error"
-            )
-            (lib.mapAttrsToList lib.nameValuePair x));
+      type =
+        with lib.types;
+        attrsOf (oneOf [
+          str
+          int
+          bool
+          (attrsOf (listOf str))
+        ]);
+      apply =
+        x:
+        pkgs.writeText "jmusicbot-config.txt" (
+          lib.concatMapStringsSep "\n" (
+            { name, value }:
+            if lib.isString value then
+              "${name} = \"${value}\""
+            else if lib.isInt value then
+              "${name} = ${toString value}"
+            else if lib.isBool value then
+              if value then "${name} = true" else "${name} = false"
+            else if lib.isAttrs value then
+              "${name} {"
+              + lib.concatMapStringsSep "\n" ({ name, value }: "${name} = [ ${lib.concatStringsSep ", " value} ]")
+              + "}"
+            else
+              throw "Type error"
+          ) (lib.mapAttrsToList lib.nameValuePair x)
+        );
     };
 
     user = lib.mkOption {
@@ -95,18 +99,16 @@ in
 
     environment.systemPackages = [ cfg.package ];
 
-    init.services.jmusicbot =
-      {
-        script = pkgs.writeShellScript "jmusicbot-run"
-          ''
-            mkdir -p /run/cfg/jmusicbot
-            ${pkgs.envsubst}/bin/envsubst < ${cfg.config} > /run/cfg/jmusicbot/config.txt
+    init.services.jmusicbot = {
+      script = pkgs.writeShellScript "jmusicbot-run" ''
+        mkdir -p /run/cfg/jmusicbot
+        ${pkgs.envsubst}/bin/envsubst < ${cfg.config} > /run/cfg/jmusicbot/config.txt
 
-            cd /run/cfg/jmusicbot
-            # chpst -u ${cfg.user}:${cfg.group}
-            ${cfg.package}/bin/JMusicBot
-          '';
-        enabled = true;
-      };
+        cd /run/cfg/jmusicbot
+        # chpst -u ${cfg.user}:${cfg.group}
+        ${cfg.package}/bin/JMusicBot
+      '';
+      enabled = true;
+    };
   };
 }

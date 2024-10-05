@@ -11,7 +11,8 @@ nglib.makeSystem {
   inherit nixpkgs;
   system = "x86_64-linux";
   name = "nixng-hydra";
-  config = ({ pkgs, config, ... }:
+  config = (
+    { pkgs, config, ... }:
     {
       config = {
         dumb-init = {
@@ -22,7 +23,10 @@ nglib.makeSystem {
           loadNixDb = true;
           persistNix = "/nix-persist";
           config = {
-            experimental-features = [ "nix-command" "flakes" ];
+            experimental-features = [
+              "nix-command"
+              "flakes"
+            ];
             sandbox = true;
             trusted-public-keys = [ "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" ];
             substituters = [ "https://cache.nixos.org/" ];

@@ -6,7 +6,12 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   cfg = config.services.socklog;
 in
@@ -27,33 +32,35 @@ in
     };
     inet = lib.mkOption {
       description = "Make socklog listen on UDP.";
-      type = with lib.types; nullOr (submodule {
-        options = {
-          ip = mkOption {
-            description = ''
-              The IP address on which to listen on, must be an interface
-              or 0 for all. Doesn't accept `localhost`.
-            '';
-            type = types.str;
-            default = "127.0.0.1";
+      type =
+        with lib.types;
+        nullOr (submodule {
+          options = {
+            ip = mkOption {
+              description = ''
+                The IP address on which to listen on, must be an interface
+                or 0 for all. Doesn't accept `localhost`.
+              '';
+              type = types.str;
+              default = "127.0.0.1";
+            };
+            port = mkOption {
+              description = "The port on which to listen on.";
+              type = types.port;
+              default = 514;
+            };
           };
-          port = mkOption {
-            description = "The port on which to listen on.";
-            type = types.port;
-            default = 514;
-          };
-        };
-      });
+        });
       default = null;
     };
   };
   config = lib.mkIf cfg.enable {
     init.services.socklog =
       let
-        unixSocklog =
-          lib.optionalString (cfg.unix != null) "socklog unix ${cfg.unix} &";
-        inetSocklog =
-          lib.optionalString (cfg.inet != null) "socklog inter ${cfg.inet.ip} ${toString cfg.inet.port} &";
+        unixSocklog = lib.optionalString (cfg.unix != null) "socklog unix ${cfg.unix} &";
+        inetSocklog = lib.optionalString (
+          cfg.inet != null
+        ) "socklog inter ${cfg.inet.ip} ${toString cfg.inet.port} &";
       in
       {
         script = pkgs.writeShellScript "socklog-run" ''

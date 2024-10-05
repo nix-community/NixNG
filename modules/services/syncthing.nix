@@ -6,7 +6,13 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ pkgs, config, lib, nglib, ... }:
+{
+  pkgs,
+  config,
+  lib,
+  nglib,
+  ...
+}:
 let
   cfg = config.services.syncthing;
 
@@ -49,25 +55,23 @@ in
     };
   };
 
-
   config = lib.mkIf cfg.enable {
     init.services.syncthing = {
       enabled = true;
-      script = pkgs.writeShellScript "syncthing-run"
-        ''
-          mkdir -p ${dataDir}/{.,storage,data,config}
+      script = pkgs.writeShellScript "syncthing-run" ''
+        mkdir -p ${dataDir}/{.,storage,data,config}
 
-          chown -R ${cfg.user}:${cfg.group} ${dataDir}
-          chmod -R u=rwX,g=r-X,o= ${dataDir}
+        chown -R ${cfg.user}:${cfg.group} ${dataDir}
+        chmod -R u=rwX,g=r-X,o= ${dataDir}
 
-          export PATH=$PATH:${cfg.package}/bin \
-                 HOME=${dataDir}/storage
-          chpst -u ${cfg.user}:${cfg.group} -b syncthing syncthing serve \
-            --no-browser \
-            --gui-address=${cfg.guiAddress} \
-            --data=${dataDir}/data \
-            --config=${dataDir}/config
-        '';
+        export PATH=$PATH:${cfg.package}/bin \
+               HOME=${dataDir}/storage
+        chpst -u ${cfg.user}:${cfg.group} -b syncthing syncthing serve \
+          --no-browser \
+          --gui-address=${cfg.guiAddress} \
+          --data=${dataDir}/data \
+          --config=${dataDir}/config
+      '';
     };
 
     environment.systemPackages = [ cfg.package ];
@@ -81,8 +85,6 @@ in
       uid = config.ids.uids.syncthing;
     };
 
-    users.groups.${cfg.group} = nglib.mkDefaultRec {
-      gid = config.ids.gids.syncthing;
-    };
+    users.groups.${cfg.group} = nglib.mkDefaultRec { gid = config.ids.gids.syncthing; };
   };
 }

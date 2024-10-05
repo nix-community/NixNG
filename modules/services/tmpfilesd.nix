@@ -6,7 +6,13 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ config, pkgs, lib, nglib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  nglib,
+  ...
+}:
 let
   cfg = config.services.tmpfilesd;
 in
@@ -17,8 +23,7 @@ in
 
     entries = lib.mkOption {
       default = { };
-      type = with lib.types;
-        attrsOf (listOf (listOf str));
+      type = with lib.types; attrsOf (listOf (listOf str));
       description = ''
         A attribute set of lists of lists. The outer attribute set corresponds to files,
         the first list corresponds to the individual entries and the most inner one
@@ -33,16 +38,18 @@ in
           ]
         }
       '';
-      apply = lib.mkApply (x:
+      apply = lib.mkApply (
+        x:
         pkgs.runCommandNoCC "" { } ''
           mkdir -p $out
-          ${lib.concatMapStringsSep "\n\n"
-            ({ name, value }:
-              "cat > $out/${name}.conf <<EOF\n"
-              + (lib.concatMapStringsSep "\n" (lib.concatStringsSep " ") value) +
-              "\nEOF\n")
-            (lib.mapAttrsToList lib.nameValuePair x)}
-        '');
+          ${lib.concatMapStringsSep "\n\n" (
+            { name, value }:
+            "cat > $out/${name}.conf <<EOF\n"
+            + (lib.concatMapStringsSep "\n" (lib.concatStringsSep " ") value)
+            + "\nEOF\n"
+          ) (lib.mapAttrsToList lib.nameValuePair x)}
+        ''
+      );
     };
 
     package = lib.mkOption {
@@ -67,8 +74,7 @@ in
 
     assertions = [
       {
-        assertion =
-          (cfg.entries == { }) || (cfg.entries != { } && cfg.enable == true);
+        assertion = (cfg.entries == { }) || (cfg.entries != { } && cfg.enable == true);
         message = ''
           If `services.tmpfilesd.entries` is not `{}` then `services.tmpfilesd.enable` must
           be `true` as other modules may misbehave.

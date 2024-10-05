@@ -11,7 +11,8 @@ nglib.makeSystem {
   inherit nixpkgs;
   system = "x86_64-linux";
   name = "nixng-crond";
-  config = ({ pkgs, config, ... }:
+  config = (
+    { pkgs, config, ... }:
     {
       config = {
         dumb-init = {
@@ -25,9 +26,7 @@ nglib.makeSystem {
               environment = {
                 PATH = "${pkgs.busybox}/bin";
               };
-              jobs = [
-                ''*/2 * * * * root echo "asd"''
-              ];
+              jobs = [ ''*/2 * * * * root echo "asd"'' ];
             };
           };
         };

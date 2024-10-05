@@ -6,15 +6,16 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ mkDerivation
-, aeson
-, base
-, bytestring
-, lib
-, unix
-, unordered-containers
-, vector
-, cmdargs
+{
+  mkDerivation,
+  aeson,
+  base,
+  bytestring,
+  lib,
+  unix,
+  unordered-containers,
+  vector,
+  cmdargs,
 }:
 mkDerivation {
   pname = "sigell";

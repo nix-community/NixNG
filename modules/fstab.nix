@@ -11,9 +11,9 @@ let
   cfg = config.fstab;
 
   supportedFileSystems = lib.flip lib.genAttrs (lib.const false) cfg.supportedFileSystems;
-  missingFileSystems = lib.filter
-    (x: supportedFileSystems.${x} or true)
-    (lib.mapAttrsToList (_: x: x.type) cfg.entries);
+  missingFileSystems = lib.filter (x: supportedFileSystems.${x} or true) (
+    lib.mapAttrsToList (_: x: x.type) cfg.entries
+  );
 
   entryOption.options = {
     device = lib.mkOption {
@@ -31,8 +31,7 @@ let
     };
 
     options = lib.mkOption {
-      type = with lib.types;
-        listOf str;
+      type = with lib.types; listOf str;
       description = ''
         Options for mounting the filesystem.
       '';
@@ -61,16 +60,14 @@ in
 {
   options.fstab = {
     supportedFileSystems = lib.mkOption {
-      type = with lib.types;
-        listOf str;
+      type = with lib.types; listOf str;
       description = ''
         List of filesystems that are supported by the system.
       '';
       default = [ "ext4" ];
     };
     entries = lib.mkOption {
-      type = with lib.types;
-        attrsOf (submodule entryOption);
+      type = with lib.types; attrsOf (submodule entryOption);
       description = ''
         fstab entries to be mounted at boot.
       '';
@@ -87,8 +84,9 @@ in
       }
       # check that the value for the fsck field is one of [ 0, 1, 2 ]
       {
-        assertion =
-          lib.foldl (acc: a: acc && (a == 0 || a == 1 || a == 2)) true (lib.mapAttrsToList (_: v: v.fsck) cfg.entries);
+        assertion = lib.foldl (acc: a: acc && (a == 0 || a == 1 || a == 2)) true (
+          lib.mapAttrsToList (_: v: v.fsck) cfg.entries
+        );
         message = "Invalid fsck field value in `fstab.entries`";
       }
     ];
