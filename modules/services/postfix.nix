@@ -7,13 +7,12 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, config, lib, nglib, ... }:
-with lib;
 let
   cfg = config.services.postfix;
   inherit (config.users) createDefaultUsersGroups;
 
-  yes-no-nothing = types.enum [ "y" "n" "-" ];
-  masterCfModule = with types; submodule {
+  yes-no-nothing = lib.types.enum [ "y" "n" "-" ];
+  masterCfModule = with lib.types; submodule {
     options = {
       type = mkOption {
         type = types.enum [ "inet" "unix" "unix-dgram" "fifo" "pass" ];
@@ -123,35 +122,35 @@ in
 {
   options = {
     services.postfix = {
-      enable = mkEnableOption "Enable Postfix MTA.";
+      enable = lib.mkEnableOption "Enable Postfix MTA.";
 
-      package = mkOption {
+      package = lib.mkOption {
         description = "Postfix package.";
-        type = types.package;
+        type = lib.types.package;
         default = pkgs.postfix;
       };
 
-      user = mkOption {
+      user = lib.mkOption {
         description = "Postfix user.";
-        type = types.str;
+        type = lib.types.str;
         default = "postfix";
       };
 
-      group = mkOption {
+      group = lib.mkOption {
         description = "Postfix group.";
-        type = types.str;
+        type = lib.types.str;
         default = "postfix";
       };
 
-      setgidGroup = mkOption {
+      setgidGroup = lib.mkOption {
         description = "Postfix privilege drop group.";
-        type = types.str;
+        type = lib.types.str;
         default = "postdrop";
       };
 
-      mainConfig = mkOption {
+      mainConfig = lib.mkOption {
         description = "Postfix main.cnf.";
-        type = with types;
+        type = with lib.types;
           attrsOf (nullOr (oneOf [
             str
             int
@@ -162,21 +161,21 @@ in
         default = { };
       };
 
-      masterConfig = mkOption {
+      masterConfig = lib.mkOption {
         description = "Postfix master.cfg.";
-        type = with types;
+        type = with lib.types;
           attrsOf (nullOr (either masterCfModule (listOf masterCfModule)));
         default = { };
         apply = x:
-          concatStringsSep "\n" (mapAttrsToList
+          lib.concatStringsSep "\n" (lib.mapAttrsToList
             (n: v:
               if isNull v then
                 ""
-              else if isAttrs v then
+              else if lib.isAttrs v then
                 with v;
                 "${n} ${type} ${private} ${unpriv} ${chroot} ${wakeup} ${maxproc} ${command}"
               else
-                concatMapStringsSep "\n"
+                lib.concatMapStringsSep "\n"
                   (y:
                     with y;
                     "${n} ${type} ${private} ${unpriv} ${chroot} ${wakeup} ${maxproc} ${command}"
@@ -188,9 +187,9 @@ in
     };
   };
 
-  config = mkIf cfg.enable
+  config = lib.mkIf cfg.enable
     {
-      users.users.${cfg.user} = mkDefault {
+      users.users.${cfg.user} = lib.mkDefault {
         description = "Postfix";
         group = cfg.group;
         createHome = false;
@@ -200,42 +199,42 @@ in
       };
 
       users.groups.${cfg.group} = {
-        gid = mkDefault config.ids.gids.postfix;
+        gid = lib.mkDefault config.ids.gids.postfix;
       };
 
       users.groups.${cfg.setgidGroup} = {
-        gid = mkDefault config.ids.gids.postdrop;
+        gid = lib.mkDefault config.ids.gids.postdrop;
       };
 
-      environment.systemPackages = with pkgs; [ cfg.package ];
+      environment.systemPackages = [ cfg.package ];
 
       services.postfix = {
         mainConfig = {
-          compatibility_level = mkDefault cfg.package.version;
-          mail_owner = mkDefault cfg.user;
-          default_privs = mkDefault "nobody";
+          compatibility_level = lib.mkDefault cfg.package.version;
+          mail_owner = lib.mkDefault cfg.user;
+          default_privs = lib.mkDefault "nobody";
 
           # NixOS specific locations
-          data_directory = mkDefault "/var/lib/postfix/data";
-          queue_directory = mkDefault "/var/lib/postfix/queue";
+          data_directory = lib.mkDefault "/var/lib/postfix/data";
+          queue_directory = lib.mkDefault "/var/lib/postfix/queue";
 
           # Default location of everything in package
           meta_directory = "${cfg.package}/etc/postfix";
           command_directory = "${cfg.package}/bin";
-          sample_directory = mkDefault "/etc/postfix";
+          sample_directory = lib.mkDefault "/etc/postfix";
           newaliases_path = "${cfg.package}/bin/newaliases";
           mailq_path = "${cfg.package}/bin/mailq";
-          readme_directory = mkDefault false;
+          readme_directory = lib.mkDefault false;
           sendmail_path = "${cfg.package}/bin/sendmail";
           daemon_directory = "${cfg.package}/libexec/postfix";
           manpage_directory = "${cfg.package}/share/man";
           html_directory = "${cfg.package}/share/postfix/doc/html";
-          shlib_directory = mkDefault false;
-          mail_spool_directory = mkDefault "/var/spool/mail/";
-          setgid_group = mkDefault cfg.setgidGroup;
+          shlib_directory = lib.mkDefault false;
+          mail_spool_directory = lib.mkDefault "/var/spool/mail/";
+          setgid_group = lib.mkDefault cfg.setgidGroup;
         };
 
-        masterConfig = mapAttrs (_: v: mkDefault v) {
+        masterConfig = lib.mapAttrs (_: v: lib.mkDefault v) {
           pickup = {
             type = "unix";
             private = "n";
@@ -322,7 +321,7 @@ in
             '';
         in
         {
-          ensureSomething.create."data" = mkDefault {
+          ensureSomething.create."data" = lib.mkDefault {
             type = "directory";
             mode = "750";
             owner = "${cfg.user}:${cfg.group}";
@@ -330,7 +329,7 @@ in
             persistent = true;
           };
 
-          ensureSomething.create."queue" = mkDefault {
+          ensureSomething.create."queue" = lib.mkDefault {
             type = "directory";
             mode = "750";
             owner = "${cfg.user}:root";

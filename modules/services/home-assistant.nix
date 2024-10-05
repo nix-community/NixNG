@@ -7,12 +7,11 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, config, lib, nglib, ... }:
-with nglib; with lib;
 let
   cfg = config.services.home-assistant;
-  format = pkgs.formats.yaml {};
+  format = pkgs.formats.yaml { };
 
-  configDir = pkgs.runCommandNoCC "home-assistant-config-dir" {}
+  configDir = pkgs.runCommandNoCC "home-assistant-config-dir" { }
     ''
       mkdir -p $out
       ${pkgs.remarshal}/bin/json2yaml -i ${pkgs.writeText "configuration.json" (builtins.toJSON cfg.config)} -o $out/configuration.yaml
@@ -23,49 +22,49 @@ let
 in
 {
   options.services.home-assistant = {
-    enable = mkEnableOption "Enable Home Assistant";
+    enable = lib.mkEnableOption "Enable Home Assistant";
 
-    package = mkOption {
-      type =  with types; package;
+    package = lib.mkOption {
+      type = lib.types.package;
       default = pkgs.home-assistant;
       description = ''
         Which home-assistant package to use. Adding components is a shorthand for adding python packages.
       '';
     };
 
-    customComponents = mkOption {
-      type = with types; attrsOf (oneOf [ package str ]);
-      default = {};
+    customComponents = lib.mkOption {
+      type = with lib.types; attrsOf (oneOf [ package str ]);
+      default = { };
       description = ''
         Extra components to be installed into <literal>/run/home-assistant/custom_components</custom_components>.
       '';
     };
 
-    config = mkOption {
+    config = lib.mkOption {
       type = format.type;
-      default = {};
+      default = { };
       description = ''
         Home Assistant configuration, <link>https://www.home-assistant.io/docs/configuration/</link>.
       '';
     };
 
-    user = mkOption {
+    user = lib.mkOption {
       description = "Home Assistant user.";
-      type = types.str;
+      type = lib.types.str;
       default = "home-assistant";
     };
 
-    group = mkOption {
+    group = lib.mkOption {
       description = "Home Assistant group.";
-      type = types.str;
+      type = lib.types.str;
       default = "home-assistant";
     };
 
-    envsubst = mkEnableOption "Run envsubst on the configuration file.";
+    envsubst = lib.mkEnableOption "Run envsubst on the configuration file.";
   };
 
-  config = mkIf cfg.enable {
-    services.home-assistant.config = mkDefaultRec
+  config = lib.mkIf cfg.enable {
+    services.home-assistant.config = lib.mkDefaultRec
       {
         http.server_port = "8123";
       };
@@ -75,7 +74,7 @@ in
         ''
           mkdir -p /var/home-assistant/
           cp '${configDir}'/* /var/home-assistant/
-          ${optionalString cfg.envsubst
+          ${lib.optionalString cfg.envsubst
             ''
               rm /var/home-assistant/configuration.yaml
               ${pkgs.envsubst}/bin/envsubst \
@@ -85,7 +84,7 @@ in
           }
 
           ${if cfg.customComponents != {} then "mkdir -p /var/home-assistant/custom_components" else ""}
-          ${concatStringsSep "\n" (mapAttrsToList (n: v: "ln -sf ${v} /var/home-assistant/custom_components/${n}") cfg.customComponents)}
+          ${lib.concatStringsSep "\n" (lib.mapAttrsToList (n: v: "ln -sf ${v} /var/home-assistant/custom_components/${n}") cfg.customComponents)}
 
           chown -R ${cfg.user}:${cfg.group} /var/home-assistant/
           chmod -R u=rwX,g=r-X,o= /var/home-assistant/
@@ -96,9 +95,9 @@ in
       enabled = true;
     };
 
-    environment.systemPackages = with pkgs; [ cfg.package ];
+    environment.systemPackages = [ cfg.package ];
 
-    users.users.${cfg.user} = mkDefaultRec {
+    users.users.${cfg.user} = nglib.mkDefaultRec {
       description = "Home Assistant";
       group = cfg.group;
       createHome = false;
@@ -107,7 +106,7 @@ in
       uid = config.ids.uids.home-assistant;
     };
 
-    users.groups.${cfg.group} = mkDefaultRec {
+    users.groups.${cfg.group} = nglib.mkDefaultRec {
       gid = config.ids.gids.home-assistant;
     };
   };

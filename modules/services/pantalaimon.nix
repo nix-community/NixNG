@@ -7,7 +7,6 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, config, lib, ... }:
-with lib;
 let
   cfg = config.services.pantalaimon;
 
@@ -15,19 +14,19 @@ let
 in
 {
   options.services.pantalaimon = {
-    enable = mkEnableOption "Enable pantalaimon";
+    enable = lib.mkEnableOption "Enable pantalaimon";
 
-    package = mkOption {
+    package = lib.mkOption {
       description = "Pantalaimon package to use";
       default = pkgs.pantalaimon.override { enableDbusUi = false; };
-      type = types.package;
+      type = lib.types.package;
     };
 
-    config = mkOption {
+    config = lib.mkOption {
       description = ''
         Pantalaimon configuration file in Nix form. <link>https://github.com/matrix-org/pantalaimon/blob/master/docs/man/pantalaimon.5.md</link>.
       '';
-      example = literalExample ''
+      example = lib.literalExample ''
         {
           Default =
             {
@@ -46,25 +45,25 @@ in
             };
         }
       '';
-      type = with types; attrsOf (attrsOf (oneOf [ string int ]));
+      type = with lib.types; attrsOf (attrsOf (oneOf [ string int ]));
       apply = x: with pkgs; writeText "pantalaimon.conf" (generators.toINI { } x);
     };
 
-    user = mkOption {
+    user = lib.mkOption {
       description = "User to run Pantalaimon under.";
       default = "pantalaimon";
-      type = types.str;
+      type = lib.types.str;
     };
 
-    group = mkOption {
+    group = lib.mkOption {
       description = "Group to run Pantalaimon under.";
       default = "pantalaimon";
-      type = types.str;
+      type = lib.types.str;
     };
   };
 
-  config = mkIf cfg.enable {
-    users.users.${cfg.user} = mapAttrs (_: mkDefault) {
+  config = lib.mkIf cfg.enable {
+    users.users.${cfg.user} = lib.mapAttrs (_: lib.mkDefault) {
       description = "Pantalaimon";
       group = cfg.group;
       home = "/var/empty";
@@ -73,10 +72,10 @@ in
     };
 
     users.groups.${cfg.group} = {
-      gid = mkDefault config.ids.gids.pantalaimon;
+      gid = lib.mkDefault config.ids.gids.pantalaimon;
     };
 
-    environment.systemPackages = with pkgs; [ cfg.package ];
+    environment.systemPackages = [ cfg.package ];
 
     init.services.pantalaimon =
       {

@@ -7,18 +7,17 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { config, pkgs, lib, nglib, ... }:
-with lib; with nglib;
 let
   cfg = config.services.tmpfilesd;
 in
 {
   options.services.tmpfilesd = {
-    enable = mkEnableOption "Enable tmpfiles.d";
-    useCron = mkEnableOption "Use cron for tmpfiles.d operations";
+    enable = lib.mkEnableOption "Enable tmpfiles.d";
+    useCron = lib.mkEnableOption "Use cron for tmpfiles.d operations";
 
-    entries = mkOption {
-      default = {};
-      type = with types;
+    entries = lib.mkOption {
+      default = { };
+      type = with lib.types;
         attrsOf (listOf (listOf str));
       description = ''
         A attribute set of lists of lists. The outer attribute set corresponds to files,
@@ -34,20 +33,20 @@ in
           ]
         }
       '';
-      apply = mkApply (x:
-        pkgs.runCommandNoCC "" {} ''
+      apply = lib.mkApply (x:
+        pkgs.runCommandNoCC "" { } ''
           mkdir -p $out
-          ${concatMapStringsSep "\n\n"
+          ${lib.concatMapStringsSep "\n\n"
             ({ name, value }:
               "cat > $out/${name}.conf <<EOF\n"
-              + (concatMapStringsSep "\n" (concatStringsSep " ") value) +
+              + (lib.concatMapStringsSep "\n" (lib.concatStringsSep " ") value) +
               "\nEOF\n")
-            (mapAttrsToList nameValuePair x)}
+            (lib.mapAttrsToList lib.nameValuePair x)}
         '');
     };
 
-    package = mkOption {
-      type = types.path;
+    package = lib.mkOption {
+      type = lib.types.path;
       description = ''
         The package used by this service, opentmpfilesd is unmaintained so the
         only option is the one shipped with systemd. Thankfully it is possible
@@ -57,7 +56,7 @@ in
     };
   };
 
-  config = mkIf cfg.enable {
+  config = lib.mkIf cfg.enable {
     init.services.tmpfilesd = {
       script = pkgs.writeShellScript "tmpfilesd-run" ''
         ${cfg.package}/bin/tmpfiles.d --create $(find ${cfg.entries.applied} -name '*.conf' -maxdepth 1)
@@ -69,7 +68,7 @@ in
     assertions = [
       {
         assertion =
-          (cfg.entries == {}) || (cfg.entries != {} && cfg.enable == true);
+          (cfg.entries == { }) || (cfg.entries != { } && cfg.enable == true);
         message = ''
           If `services.tmpfilesd.entries` is not `{}` then `services.tmpfilesd.enable` must
           be `true` as other modules may misbehave.

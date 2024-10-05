@@ -7,7 +7,6 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, lib, config, ... }:
-with lib;
 let
   cfg = config.dumb-init;
   cfgRunit = config.runit;
@@ -27,36 +26,36 @@ let
 in
 {
   options.dumb-init = {
-    enable = mkEnableOption "Enable the dumb-init init system";
+    enable = lib.mkEnableOption "Enable the dumb-init init system";
 
-    package = mkOption {
+    package = lib.mkOption {
       description = "The dumb-init package to use";
-      type = types.package;
+      type = lib.types.package;
       default = pkgs.dumb-init;
     };
 
-    sigell = mkOption {
+    sigell = lib.mkOption {
       description = ''
         A signal rewriting program, which allows to redirect,
         rewrite and handle signals easily
       '';
-      type = with types; nullOr (attrs);
+      type = with lib.types; nullOr attrs;
       default = null;
     };
 
-    type = mkOption {
+    type = lib.mkOption {
       description = "Which type of stage 2 init to run";
-      type = types.submodule {
+      type = lib.types.submodule {
         options = {
-          services = mkOption {
+          services = lib.mkOption {
             description = "Run the runit stage-2 script to start runsvdir and all the services.";
-            type = with types; nullOr (submodule { });
+            type = with lib.types; nullOr (submodule { });
             default = null;
           };
 
-          shell = mkOption {
+          shell = lib.mkOption {
             description = "Run a bash shell, without any services.";
-            type = with types; nullOr (submodule {
+            type = with lib.types; nullOr (submodule {
               options = {
                 user = mkOption {
                   description = "Which user to start the shell under.";
@@ -73,11 +72,11 @@ in
   };
 
   config = {
-    init = mkMerge [
+    init = lib.mkMerge [
       {
         availableInits = [ "dumb-init" ];
       }
-      (mkIf cfg.enable {
+      (lib.mkIf cfg.enable {
         type = "dumb-init";
         shutdown = pkgs.writeShellScript "dum-init-shutdown"
           ''
@@ -133,7 +132,7 @@ in
               if cfg.sigell != null then
                 "${pkgs.sigell}/bin/sigell ${sigellConfig { command = cmd; }}"
               else
-                concatStringsSep " " cmd;
+                lib.concatStringsSep " " cmd;
           in
           if cfg.type.services != null then
             runit
@@ -144,12 +143,12 @@ in
       })
     ];
 
-    assertions = mkIf cfg.enable ([
+    assertions = lib.mkIf cfg.enable ([
       {
-        assertion = count (x: x) (mapAttrsToList (n: v: v != null) cfg.type) == 1;
+        assertion = lib.count (x: x) (lib.mapAttrsToList (n: v: v != null) cfg.type) == 1;
         message = "Please select exactly one dumb-init type.";
       }
-    ] ++ (optional (cfg.type.shell != null)
+    ] ++ (lib.optional (cfg.type.shell != null)
       {
         assertion = cfgUsers.users ? "${cfg.type.shell.user}";
         message = "User ${cfg.type.shell.user} does not exist!";

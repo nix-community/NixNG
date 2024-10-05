@@ -7,7 +7,6 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, config, lib, nglib, ... }:
-with lib;
 let
   cfg = config.services.apache2;
   runtimeConfig = "/run/cfg/apache.cfg";
@@ -17,24 +16,24 @@ in
 {
   options = {
     services.apache2 = {
-      enable = mkEnableOption "Enable Apache2 http server";
-      package = mkOption {
+      enable = lib.mkEnableOption "Enable Apache2 http server";
+      package = lib.mkOption {
         description = "Apache2 package";
-        type = types.package;
+        type = lib.types.package;
         default = pkgs.apacheHttpd;
       };
-      createUserGroup = mkOption {
+      createUserGroup = lib.mkOption {
         description = ''
           Whether to create the default user <literal>www-data</literal>
           and group <literal>www-data</literal>.
         '';
-        type = types.bool;
+        type = lib.types.bool;
         default = true;
       };
-      envsubst = mkEnableOption "Run envsubst on the configuration file.";
-      configuration = mkOption {
+      envsubst = lib.mkEnableOption "Run envsubst on the configuration file.";
+      configuration = lib.mkOption {
         description = "Apache2 configuration";
-        type = with types;
+        type = with lib.types;
           let
             self =
               oneOf [
@@ -53,7 +52,7 @@ in
   };
 
 
-  config = mkIf cfg.enable
+  config = lib.mkIf cfg.enable
     {
       init.services.apache2 =
         let
@@ -80,9 +79,9 @@ in
           enabled = true;
         };
 
-      environment.systemPackages = with pkgs; [ cfg.package ];
+      environment.systemPackages = [ cfg.package ];
 
-      users.users."www-data" = mkIf cfg.createUserGroup {
+      users.users."www-data" = lib.mkIf cfg.createUserGroup {
         description = "Apache HTTPD";
         group = "www-data";
         createHome = false;
@@ -91,7 +90,7 @@ in
         uid = config.ids.uids.www-data;
       };
 
-      users.groups."www-data" = mkIf cfg.createUserGroup {
+      users.groups."www-data" = lib.mkIf cfg.createUserGroup {
         gid = config.ids.gids.www-data;
       };
     };
