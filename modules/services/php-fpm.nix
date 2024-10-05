@@ -11,7 +11,6 @@
 #   Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
 
 { pkgs, config, lib, nglib, ... }:
-with lib;
 let
   cfg = config.services.php-fpm;
 
@@ -41,8 +40,8 @@ let
 
   poolOpts = { name, ... }: {
     options = {
-      socket = mkOption {
-        type = types.str;
+      socket = lib.mkOption {
+        type = lib.types.str;
         readOnly = true;
         description = ''
           Path to the unix socket file on which to accept FastCGI requests.
@@ -51,17 +50,17 @@ let
         example = "${runtimeDir}<name>.sock";
       };
 
-      createUserGroup = mkOption {
+      createUserGroup = lib.mkOption {
         description = ''
           Whether to create the default user <literal>www-data</literal>
           and group <literal>www-data</literal>.
         '';
-        type = types.bool;
+        type = lib.types.bool;
         default = true;
       };
 
-      fpmSettings = mkOption {
-        type = with types; attrsOf (oneOf [ str int bool ]);
+      fpmSettings = lib.mkOption {
+        type = with lib.types; attrsOf (oneOf [ str int bool ]);
         default = { };
         description = ''
           PHP-FPM global directives. Refer to the "List of global php-fpm.conf directives" section of
@@ -73,10 +72,10 @@ let
         '';
       };
 
-      phpSettings = mkOption {
-        type = with types; attrsOf (oneOf [ str int bool ]);
+      phpSettings = lib.mkOption {
+        type = with lib.types; attrsOf (oneOf [ str int bool ]);
         default = { };
-        example = literalExample ''
+        example = lib.literalExample ''
           {
             "date.timezone" = "CET";
           }
@@ -86,21 +85,21 @@ let
         '';
       };
 
-      package = mkOption {
-        type = types.package;
+      package = lib.mkOption {
+        type = lib.types.package;
         default = pkgs.php;
         description = ''
           The PHP package to use for running this PHP-FPM pool.
         '';
       };
 
-      environment = mkOption {
-        type = with types; attrsOf (oneOf [ str int bool ]);
+      environment = lib.mkOption {
+        type = with lib.types; attrsOf (oneOf [ str int bool ]);
         default = { };
         description = ''
           Environment variables used for this PHP-FPM pool.
         '';
-        example = literalExample ''
+        example = lib.literalExample ''
           {
             HOSTNAME = "$HOSTNAME";
             TMP = "/tmp";
@@ -113,7 +112,7 @@ let
 
     config = {
       socket = "${runtimeDir}/${name}.sock";
-      fpmSettings = mapAttrs (_: mkDefault) {
+      fpmSettings = lib.mapAttrs (_: lib.mkDefault) {
         user = "www-data";
         group = "www-data";
         listen = cfg.pools.${name}.socket;
@@ -126,8 +125,8 @@ let
 in
 {
   options.services.php-fpm = {
-    fpmSettings = mkOption {
-      type = with types; attrsOf (oneOf [ str int bool ]);
+    fpmSettings = lib.mkOption {
+      type = with lib.types; attrsOf (oneOf [ str int bool ]);
       default = { };
       apply = x: nglib.generators.php.fpm { } x "global";
       description = ''
@@ -141,11 +140,11 @@ in
       '';
     };
 
-    phpSettings = mkOption {
-      type = with types; attrsOf (oneOf [ str int bool ]);
+    phpSettings = lib.mkOption {
+      type = with lib.types; attrsOf (oneOf [ str int bool ]);
       default = { };
       apply = nglib.generators.php.ini;
-      example = literalExample ''
+      example = lib.literalExample ''
         {
           "date.timezone" = "CET";
         }
@@ -156,8 +155,8 @@ in
       '';
     };
 
-    pools = mkOption {
-      type = with types; attrsOf (submodule poolOpts);
+    pools = lib.mkOption {
+      type = with lib.types; attrsOf (submodule poolOpts);
       default = { };
       description = ''
         PHP-FPM "pools", think of each pool as a separate php-fpm instance.
@@ -167,14 +166,14 @@ in
   };
 
   config =
-    mkIf (cfg.pools != { }) {
+    lib.mkIf (cfg.pools != { }) {
       services.php-fpm.fpmSettings = {
         daemonize = false;
       };
 
-      init.services = mapAttrs'
+      init.services = lib.mapAttrs'
         (pool: opts:
-          nameValuePair "php-fpm-${pool}" {
+          lib.nameValuePair "php-fpm-${pool}" {
             enabled = true;
             ensureSomething.create."runtimeDir" = {
               type = "directory";
@@ -205,13 +204,13 @@ in
         )
         cfg.pools;
 
-      users.users = builtins.listToAttrs (filter (x: x.value != null)
-        (mapAttrsToList
+      users.users = builtins.listToAttrs (lib.filter (x: x.value != null)
+        (lib.mapAttrsToList
           (pool: opts:
             let
               user = opts.phpSettings.user;
             in
-            nameValuePair user
+            lib.nameValuePair user
               (if opts.createUserGroup then
                 {
                   description = "PHP-FPM - ${pool}";
@@ -226,13 +225,13 @@ in
           )
           cfg.pools));
 
-      users.groups = builtins.listToAttrs (filter (x: x.value != null)
-        (mapAttrsToList
+      users.groups = builtins.listToAttrs (lib.filter (x: x.value != null)
+        (lib.mapAttrsToList
           (pool: opts:
             let
               group = opts.phpSettings.group;
             in
-            nameValuePair group
+            lib.nameValuePair group
               (if opts.createUserGroup then
                 {
                   gid = config.ids.gids.${group};

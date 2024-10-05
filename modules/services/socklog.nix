@@ -7,28 +7,27 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { config, lib, pkgs, ... }:
-with lib;
 let
   cfg = config.services.socklog;
 in
 {
   options.services.socklog = {
-    enable = mkEnableOption "Enable socklog.";
+    enable = lib.mkEnableOption "Enable socklog.";
 
-    package = mkOption {
+    package = lib.mkOption {
       description = "Socklog package.";
-      type = types.package;
+      type = lib.types.package;
       default = pkgs.socklog;
     };
 
-    unix = mkOption {
+    unix = lib.mkOption {
       description = "Make socklog listen on a unix domain socket. Input the path to the UDS socklog should use.";
-      type = with types; nullOr path;
+      type = with lib.types; nullOr path;
       default = null;
     };
-    inet = mkOption {
+    inet = lib.mkOption {
       description = "Make socklog listen on UDP.";
-      type = with types; nullOr (submodule {
+      type = with lib.types; nullOr (submodule {
         options = {
           ip = mkOption {
             description = ''
@@ -48,13 +47,13 @@ in
       default = null;
     };
   };
-  config = mkIf cfg.enable {
+  config = lib.mkIf cfg.enable {
     init.services.socklog =
       let
         unixSocklog =
-          optionalString (cfg.unix != null) "socklog unix ${cfg.unix} &";
+          lib.optionalString (cfg.unix != null) "socklog unix ${cfg.unix} &";
         inetSocklog =
-          optionalString (cfg.inet != null) "socklog inter ${cfg.inet.ip} ${toString cfg.inet.port} &";
+          lib.optionalString (cfg.inet != null) "socklog inter ${cfg.inet.ip} ${toString cfg.inet.port} &";
       in
       {
         script = pkgs.writeShellScript "socklog-run" ''
@@ -70,7 +69,7 @@ in
         enabled = true;
       };
 
-    environment.systemPackages = with pkgs; [ cfg.package ];
+    environment.systemPackages = [ cfg.package ];
 
     assertions = [
       {

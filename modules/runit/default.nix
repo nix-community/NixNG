@@ -7,7 +7,6 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, lib, config, nglib, ... }:
-with lib;
 let
   cfg = config.runit;
   cfgSystem = config.system;
@@ -15,27 +14,27 @@ let
 in
 {
   options.runit = {
-    enable = mkEnableOption "Enable runit";
+    enable = lib.mkEnableOption "Enable runit";
 
-    pkg = mkOption {
+    pkg = lib.mkOption {
       description = "runit package to use";
-      type = types.package;
+      type = lib.types.package;
       default = pkgs.runit;
     };
 
-    runtimeServiceDirectory = mkOption {
+    runtimeServiceDirectory = lib.mkOption {
       description = "where runsvdir should create superwise and log directories for services";
-      type = types.path;
+      type = lib.types.path;
       default = "/service";
     };
 
-    stages = mkOption {
+    stages = lib.mkOption {
       description = "runit stages";
       default = { };
-      type = types.submodule {
+      type = lib.types.submodule {
         options = {
-          stage-1 = mkOption {
-            type = types.path;
+          stage-1 = lib.mkOption {
+            type = lib.types.path;
             description = "runit stage 1";
             default = pkgs.writeSubstitutedShellScript {
               name = "runit-stage-1";
@@ -45,8 +44,8 @@ in
               };
             };
           };
-          stage-2 = mkOption {
-            type = types.path;
+          stage-2 = lib.mkOption {
+            type = lib.types.path;
             description = "runit stage 2";
             default = pkgs.writeSubstitutedShellScript {
               name = "runit-stage-2";
@@ -57,8 +56,8 @@ in
               };
             };
           };
-          stage-3 = mkOption {
-            type = types.path;
+          stage-3 = lib.mkOption {
+            type = lib.types.path;
             description = "runit stage 3";
             default = pkgs.writeSubstitutedShellScript {
               name = "runit-stage-3";
@@ -69,9 +68,9 @@ in
         };
       };
     };
-    serviceDirectory = mkOption {
+    serviceDirectory = lib.mkOption {
       description = "Generated service directory";
-      type = types.path;
+      type = lib.types.path;
       readOnly = true;
     };
   };
@@ -97,7 +96,7 @@ in
     runit = {
       serviceDirectory = pkgs.runCommandNoCC "service-dir" { } ''
         mkdir $out
-        ${concatStringsSep "\n" (mapAttrsToList (n: s:
+        ${lib.concatStringsSep "\n" (lib.mapAttrsToList (n: s:
           let
             run = pkgs.callPackage ./run.nix {} { inherit n s; };
             finish = pkgs.callPackage ./finish.nix {} { inherit n s cfgInit; };
@@ -108,17 +107,17 @@ in
               ln -s ${run} $out/${n}/run
               ln -s ${finish} $out/${n}/finish
               ln -s ${log} $out/${n}/log/run
-              ${optionalString (!s.enabled) "touch $out/${n}/down"}
+              ${lib.optionalString (!s.enabled) "touch $out/${n}/down"}
             ''
         ) cfgInit.services)}
       '';
     };
 
-    init = mkMerge [
+    init = lib.mkMerge [
       {
         availableInits = [ "runit" ];
       }
-      (mkIf cfg.enable {
+      (lib.mkIf cfg.enable {
         type = "runit";
         shutdown = pkgs.writeShellScript "runit-shutdown"
           ''

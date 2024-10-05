@@ -11,7 +11,6 @@
 , writeShellScript
 }:
 { n, s }:
-with lib;
 writeShellScript "${n}-log" ''
   ${
     if s.log.file != null then

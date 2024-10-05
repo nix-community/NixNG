@@ -7,7 +7,6 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, config, lib, nglib, ... }:
-with nglib; with lib;
 let
   cfg = config.services.nginx;
   runtimeConfig = "/run/cfg/nginx.cfg";
@@ -17,26 +16,26 @@ in
 {
   options = {
     services.nginx = {
-      enable = mkEnableOption "Enable Nginx http server.";
-      package = mkOption {
+      enable = lib.mkEnableOption "Enable Nginx http server.";
+      package = lib.mkOption {
         description = "Nginx package.";
-        type = types.package;
+        type = lib.types.package;
         default = pkgs.nginx;
       };
-      user = mkOption {
+      user = lib.mkOption {
         description = "Nginx user.";
-        type = types.str;
+        type = lib.types.str;
         default = "nginx";
       };
-      group = mkOption {
+      group = lib.mkOption {
         description = "Nginx group.";
-        type = types.str;
+        type = lib.types.str;
         default = "nginx";
       };
-      envsubst = mkEnableOption "Run envsubst on the configuration file.";
-      configuration = mkOption {
+      envsubst = lib.mkEnableOption "Run envsubst on the configuration file.";
+      configuration = lib.mkOption {
         description = "Nginx configuration";
-        type = with types;
+        type = with lib.types;
           let
             self =
               oneOf [
@@ -54,7 +53,7 @@ in
     };
   };
 
-  config = mkIf cfg.enable
+  config = lib.mkIf cfg.enable
     {
       init.services.nginx =
         let
@@ -88,9 +87,9 @@ in
           enabled = true;
         };
 
-      environment.systemPackages = with pkgs; [ cfg.package ];
+      environment.systemPackages = [ cfg.package ];
 
-      users.users.${cfg.user} = mkDefaultRec {
+      users.users.${cfg.user} = nglib.mkDefaultRec {
         description = "Nginx";
         group = cfg.group;
         createHome = false;
@@ -99,7 +98,7 @@ in
         uid = config.ids.uids.nginx;
       };
 
-      users.groups.${cfg.group} = mkDefaultRec {
+      users.groups.${cfg.group} = nglib.mkDefaultRec {
         gid = config.ids.gids.nginx;
       };
     };

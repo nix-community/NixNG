@@ -7,12 +7,11 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 { pkgs, config, lib, nglib, ... }:
-with nglib; with lib;
 let
   cfg = config.services.zigbee2mqtt;
-  format = pkgs.formats.yaml {};
+  format = pkgs.formats.yaml { };
 
-  configDir = pkgs.runCommandNoCC "zigbee2mqtt-config-dir" {}
+  configDir = pkgs.runCommandNoCC "zigbee2mqtt-config-dir" { }
     ''
       mkdir -p $out
       ln -s ${format.generate "configuration.yaml" cfg.config} $out/configuration.yaml
@@ -20,41 +19,41 @@ let
 in
 {
   options.services.zigbee2mqtt = {
-    enable = mkEnableOption "Enable zigbee2mqtt.";
+    enable = lib.mkEnableOption "Enable zigbee2mqtt.";
 
-    package = mkOption {
-      type =  with types; package;
+    package = lib.mkOption {
+      type = lib.types.package;
       default = pkgs.zigbee2mqtt;
       description = ''
         Which zigbee2mqtt package to use.
       '';
     };
 
-    config = mkOption {
+    config = lib.mkOption {
       type = format.type;
-      default = {};
+      default = { };
       description = ''
         Home Assistant configuration, <link>https://www.home-assistant.io/docs/configuration/</link>.
       '';
     };
 
-    user = mkOption {
+    user = lib.mkOption {
       description = "zigbee2mqtt user.";
-      type = types.str;
+      type = lib.types.str;
       default = "zigbee2mqtt";
     };
 
-    group = mkOption {
+    group = lib.mkOption {
       description = "zigbee2mqtt group.";
-      type = types.str;
+      type = lib.types.str;
       default = "zigbee2mqtt";
     };
 
-    envsubst = mkEnableOption "Run envsubst on the configuration file.";
+    envsubst = lib.mkEnableOption "Run envsubst on the configuration file.";
   };
 
-  config = mkIf cfg.enable {
-    services.zigbee2mqtt.config = mkDefaultRec
+  config = lib.mkIf cfg.enable {
+    services.zigbee2mqtt.config = lib.mkDefaultRec
       {
         http.server_port = "8123";
       };
@@ -64,7 +63,7 @@ in
         ''
           mkdir -p /var/zigbee2mqtt/
           cp '${configDir}'/* /var/zigbee2mqtt/
-          ${optionalString cfg.envsubst
+          ${lib.optionalString cfg.envsubst
             ''
               rm /var/zigbee2mqtt/configuration.yaml
               ${pkgs.envsubst}/bin/envsubst \
@@ -81,9 +80,9 @@ in
       enabled = true;
     };
 
-    environment.systemPackages = with pkgs; [ cfg.package ];
+    environment.systemPackages = [ cfg.package ];
 
-    users.users.${cfg.user} = mkDefaultRec {
+    users.users.${cfg.user} = nglib.mkDefaultRec {
       description = "zigbee2mqtt";
       group = cfg.group;
       createHome = false;
@@ -92,7 +91,7 @@ in
       uid = config.ids.uids.zigbee2mqtt;
     };
 
-    users.groups.${cfg.group} = mkDefaultRec {
+    users.groups.${cfg.group} = nglib.mkDefaultRec {
       gid = config.ids.gids.zigbee2mqtt;
     };
   };
