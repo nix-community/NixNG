@@ -22,18 +22,30 @@ let
 
   generateServiceFile =
     { name, service }:
+    let
+      rules =
+        (nglib.nottmpfiles.ensureSomethings service.ensureSomething)
+        ++ service.tmpfiles;
+    in
     pkgs.writeText "${name}-service" ''
       type = process
       pid-file = /service/${name}/pid
 
-      command = ${service.script}
+      command = ${pkgs.writeShellScript "${name}-start.sh" ''
+        set -eo pipefail
+
+        ${pkgs.systemdTmpfilesD}/bin/systemd-tmpfiles --create \
+           ${pkgs.writeText "${name}.tmpfiles" (nglib.nottmpfiles.generate rules)}
+        ${lib.optionalString (service.execStartPre != null) "${service.execStartPre}"}
+        ${service.execStart}
+      ''}
       # stop-command = ${pkgs.writeShellScript "${name}-stop" ''
-      #   ${lib.optionalString (service.finish != null) service.finish}
+      #   ${lib.optionalString (service.execStop != null) service.execStop}
       # ''}
 
       logfile = /proc/1/fd/2
       env-file = ${generateEnvFile { inherit name; env = service.environment; }}
-      working-dir = ${service.pwd}
+      working-dir = ${service.workingDirectory}
       ${generateDependsOn service.dependencies}
     '';
 

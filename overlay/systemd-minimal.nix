@@ -19,6 +19,8 @@
   libcap,
   pkg-config,
   util-linux,
+  getent,
+  libxcrypt,
 
   # Required for man
   libxslt,
@@ -42,6 +44,8 @@ stdenv.mkDerivation {
     libcap
     pkg-config
     util-linux
+    getent
+    libxcrypt
 
     libxslt
     docbook_xsl
@@ -55,10 +59,6 @@ stdenv.mkDerivation {
     rev = "v${version}";
     sha256 = "sha256-Sa5diyNFyYtREo1xSCcufAW83ZZGZvueoDVuQ2r8wno=";
   };
-
-  patches = [
-    "${path}/pkgs/os-specific/linux/systemd/0011-build-don-t-create-statedir-and-don-t-touch-prefixdi.patch"
-  ];
 
   mesonFlags = [
     "-Dversion-tag=${version}"
