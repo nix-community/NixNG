@@ -12,29 +12,29 @@ let
 
   log = lib.mkOption {
     description = "Logging settings.";
-    type = with lib.types; nullOr (submodule ({ config, ... }:
+    type = lib.types.nullOr (lib.types.submodule ({ config, ... }:
       {
         options = {
           file = lib.mkOption {
             description = "Log to a plain file, without rotation.";
-            type = nullOr (submodule {
+            type = lib.types.nullOr (lib.types.submodule {
               options = {
                 dst = lib.mkOption {
                   description = "The file to which to log to.";
-                  type = path;
+                  type = lib.types.path;
                 };
                 rotate = lib.mkOption {
                   description = "The size after which the file should rotated in kilo bytes.";
-                  type = int;
+                  type = lib.types.int;
                   default = 0; # 1 MB
                 };
               };
             });
             default = null;
           };
-          syslog = mkOption {
+          syslog = lib.mkOption {
             description = "Log via syslog, either to a UDS or over TCP/UDP.";
-            type = nullOr (submodule ({ config, ... }:
+            type = lib.types.nullOr (lib.types.submodule ({ config, ... }:
               let
                 cfg = config;
               in
@@ -42,35 +42,35 @@ let
                 options = {
                   type = lib.mkOption {
                     description = "Syslog type, UDS, TCP, or UDP.";
-                    type = enum [ "uds" "tcp" "udp" ];
+                    type = lib.types.enum [ "uds" "tcp" "udp" ];
                   };
                   dst = lib.mkOption {
                     description = "The endpoint to log to, format depends on the type.";
-                    type = str;
+                    type = lib.types.str;
                   };
                   time = lib.mkOption {
                     description = "Whether the complete sender timestamp should be included in log messages";
-                    type = bool;
+                    type = lib.types.bool;
                     default = false;
                   };
                   host = lib.mkOption {
                     description = "Whether the hostname should be included in log messages.";
-                    type = bool;
+                    type = lib.types.bool;
                     default = true;
                   };
                   timeQuality = lib.mkOption {
                     description = "Whether time quality information should be included in the log messages.";
-                    type = bool;
+                    type = lib.types.bool;
                     default = false;
                   };
                   tag = lib.mkOption {
                     description = "Every message will be marked with this tag.";
-                    type = nullOr str;
+                    type = with lib.types; nullOr str;
                     default = null;
                   };
                   priority = lib.mkOption {
                     description = "Mark every message with a priority.";
-                    type = nullOr str;
+                    type = with lib.types; nullOr str;
                     default = null;
                   };
                 };
