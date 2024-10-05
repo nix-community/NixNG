@@ -64,7 +64,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    services.home-assistant.config = lib.mkDefaultRec
+    services.home-assistant.config = nglib.mkDefaultRec
       {
         http.server_port = "8123";
       };

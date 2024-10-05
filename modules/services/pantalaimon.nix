@@ -46,7 +46,7 @@ in
         }
       '';
       type = with lib.types; attrsOf (attrsOf (oneOf [ string int ]));
-      apply = x: with pkgs; writeText "pantalaimon.conf" (generators.toINI { } x);
+      apply = x: with pkgs; writeText "pantalaimon.conf" (lib.generators.toINI { } x);
     };
 
     user = lib.mkOption {

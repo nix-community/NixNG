@@ -452,7 +452,7 @@ in
           environment = env;
           pwd = baseDir;
           script = pkgs.writeShellScript "hydra-evaluator" ''
-            export PATH=${with pkgs; makeBinPath [ hydra-package nettools jq ]}:$PATH
+            export PATH=${with pkgs; lib.makeBinPath [ hydra-package nettools jq ]}:$PATH
 
             sv -v -w 0 once hydra-init
             [[ ! -e ${baseDir}/.init-hydra ]] && exit 1

@@ -14,13 +14,13 @@ let
   yes-no-nothing = lib.types.enum [ "y" "n" "-" ];
   masterCfModule = with lib.types; submodule {
     options = {
-      type = mkOption {
+      type = lib.mkOption {
         type = types.enum [ "inet" "unix" "unix-dgram" "fifo" "pass" ];
         description = ''
           Service type.
         '';
       };
-      private = mkOption {
+      private = lib.mkOption {
         type = yes-no-nothing;
         description = ''
           Whether or not access is restricted to the mail system.   Inter-
@@ -28,7 +28,7 @@ let
         '';
         default = "-";
       };
-      unpriv = mkOption {
+      unpriv = lib.mkOption {
         type = yes-no-nothing;
         description = ''
           Whether the service runs with root privileges or as the owner of
@@ -40,7 +40,7 @@ let
         '';
         default = "-";
       };
-      chroot = mkOption {
+      chroot = lib.mkOption {
         type = yes-no-nothing;
         description = ''
           Whether or not the service  runs  chrooted  to  the  mail  queue
@@ -59,7 +59,7 @@ let
         '';
         default = "-";
       };
-      wakeup = mkOption {
+      wakeup = lib.mkOption {
         type = types.oneOf [ int str ];
         description = ''
           Automatically wake up the named service after the specified num-
@@ -74,12 +74,12 @@ let
         '';
         default = "-";
         apply = x:
-          if isString x then
+          if lib.isString x then
             x
           else
             toString x;
       };
-      maxproc = mkOption {
+      maxproc = lib.mkOption {
         type = types.oneOf [ int str ];
         description = ''
           The maximum number of processes that may  execute  this  service
@@ -92,13 +92,13 @@ let
         '';
         default = "-";
         apply = x:
-          if isString x then
+          if lib.isString x then
             x
           else
             toString x;
       };
-      command = mkOption {
-        type = types.str;
+      command = lib.mkOption {
+        type = lib.types.str;
         description = ''
           The command to be executed.  Characters that are special to  the
           shell  such  as  ">"  or  "|"  have no special meaning here, and

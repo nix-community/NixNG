@@ -57,7 +57,7 @@ in
             description = "Run a bash shell, without any services.";
             type = with lib.types; nullOr (submodule {
               options = {
-                user = mkOption {
+                user = lib.mkOption {
                   description = "Which user to start the shell under.";
                   type = str;
                   default = "root";

@@ -22,7 +22,7 @@ in
     crontabs = lib.mkOption {
       type = with lib.types; attrsOf (submodule {
         options = {
-          environment = mkOption {
+          environment = lib.mkOption {
             type = attrsOf str;
             description = ''
               A set of environment variable to set for this specific crontab.
@@ -34,7 +34,7 @@ in
             '';
             default = { };
           };
-          jobs = mkOption {
+          jobs = lib.mkOption {
             type = listOf str;
             description = ''
               A list of job entries, in the usual cron format.

@@ -141,7 +141,7 @@ in
       ensureUsers = lib.mkOption {
         type = with lib.types; listOf (submodule {
           options = {
-            name = mkOption {
+            name = lib.mkOption {
               type = str;
               description = ''
                 Name of the user to ensure.

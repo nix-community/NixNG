@@ -13,7 +13,7 @@
 writeShellScript "${n}-finish" ''
   ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
     with cv;
-    optionalString (!cv.persistent) ''
+    lib.optionalString (!cv.persistent) ''
       if [[ -e ${dst} ]] ; then
         echo '${n}: removing non-presistent `${dst}`'
         rm -v ${dst}
@@ -23,7 +23,7 @@ writeShellScript "${n}-finish" ''
 
   ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
     with cv;
-    optionalString (!cv.persistent) ''
+    lib.optionalString (!cv.persistent) ''
       if [[ -e ${dst} ]] ; then
         echo '${n}: removing non-presistent `${dst}`'
         rm -rv ${dst}
@@ -37,7 +37,7 @@ writeShellScript "${n}-finish" ''
 
   ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
     with cv;
-    optionalString (!cv.persistent) ''
+    lib.optionalString (!cv.persistent) ''
       if [[ -e ${dst} ]] ; then
         echo '${n}: removing non-persistent `${dst}`'
         rm -rv '${dst}'
@@ -47,7 +47,7 @@ writeShellScript "${n}-finish" ''
 
   ${lib.concatStringsSep "\n" (lib.mapAttrsToList (cn: cv:
     with cv;
-    optionalString (!cv.persistent) ''
+    lib.optionalString (!cv.persistent) ''
       if [[ -e ${dst} ]] ; then
         echo '${n}: removing non-persistent `${dst}`'
 

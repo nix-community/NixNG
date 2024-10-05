@@ -79,7 +79,7 @@ writeShellScript "${n}-run" ''
          }
 
         chown ${owner} ${dst}
-        ${optionalString (mode != null) "chmod ${mode} ${dst}"}
+        ${lib.optionalString (mode != null) "chmod ${mode} ${dst}"}
       fi
     ''
   ) s.ensureSomething.create)}

@@ -73,10 +73,10 @@ in
             ''
               exec ${package}/sbin/agetty \
                  "${port}" \
-                 ${concatStringsSep " " (mapAttrsToList optionsCreateArgument options)}
-                 "${optionalString
+                 ${lib.concatStringsSep " " (lib.mapAttrsToList optionsCreateArgument options)}
+                 "${lib.optionalString
                    (baudrate != null)
-                   (if isList baudrate then
+                   (if lib.isList baudrate then
                      concatMapStringsSep "," toString baudrate
                     else
                       toString baudrate)}" \
