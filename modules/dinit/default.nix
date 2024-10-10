@@ -26,6 +26,7 @@ let
       rules =
         (nglib.nottmpfiles.ensureSomethings service.ensureSomething)
         ++ service.tmpfiles;
+      rulesFile = pkgs.writeText "${name}.tmpfiles" (nglib.nottmpfiles.generate rules);
     in
     pkgs.writeText "${name}-service" ''
       type = process
@@ -34,10 +35,11 @@ let
       command = ${pkgs.writeShellScript "${name}-start.sh" ''
         set -eo pipefail
 
-        ${pkgs.systemdTmpfilesD}/bin/systemd-tmpfiles --create \
-           ${pkgs.writeText "${name}.tmpfiles" (nglib.nottmpfiles.generate rules)}
+        ${pkgs.systemdTmpfilesD}/bin/systemd-tmpfiles --create ${rulesFile}
         ${lib.optionalString (service.execStartPre != null) "${service.execStartPre}"}
         ${service.execStart}
+        ${lib.optionalString (service.execStop != null) service.execStop}
+        ${pkgs.systemdTmpfilesD}/bin/systemd-tmpfiles --remove ${rulesFile}
       ''}
       # stop-command = ${pkgs.writeShellScript "${name}-stop" ''
       #   ${lib.optionalString (service.execStop != null) service.execStop}

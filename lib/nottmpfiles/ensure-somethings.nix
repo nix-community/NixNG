@@ -1,6 +1,6 @@
 {nglib, lib, ... }:
 ensureSomethings:
-with nglib.tmpfiles.dsl;
+with nglib.nottmpfiles.dsl;
 (
 let
   link = lib.pipe ensureSomethings.link [
@@ -8,7 +8,7 @@ let
       (u: { src, dst, persistent }: [
         (Lp dst    _     _ _ _ src)
       ] ++ lib.optional (!persistent)
-        (r  src    _     _ _ _ _)))
+        (r  dst    _     _ _ _ _)))
     lib.flatten
   ]
    ;
@@ -23,12 +23,17 @@ let
    ];
  create = lib.pipe ensureSomethings.create [
    (lib.mapAttrsToList
-     (u: { src, dst, type, mode, owner, persistent }:
+     (u: { dst, type, mode, owner, persistent }:
        let
-         do.file = (f  src mode owner _ _   _);
-         do.directory = (d  src mode owner _ _   _);
-         remove.file = (r _  _ _ _  _ _);
-         remove.directory = (R _  _ _ _  _ _);
+         ownerParts = lib.splitString ":" owner;
+         user = builtins.elemAt ownerParts 0;
+         group = builtins.elemAt ownerParts 1;
+         mode' = if builtins.stringLength mode == 3 then "0${mode}" else mode;
+
+         do.file = (f  dst mode' user group _   _);
+         do.directory = (d  dst mode' user group _   _);
+         remove.file = (r dst  _ _ _  _ _);
+         remove.directory = (R dst  _ _ _  _ _);
        in
          [
            do.${type}
