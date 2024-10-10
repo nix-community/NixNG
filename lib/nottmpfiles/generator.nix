@@ -7,7 +7,7 @@ let
     else
       x;
 in
-  (lib.concatMapStringsSep "\n" ({
+  lib.traceVal(lib.concatMapStringsSep "\n" ({
     type,
     path,
     mode,
@@ -17,4 +17,4 @@ in
     argument
   }:
     "${fromNull type} ${fromNull path} ${fromNull mode} ${fromNull user} ${fromNull group} ${fromNull age} ${fromNull argument}"
-  ) (lib.traceValSeq rules)) + "\n"
+  ) rules) + "\n"
