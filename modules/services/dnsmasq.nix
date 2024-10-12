@@ -32,7 +32,12 @@ in
 {
   options.services.dnsmasq = {
     enable = lib.mkEnableOption "dnsmasq";
-    package = lib.mkPackageOption pkgs "dnsmasq" { };
+
+    package = lib.mkOption {
+      description = "dnsmasq package to use";
+      type = lib.types.package;
+      default = pkgs.dnsmasq.override { dbusSupport = false; };
+    };
 
     user = lib.mkOption {
       description = "dnsmasq user";
@@ -96,7 +101,7 @@ in
         };
 
         script = pkgs.writeShellScript "dnsmasq-run" ''
-          ${lib.getExe pkgs.dnsmasq} --test
+          ${lib.getExe cfg.package} --test
           chpst -u ${cfg.user}:${cfg.group} -b dnsmasq ${lib.getExe cfg.package} \
             --keep-in-foreground \
             --pid-file=/run/dnsmasq.pid \
