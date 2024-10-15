@@ -14,11 +14,11 @@ let
     lib.concatMapStringsSep "\n" (dep: "depends-on: ${dep}");
 
   generateEnvFile =
-    { name, env }:
+    { name, environment, ... }:
     pkgs.writeText "${name}.env"
       (lib.concatMapStringsSep "\n"
         (var: var.name + "=" + var.value)
-        (lib.mapAttrsToList lib.nameValuePair env));
+        (lib.mapAttrsToList lib.nameValuePair environment));
 
   generateServiceFile =
     { name, service }:
@@ -41,12 +41,13 @@ let
         ${lib.optionalString (service.execStop != null) service.execStop}
         ${pkgs.systemdTmpfilesD}/bin/systemd-tmpfiles --remove ${rulesFile}
       ''}
-      # stop-command = ${pkgs.writeShellScript "${name}-stop" ''
-      #   ${lib.optionalString (service.execStop != null) service.execStop}
-      # ''}
 
       logfile = /proc/1/fd/2
-      env-file = ${generateEnvFile { inherit name; env = service.environment; }}
+      env-file =
+      ${lib.optionalString (service.environmentFile != null) ''
+        env-file += ${service.environmentFile}
+      ''}
+      env-file += ${generateEnvFile {inherit name; inherit (service) environment; }}
       working-dir = ${service.workingDirectory}
       ${generateDependsOn service.dependencies}
     '';

@@ -307,6 +307,15 @@ in
               default = { };
             };
 
+            environmentFile = lib.mkOption {
+              description = ''
+                The environment file that will be loaded prior to running <option>execStart</option>
+                and <option>execStop</option>.
+              '';
+              type = lib.types.nullOr lib.types.path;
+              default = null;
+            };
+
             workingDirectory = lib.mkOption {
               description = ''
                 Directory in which both <option>execStart</option> and <option>execStop</option> will be ran.
@@ -323,8 +332,7 @@ in
               default = [];
             };
           };
-        }
-      );
+        });
       description = "Service definitions.";
       default = { };
     };

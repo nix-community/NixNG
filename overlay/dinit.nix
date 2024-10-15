@@ -16,6 +16,7 @@ stdenv.mkDerivation (self: {
 
   patches = [
     ./dinit-dont-shutdown-system.patch
+    ./dinit-allow-multiple-env-files.patch
   ];
 
   nativeBuildInputs = [
