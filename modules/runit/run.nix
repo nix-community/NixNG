@@ -89,9 +89,9 @@ writeShellScript "${n}-run" ''
     ) s.ensureSomething.create
   )}
 
-  cd ${s.pwd}
+  cd ${s.workingDirectory}
   ${lib.optionalString (s.environment != { })
     "export ${lib.concatStringsSep " " (lib.mapAttrsToList (n: v: "${n}=${v}") s.environment)}"
   }
-  exec ${s.script}
+  exec ${s.execStart}
 ''
