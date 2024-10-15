@@ -254,6 +254,11 @@ in
     services = lib.mkOption {
       type = lib.types.attrsOf (
         lib.types.submodule {
+          imports = [
+            (lib.mkRenamedOptionModule [ "script" ] [ "execStart" ])
+            (lib.mkRenamedOptionModule [ "finish" ] [ "execStop" ])
+            (lib.mkRenamedOptionModule [ "pwd" ] [ "workingDirectory" ])
+          ];
           options = {
             dependencies = lib.mkOption {
               description = "Service dependencies";
@@ -265,15 +270,20 @@ in
 
             shutdownOnExit = lib.mkEnableOption "Whether the init system should enter shutdown when this particular service exits";
 
-            script = lib.mkOption {
-              description = "Service script to start the program.";
-              type = lib.types.path;
-              default = "";
+            execStartPre = lib.mkOption {
+              description = "Service script to start before the program.";
+              type = lib.types.nullOr lib.types.path;
+              default = null;
             };
 
-            finish = lib.mkOption {
+            execStart = lib.mkOption {
+              description = "Service script to start the program.";
+              type = lib.types.path;
+            };
+
+            execStop = lib.mkOption {
               description = "Script to run upon service stop.";
-              type = with lib.types; nullOr path;
+              type = lib.types.nullOr lib.types.path;
               default = null;
             };
 
@@ -297,12 +307,29 @@ in
               default = { };
             };
 
-            pwd = lib.mkOption {
+            environmentFile = lib.mkOption {
               description = ''
-                Directory in which both <option>script</option> and <option>finish</option> will be ran.
+                The environment file that will be loaded prior to running <option>execStart</option>
+                and <option>execStop</option>.
+              '';
+              type = lib.types.nullOr lib.types.path;
+              default = null;
+            };
+
+            workingDirectory = lib.mkOption {
+              description = ''
+                Directory in which both <option>execStart</option> and <option>execStop</option> will be ran.
               '';
               type = lib.types.str;
               default = "/var/empty";
+            };
+
+            tmpfiles = lib.mkOption {
+              description = ''
+                List of nottmpfiles rules, view `lib/generators.nix` for how to use it, or the examples.
+              '';
+              type = lib.types.unspecified;
+              default = [ ];
             };
           };
         }

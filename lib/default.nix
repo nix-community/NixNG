@@ -63,6 +63,11 @@ let
         '') fragments
       )}
     '';
+
+    nottmpfiles = import ./nottmpfiles {
+      inherit lib;
+      nglib = this;
+    };
   };
 in
 this
