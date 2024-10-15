@@ -241,7 +241,13 @@ in
         chown 0:0 /etc/shadow
         chmod 400 /etc/shadow
         ${cfg.generateShadow} > /etc/shadow
-        chattr +i /etc/shadow
+
+        # Detect rootless Docker, which prevents setting files' immutable flag
+        mapped_root_uid=$(awk '$1 == 0 {print $2}' /proc/self/uid_map)
+        if [[ "$mapped_root_uid" -eq 0 ]]; then
+          chattr +i /etc/shadow
+        fi
+
         ${createHomes}
       '';
 
