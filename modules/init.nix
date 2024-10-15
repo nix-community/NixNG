@@ -329,10 +329,11 @@ in
                 List of nottmpfiles rules, view `lib/generators.nix` for how to use it, or the examples.
               '';
               type = lib.types.unspecified;
-              default = [];
+              default = [ ];
             };
           };
-        });
+        }
+      );
       description = "Service definitions.";
       default = { };
     };

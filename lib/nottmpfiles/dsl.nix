@@ -1,25 +1,18 @@
 { ... }:
 let
-  entry =
-    type:
-    path:
-    mode:
-    user:
-    group:
-    age:
-    argument:
-    {
-      inherit
-        type
-        path
-        mode
-        user
-        group
-        age
-        argument
-        ;
-    };
-in {
+  entry = type: path: mode: user: group: age: argument: {
+    inherit
+      type
+      path
+      mode
+      user
+      group
+      age
+      argument
+      ;
+  };
+in
+{
   _ = null;
 
   # for r in ["r", "_"]:
