@@ -64,7 +64,10 @@ let
       )}
     '';
 
-    nottmpfiles = import ./nottmpfiles { inherit lib; nglib = this; };
+    nottmpfiles = import ./nottmpfiles {
+      inherit lib;
+      nglib = this;
+    };
   };
 in
 this

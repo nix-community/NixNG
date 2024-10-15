@@ -1,7 +1,8 @@
-{ stdenv
-, fetchFromGitHub
-, gnumake
-, gnum4
+{
+  stdenv,
+  fetchFromGitHub,
+  gnumake,
+  gnum4,
 }:
 stdenv.mkDerivation (self: {
   pname = "dinit";

@@ -12,7 +12,12 @@ nglib.makeSystem {
   system = "x86_64-linux";
   name = "nixng-apache";
   config = (
-    { pkgs, config, nglib, ... }:
+    {
+      pkgs,
+      config,
+      nglib,
+      ...
+    }:
     {
       config = {
         dinit = {
@@ -21,9 +26,7 @@ nglib.makeSystem {
 
         init.services.apache2 = {
           shutdownOnExit = true;
-          tmpfiles = with nglib.nottmpfiles.dsl; [
-            (L "/var/www" _ _ _ _ "${pkgs.apacheHttpd}/htdocs")
-          ];
+          tmpfiles = with nglib.nottmpfiles.dsl; [ (L "/var/www" _ _ _ _ "${pkgs.apacheHttpd}/htdocs") ];
         };
         services.apache2 = {
           enable = true;
