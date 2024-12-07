@@ -242,7 +242,7 @@ in
 
     init.services.nix-daemon = mkIf cfg.daemon {
       script = pkgs.writeShellScript "nix-daemon" ''
-        chpst -b nix-daemon ${cfg.package}/bin/nix-daemon --daemon
+        chpst ${cfg.package}/bin/nix-daemon --daemon
       '';
       enabled = true;
     };

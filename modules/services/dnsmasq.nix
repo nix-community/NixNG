@@ -102,7 +102,7 @@ in
 
         script = pkgs.writeShellScript "dnsmasq-run" ''
           ${lib.getExe cfg.package} --test
-          chpst -u ${cfg.user}:${cfg.group} -b dnsmasq ${lib.getExe cfg.package} \
+          chpst -u ${cfg.user}:${cfg.group} ${lib.getExe cfg.package} \
             --keep-in-foreground \
             --pid-file=/run/dnsmasq.pid \
             --conf-file=${configFile} \

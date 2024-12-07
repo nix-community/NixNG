@@ -446,7 +446,7 @@ in
             [[ ! -e ${baseDir}/.init-hydra ]] && exit 1
 
             export PATH=${pkgs.nettools}/bin:$PATH # Hydra runs some variant of `hostname --fqdn`, which BusyBox doesn't support
-            HOME=~hydra-www exec chpst -b hydra-server -u hydra-www:hydra ${hydraCmd}
+            HOME=~hydra-www exec chpst -u hydra-www:hydra ${hydraCmd}
           '';
           enabled = true;
         };
@@ -473,7 +473,7 @@ in
 
           export PATH=${pkgs.nettools}/bin:$PATH # Hydra runs some variant of `hostname --fqdn`, which BusyBox doesn't support
 
-          HOME=~hydra-queue-runner LOGNAME=hydra-queue-runner chpst ${lib.optionalString cfg.adjustNiceness "-n +5"} -b hydra-queue-runner -u hydra-queue-runner:hydra ${hydra-package}/bin/hydra-queue-runner -v
+          HOME=~hydra-queue-runner LOGNAME=hydra-queue-runner chpst ${lib.optionalString cfg.adjustNiceness "-n +5"} -u hydra-queue-runner:hydra ${hydra-package}/bin/hydra-queue-runner -v
           HOME=~hydra-queue-runner LOGNAME=hydra-queue-runner chpst ${lib.optionalString cfg.adjustNiceness "-n +5"} -u hydra-queue-runner:hydra ${hydra-package}/bin/hydra-queue-runner --unlock
         '';
         enabled = true;
@@ -496,7 +496,7 @@ in
           [[ ! -e ${baseDir}/.init-hydra ]] && exit 1
 
           export PATH=${pkgs.nettools}/bin:$PATH # Hydra runs some variant of `hostname --fqdn`, which BusyBox doesn't support
-          HOME=~hydra exec chpst ${lib.optionalString cfg.adjustNiceness "-n +5"} -b hydra-evaluator -u hydra:hydra ${hydra-package}/bin/hydra-evaluator
+          HOME=~hydra exec chpst ${lib.optionalString cfg.adjustNiceness "-n +5"} -u hydra:hydra ${hydra-package}/bin/hydra-evaluator
         '';
         enabled = true;
       };

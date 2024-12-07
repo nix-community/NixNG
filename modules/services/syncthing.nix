@@ -66,7 +66,7 @@ in
 
         export PATH=$PATH:${cfg.package}/bin \
                HOME=${dataDir}/storage
-        chpst -u ${cfg.user}:${cfg.group} -b syncthing syncthing serve \
+        chpst -u ${cfg.user}:${cfg.group} syncthing serve \
           --no-browser \
           --gui-address=${cfg.guiAddress} \
           --data=${dataDir}/data \
