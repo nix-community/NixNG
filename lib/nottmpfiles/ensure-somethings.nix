@@ -48,6 +48,11 @@ with nglib.nottmpfiles.dsl;
           remove.file = (r dst _ _ _ _ _);
           remove.directory = (R dst _ _ _ _ _);
         in
+        assert (
+          lib.assertMsg (
+            lib.length ownerParts == 2
+          ) "the owner field must be of the form `<user>:<group>`, but is `${owner}`"
+        );
         [ do.${type} ] ++ lib.optional (!persistent) [ remove.${type} ]
       ))
       lib.flatten
