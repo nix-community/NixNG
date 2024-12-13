@@ -49,4 +49,5 @@
   ./services/synapse.nix
   ./services/dnsmasq.nix
   ./services/attic.nix
+  ./services/generic-device-plugin.nix
 ]

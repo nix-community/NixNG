@@ -20,6 +20,7 @@ in
   systemdStandalone = callPackage ./systemd-minimal.nix { };
   systemdTmpfilesD = callPackage ./systemd-tmpfiles.d.nix { };
   dinit = callPackage ./dinit.nix { };
+  generic-device-plugin = callPackage ./generic-device-plugin.nix { };
 
   util-linuxSystemdFree = prev.util-linux.override {
     systemdSupport = false;
