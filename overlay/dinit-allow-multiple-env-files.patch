@@ -1,0 +1,96 @@
+From b04834f393973a576a9247137d3eea5c42de3747 Mon Sep 17 00:00:00 2001
+From: magic_rb <richard@brezak.sk>
+Date: Tue, 15 Oct 2024 18:06:56 +0200
+Subject: [PATCH] Allow multiple `env-file`s
+
+Signed-off-by: magic_rb <richard@brezak.sk>
+---
+ src/includes/load-service.h |  4 +++-
+ src/load-service.cc         | 31 +++++++++++++++++--------------
+ src/settings.cc             |  2 +-
+ 3 files changed, 21 insertions(+), 16 deletions(-)
+
+diff --git a/src/includes/load-service.h b/src/includes/load-service.h
+index e4a9753..3fc7022 100644
+--- a/src/includes/load-service.h
++++ b/src/includes/load-service.h
+@@ -1,3 +1,4 @@
++
+ #ifndef LOAD_SERVICE_H_INCLUDED
+ #define LOAD_SERVICE_H_INCLUDED 1
+ 
+@@ -1262,6 +1263,7 @@ class service_settings_wrapper
+     string working_dir;
+     string pid_file;
+     string env_file;
++    list<pair<unsigned,unsigned>> env_file_offsets;
+ 
+     bool export_passwd_vars = false;
+     bool export_service_name = false;
+@@ -1514,7 +1516,7 @@ void process_service_line(settings_wrapper &settings, const char *name, const ch
+             settings.working_dir = read_setting_value(input_pos, i, end, nullptr);
+             break;
+         case setting_id_t::ENV_FILE:
+-            settings.env_file = read_setting_value(input_pos, i, end, nullptr);
++	    read_setting_value(settings.env_file, setting_op, input_pos, i, end, &settings.env_file_offsets);
+             break;
+         #if SUPPORT_CGROUPS
+         case setting_id_t::RUN_IN_CGROUP:
+diff --git a/src/load-service.cc b/src/load-service.cc
+index fd4f46b..2c45cb5 100644
+--- a/src/load-service.cc
++++ b/src/load-service.cc
+@@ -548,20 +548,23 @@ service_record * dirload_service_set::load_reload_service(const char *fullname,
+         // and so we need to calculate a fresh mapping on each process invocation).
+         environment::env_map srv_envmap;
+ 
+-        if (!settings.env_file.empty()) {
+-            try {
+-                if (settings.env_file[0] == '/') {
+-                    // (don't allocate a string if we don't have to)
+-                    read_env_file(settings.env_file.c_str(), false, srv_env, true);
+-                }
+-                else {
+-                    std::string fullpath = combine_paths(service_dsc_dir, settings.env_file.c_str());
+-                    read_env_file(fullpath.c_str(), false, srv_env, true);
+-                }
+-            } catch (const std::system_error &se) {
+-                throw service_load_exc(name, std::string("could not load environment file: ") + se.what());
+-            }
+-        }
++	for (pair<unsigned, unsigned>& env_offset : settings.env_file_offsets) {
++	  std::string env = settings.env_file.substr(env_offset.first, env_offset.second - env_offset.first);
++	  if (!env.empty()) {
++	      try {
++		  if (env[0] == '/') {
++		      // (don't allocate a string if we don't have to)
++		      read_env_file(env.c_str(), false, srv_env, true);
++		  }
++		  else {
++		      std::string fullpath = combine_paths(service_dsc_dir, env.c_str());
++		      read_env_file(fullpath.c_str(), false, srv_env, true);
++		  }
++	      } catch (const std::system_error &se) {
++		  throw service_load_exc(name, std::string("could not load environment file: ") + se.what());
++	      }
++	  }
++	}
+ 
+         srv_envmap = srv_env.build(main_env);
+ 
+diff --git a/src/settings.cc b/src/settings.cc
+index f789bcf..945dea0 100644
+--- a/src/settings.cc
++++ b/src/settings.cc
+@@ -10,7 +10,7 @@ setting_details all_settings[] = {
+         {"type",                    setting_id_t::TYPE,                     false,  true,   false},
+         {"command",                 setting_id_t::COMMAND,                  false,  true,   true },
+         {"working-dir",             setting_id_t::WORKING_DIR,              false,  true,   false},
+-        {"env-file",                setting_id_t::ENV_FILE,                 false,  true,   false},
++        {"env-file",                setting_id_t::ENV_FILE,                 false,  true,   true },
+         {"socket-listen",           setting_id_t::SOCKET_LISTEN,            false,  true,   false},
+         {"socket-permissions",      setting_id_t::SOCKET_PERMISSIONS,       false,  true,   false},
+         {"socket-uid",              setting_id_t::SOCKET_UID,               false,  true,   false},
+-- 
+2.46.0
+

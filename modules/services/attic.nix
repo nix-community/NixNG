@@ -78,7 +78,7 @@ in
           export ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64="$(<'${cfg.credentialsFile}')"
         fi
 
-        chpst -b atticd ${atticd} --config ${cfg.configFile}
+        chpst ${atticd} --config ${cfg.configFile}
       '';
     };
 

@@ -82,13 +82,13 @@ writeShellScript "${n}-finish" ''
   )}
 
   (
-    cd ${s.pwd}
+    cd ${s.workingDirectory}
     ${
       lib.optionalString (s.environment != { })
         "export ${lib.concatStringsSep " " (lib.mapAttrsToList (n: v: "${n}=${v}") s.environment)}"
     }
-    ${lib.optionalString (s.finish != null && !s.shutdownOnExit) "exec ${s.finish}"}
-    ${lib.optionalString (s.finish != null && s.shutdownOnExit) "${s.finish}"}
+    ${lib.optionalString (s.execStop != null && !s.shutdownOnExit) "exec ${s.execStop}"}
+    ${lib.optionalString (s.execStop != null && s.shutdownOnExit) "${s.execStop}"}
   )
 
   ${lib.optionalString (s.shutdownOnExit) ("exec ${cfgInit.shutdown}")}

@@ -74,7 +74,7 @@ in
         chown -R ${cfg.user}:${cfg.group} /var/zigbee2mqtt/
         chmod -R u=rwX,g=r-X,o= /var/zigbee2mqtt/
 
-        ZIGBEE2MQTT_DATA="/var/zigbee2mqtt/" chpst -u ${cfg.user}:${cfg.group} -b zigbee2mqtt ${cfg.package}/bin/zigbee2mqtt
+        ZIGBEE2MQTT_DATA="/var/zigbee2mqtt/" chpst -u ${cfg.user}:${cfg.group} ${cfg.package}/bin/zigbee2mqtt
       '';
       enabled = true;
     };

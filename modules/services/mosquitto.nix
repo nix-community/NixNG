@@ -129,7 +129,7 @@ in
         chown -R ${cfg.user}:${cfg.group} /var/mosquitto/
         chmod -R u=rwX,g=r-X,o= /var/mosquitto/
 
-        chpst -u ${cfg.user}:${cfg.group} -b mosquitto ${cfg.package}/bin/mosquitto -c /run/mosquitto/configuration.yaml
+        chpst -u ${cfg.user}:${cfg.group} ${cfg.package}/bin/mosquitto -c /run/mosquitto/configuration.yaml
       '';
       enabled = true;
     };

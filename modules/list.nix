@@ -1,5 +1,6 @@
 [
   ./runit
+  ./dinit
   ./dumb-init
   ./initrd
   ./init.nix

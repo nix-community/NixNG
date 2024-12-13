@@ -98,7 +98,7 @@ in
         chmod -R u=rwX,g=r-X,o= /var/home-assistant/
 
         export PYTHONPATH=${cfg.package.pythonPath or ""}
-        chpst -u ${cfg.user}:${cfg.group} -b home-assistant ${cfg.package}/bin/hass --config /var/home-assistant
+        chpst -u ${cfg.user}:${cfg.group} ${cfg.package}/bin/hass --config /var/home-assistant
       '';
       enabled = true;
     };
