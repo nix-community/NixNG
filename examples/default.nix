@@ -30,6 +30,7 @@ let
     "initrd" = ./initrd;
     "dnsmasq" = ./dnsmasq;
     "attic" = ./attic;
+    "ntfy-sh" = ./ntfy-sh;
   };
 in
 nixpkgs.lib.mapAttrs (_: v: import v { inherit nixpkgs nglib nixng; }) examples
