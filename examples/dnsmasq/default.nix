@@ -7,15 +7,8 @@ nglib.makeSystem {
   config =
     { ... }:
     {
-      dinit = {
-        enable = true;
-      };
-
-      init.services.dnsmasq = {
-        shutdownOnExit = true;
-        user = "dnsmasq";
-        group = "dnsmasq";
-      };
+      dinit.enable = true;
+      init.services.dnsmasq.shutdownOnExit = true;
 
       services.dnsmasq = {
         enable = true;

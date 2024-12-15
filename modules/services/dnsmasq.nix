@@ -42,18 +42,6 @@ in
       default = pkgs.dnsmasq.override { dbusSupport = false; };
     };
 
-    # user = lib.mkOption {
-    #   description = "dnsmasq user";
-    #   type = lib.types.str;
-    #   default = "dnsmasq";
-    # };
-
-    # group = lib.mkOption {
-    #   description = "dnsmasq group";
-    #   type = lib.types.str;
-    #   default = "dnsmasq";
-    # };
-
     # BEGIN Copyright (c) 2003-2024 Eelco Dolstra and the Nixpkgs/NixOS contributors
     settings = lib.mkOption {
       type = lib.types.submodule { freeformType = settingsFormat.type; };
