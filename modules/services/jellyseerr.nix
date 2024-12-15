@@ -11,19 +11,27 @@ in
   options.services.jellyseerr = {
     enable = lib.mkEnableOption "jellyseerr";
     package = lib.mkPackageOption pkgs "jellyseerr" { };
+
+    port = lib.mkOption {
+      description = ''
+        The port Jellyseerr should listen on.
+      '';
+      type = lib.types.port;
+      example = 8080;
+      default = 5055;
+    };
   };
 
   config = lib.mkIf cfg.enable {
     init.services.jellyseerr = {
       enabled = true;
       workingDirectory = "${cfg.package}/libexec/jellyseerr/deps/jellyseerr";
-
-      # TODO: simplify?
-      script = pkgs.writeShellScript "jellyseerr-run.sh" ''
-        ${lib.getExe cfg.package}
-      '';
+      script = lib.getExe cfg.package;
     };
 
-    environment.systemPackages = [ cfg.package ];
+    environment = {
+      systemPackages = [ cfg.package ];
+      variables.PORT = builtins.toString cfg.port;
+    };
   };
 }
