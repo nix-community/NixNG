@@ -8,6 +8,9 @@
 let
   cfg = config.services.dnsmasq;
 
+  user = config.init.services.dnsmasq.user;
+  group = config.init.services.dnsmasq.group;
+
   # BEGIN Copyright (c) 2003-2024 Eelco Dolstra and the Nixpkgs/NixOS contributors
   stateDir = "/var/lib/dnsmasq";
 
@@ -39,17 +42,17 @@ in
       default = pkgs.dnsmasq.override { dbusSupport = false; };
     };
 
-    user = lib.mkOption {
-      description = "dnsmasq user";
-      type = lib.types.str;
-      default = "dnsmasq";
-    };
+    # user = lib.mkOption {
+    #   description = "dnsmasq user";
+    #   type = lib.types.str;
+    #   default = "dnsmasq";
+    # };
 
-    group = lib.mkOption {
-      description = "dnsmasq group";
-      type = lib.types.str;
-      default = "dnsmasq";
-    };
+    # group = lib.mkOption {
+    #   description = "dnsmasq group";
+    #   type = lib.types.str;
+    #   default = "dnsmasq";
+    # };
 
     # BEGIN Copyright (c) 2003-2024 Eelco Dolstra and the Nixpkgs/NixOS contributors
     settings = lib.mkOption {
@@ -95,34 +98,35 @@ in
         ensureSomething.create."stateDir" = {
           type = "directory";
           mode = "755";
-          owner = "dnsmasq:dnsmasq";
+          owner = "${user}:${group}";
           persistent = true;
           dst = stateDir;
         };
 
         script = pkgs.writeShellScript "dnsmasq-run" ''
           ${lib.getExe cfg.package} --test
-          chpst -u ${cfg.user}:${cfg.group} ${lib.getExe cfg.package} \
+          ${lib.getExe cfg.package} \
             --keep-in-foreground \
             --pid-file=/run/dnsmasq.pid \
-            --conf-file=${configFile} \
-            --user=${cfg.user} \
-            --group=${cfg.group}
+            --conf-file=${configFile}
         '';
+
+        user = lib.mkDefault "dnsmasq";
+        group = lib.mkDefault "dnsmasq";
       };
 
       environment.systemPackages = [ cfg.package ];
 
-      users.users.${cfg.user} = nglib.mkDefaultRec {
+      users.users.${user} = nglib.mkDefaultRec {
         description = "dnsmasq";
-        group = cfg.group;
+        inherit group;
         createHome = false;
         home = "/var/empty";
         useDefaultShell = true;
         uid = config.ids.uids.dnsmasq;
       };
 
-      users.groups.${cfg.group} = nglib.mkDefaultRec { gid = config.ids.gids.dnsmasq; };
+      users.groups.${group} = nglib.mkDefaultRec { gid = config.ids.gids.dnsmasq; };
     }
   );
 }
