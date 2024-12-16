@@ -20,6 +20,15 @@ in
       example = 8080;
       default = 5055;
     };
+
+    configDir = lib.mkOption {
+      description = ''
+        The directory to save run-time configuration.
+      '';
+      type = lib.types.str;
+      example = "/jellyseerr";
+      default = "/var/lib/jellyseerr";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -31,7 +40,10 @@ in
 
     environment = {
       systemPackages = [ cfg.package ];
-      variables.PORT = builtins.toString cfg.port;
+      variables = {
+        PORT = builtins.toString cfg.port;
+        CONFIG_DIRECTORY = cfg.configDir;
+      };
     };
   };
 }
