@@ -44,25 +44,38 @@ in
         type =
           with lib.types;
           let
-            self = oneOf [
-              (attrsOf (oneOf [
+            optionalListOf =
+              elemType:
+              let
+                list = (types.listOf elemType);
+              in
+              list
+              // {
+                merge =
+                  loc: defs:
+                  list.merge loc (
+                    map (def: if lib.isList def.value then def else def // { value = lib.singleton def.value; }) defs
+                  );
+                check = lib.const true;
+              };
+            self = (
+              optionalListOf (oneOf [
                 str
-                int
-                (listOf (oneOf [
+                (attrsOf (oneOf [
                   str
                   int
                   (listOf (oneOf [
                     str
                     int
+                    (listOf (oneOf [
+                      str
+                      int
+                    ]))
                   ]))
+                  (attrsOf self)
                 ]))
-                (attrsOf self)
-              ]))
-              (listOf (oneOf [
-                str
-                self
-              ]))
-            ];
+              ])
+            );
           in
           self // { description = "loop breaker"; };
       };
