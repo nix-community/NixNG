@@ -7,14 +7,8 @@ nglib.makeSystem {
   config =
     { ... }:
     {
-      dumb-init = {
-        enable = true;
-        type.services = { };
-      };
-
-      init.services.dnsmasq = {
-        shutdownOnExit = true;
-      };
+      dinit.enable = true;
+      init.services.dnsmasq.shutdownOnExit = true;
 
       services.dnsmasq = {
         enable = true;

@@ -16,6 +16,16 @@
 let
   cfg = config.dinit;
 
+  generateUserCommandsScript =
+    name: service:
+    pkgs.writeShellScript "${name}-user-commands.sh" ''
+      set -eo pipefail
+
+      ${lib.optionalString (service.execStartPre != null) service.execStartPre}
+      ${service.execStart}
+      ${lib.optionalString (service.execStop != null) service.execStop}
+    '';
+
   generateDependsOn = lib.concatMapStringsSep "\n" (dep: "depends-on: ${dep}");
 
   generateEnvFile =
@@ -24,6 +34,15 @@ let
       lib.concatMapStringsSep "\n" (var: var.name + "=" + var.value) (
         lib.mapAttrsToList lib.nameValuePair environment
       )
+    );
+
+  generateChpstCommand =
+    user: group:
+    lib.optionalString (user != null) (
+      let
+        groupStr = lib.optionalString (group != null) ":${group}";
+      in
+      "chpst -u ${user}${groupStr}"
     );
 
   generateServiceFile =
@@ -40,9 +59,7 @@ let
         set -eo pipefail
 
         ${pkgs.systemdTmpfilesD}/bin/systemd-tmpfiles --create ${rulesFile}
-        ${lib.optionalString (service.execStartPre != null) "${service.execStartPre}"}
-        ${service.execStart}
-        ${lib.optionalString (service.execStop != null) service.execStop}
+        ${generateChpstCommand service.user service.group} ${generateUserCommandsScript name service}
         ${pkgs.systemdTmpfilesD}/bin/systemd-tmpfiles --remove ${rulesFile}
       ''}
 
