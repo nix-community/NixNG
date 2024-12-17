@@ -44,25 +44,23 @@ in
         type =
           with lib.types;
           let
-            self = oneOf [
-              (attrsOf (oneOf [
+            self =
+              (listOf (oneOf [
                 str
-                int
-                (listOf (oneOf [
+                (attrsOf (oneOf [
                   str
                   int
                   (listOf (oneOf [
                     str
                     int
+                    (listOf (oneOf [
+                      str
+                      int
+                    ]))
                   ]))
+                  (attrsOf self)
                 ]))
-                (attrsOf self)
-              ]))
-              (listOf (oneOf [
-                str
-                self
-              ]))
-            ];
+              ]));
           in
           self // { description = "loop breaker"; };
       };
