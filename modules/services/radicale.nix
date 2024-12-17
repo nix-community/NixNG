@@ -1,7 +1,13 @@
-{lib, pkgs, config, nglib, ...}:
+{
+  lib,
+  pkgs,
+  config,
+  nglib,
+  ...
+}:
 let
   cfg = config.services.radicale;
-  
+
   settingsFormat = pkgs.formats.ini {
     listToValue = lib.concatMapStringsSep ", " (lib.generators.mkValueStringDefault { });
   };
@@ -46,30 +52,32 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable (let
+  config = lib.mkIf cfg.enable (
+    let
       configFile = settingsFormat.generate "radicale.ini" cfg.settings;
     in
     {
-    init.services.radicale = {
-      enabled = true;
+      init.services.radicale = {
+        enabled = true;
 
-      script = pkgs.writeShellScript "radicale-run" ''
-        chpst -u ${cfg.user}:${cfg.group} ${cfg.package}/bin/radicale \
-          --config ${configFile}
-      '';
-    };
+        script = pkgs.writeShellScript "radicale-run" ''
+          chpst -u ${cfg.user}:${cfg.group} ${cfg.package}/bin/radicale \
+            --config ${configFile}
+        '';
+      };
 
-    environment.systemPackages = [ cfg.package ];
+      environment.systemPackages = [ cfg.package ];
 
-    users.users.${cfg.user} = nglib.mkDefaultRec {
-      description = "radicale";
-      group = cfg.group;
-      createHome = false;
-      home = "/var/empty";
-      useDefaultShell = true;
-      uid = config.ids.uids.radicale;
-    };
+      users.users.${cfg.user} = nglib.mkDefaultRec {
+        description = "radicale";
+        group = cfg.group;
+        createHome = false;
+        home = "/var/empty";
+        useDefaultShell = true;
+        uid = config.ids.uids.radicale;
+      };
 
-    users.groups.${cfg.group} = nglib.mkDefaultRec { gid = config.ids.gids.radicale; };
-  });
+      users.groups.${cfg.group} = nglib.mkDefaultRec { gid = config.ids.gids.radicale; };
+    }
+  );
 }
