@@ -16,12 +16,13 @@
   config,
   defaultModules ? import ../modules/list.nix,
   extraModules ? [ ],
+  specialArgs ? { },
 }:
 let
   inherit (nixpkgs.lib) evalModules filter concatStringsSep;
 
   evaledModules = evalModules {
-    specialArgs = {
+    specialArgs = specialArgs // {
       inherit nglib;
     };
 
