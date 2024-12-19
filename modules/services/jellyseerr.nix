@@ -34,7 +34,6 @@ in
   config = lib.mkIf cfg.enable {
     init.services.jellyseerr = {
       enabled = true;
-      workingDirectory = "${cfg.package}/libexec/jellyseerr/deps/jellyseerr";
       script = lib.getExe cfg.package;
     };
 
