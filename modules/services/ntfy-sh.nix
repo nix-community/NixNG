@@ -7,26 +7,14 @@
 }:
 let
   cfg = config.services.ntfy-sh;
+  cfgInit = config.init.services.ntfy-sh;
   ntfy-sh = "${cfg.package}/bin/ntfy";
   settingsFormat = pkgs.formats.yaml { };
 in
 {
   options.services.ntfy-sh = {
     enable = lib.mkEnableOption "ntfy-sh";
-
     package = lib.mkPackageOption pkgs "ntfy-sh" { };
-
-    user = lib.mkOption {
-      description = "ntfy-sh user";
-      type = lib.types.str;
-      default = "ntfy-sh";
-    };
-
-    group = lib.mkOption {
-      description = "ntfy-sh group";
-      type = lib.types.str;
-      default = "ntfy-sh";
-    };
 
     settings = lib.mkOption {
       type = lib.types.submodule {
@@ -60,24 +48,25 @@ in
   config = lib.mkIf cfg.enable {
     init.services.ntfy-sh = {
       enabled = true;
+      user = lib.mkDefault "ntfy-sh";
+      group = lib.mkDefault "ntfy-sh";
 
       script = pkgs.writeShellScript "ntfy-sh-run" ''
-        chpst -u ${cfg.user}:${cfg.group} ${ntfy-sh} serve \
-          --config ${cfg.configFile}
+        ${ntfy-sh} serve --config ${cfg.configFile}
       '';
     };
 
     environment.systemPackages = [ cfg.package ];
 
-    users.users.${cfg.user} = nglib.mkDefaultRec {
+    users.users.${cfgInit.user} = nglib.mkDefaultRec {
       description = "ntfy-sh";
-      group = cfg.group;
+      group = cfgInit.group;
       createHome = false;
       home = "/var/empty";
       useDefaultShell = true;
       uid = config.ids.uids.ntfy-sh;
     };
 
-    users.groups.${cfg.group} = nglib.mkDefaultRec { gid = config.ids.gids.ntfy-sh; };
+    users.groups.${cfgInit.group} = nglib.mkDefaultRec { gid = config.ids.gids.ntfy-sh; };
   };
 }

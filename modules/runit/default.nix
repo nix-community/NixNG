@@ -105,7 +105,7 @@ in
           lib.mapAttrsToList (
             n: s:
             let
-              run = pkgs.callPackage ./run.nix { } { inherit n s; };
+              run = pkgs.callPackage ./run.nix { inherit nglib; } { inherit n s; };
               finish = pkgs.callPackage ./finish.nix { } { inherit n s cfgInit; };
               log = pkgs.callPackage ./log.nix { } { inherit n s; };
             in
