@@ -331,6 +331,22 @@ in
               type = lib.types.unspecified;
               default = [ ];
             };
+
+            user = lib.mkOption {
+              description = ''
+                The user under which to run the service.
+              '';
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+            };
+
+            group = lib.mkOption {
+              description = ''
+                The group under which to run the service.
+              '';
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+            };
           };
         }
       );
@@ -356,6 +372,10 @@ in
         {
           assertion = (v.log.file.rotate.rotate or 0) >= 0;
           message = "init.service.<name>.log.file.rotate can't be less than 0";
+        }
+        {
+          assertion = v.group == null || v.user != null;
+          message = "init.service.<name>.group requires init.service.<name>.user to be set.";
         }
       ]) cfg.services
     );

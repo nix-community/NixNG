@@ -16,6 +16,16 @@
 let
   cfg = config.dinit;
 
+  generateUserCommandsScript =
+    name: service:
+    pkgs.writeShellScript "${name}-user-commands.sh" ''
+      set -eo pipefail
+
+      ${lib.optionalString (service.execStartPre != null) service.execStartPre}
+      ${service.execStart}
+      ${lib.optionalString (service.execStop != null) service.execStop}
+    '';
+
   generateDependsOn = lib.concatMapStringsSep "\n" (dep: "depends-on: ${dep}");
 
   generateEnvFile =
@@ -40,9 +50,9 @@ let
         set -eo pipefail
 
         ${pkgs.systemdTmpfilesD}/bin/systemd-tmpfiles --create ${rulesFile}
-        ${lib.optionalString (service.execStartPre != null) "${service.execStartPre}"}
-        ${service.execStart}
-        ${lib.optionalString (service.execStop != null) service.execStop}
+        ${nglib.maybeChangeUserAndGroup service.user service.group (
+          generateUserCommandsScript name service
+        )}
         ${pkgs.systemdTmpfilesD}/bin/systemd-tmpfiles --remove ${rulesFile}
       ''}
 

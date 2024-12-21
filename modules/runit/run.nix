@@ -6,7 +6,11 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ lib, writeShellScript }:
+{
+  lib,
+  nglib,
+  writeShellScript,
+}:
 { n, s }:
 writeShellScript "${n}-run" ''
   ${lib.concatStringsSep "\n" (
@@ -93,5 +97,5 @@ writeShellScript "${n}-run" ''
   ${lib.optionalString (s.environment != { })
     "export ${lib.concatStringsSep " " (lib.mapAttrsToList (n: v: "${n}=${v}") s.environment)}"
   }
-  exec ${s.execStart}
+  exec ${nglib.maybeChangeUserAndGroup s.user s.group s.execStart}
 ''
