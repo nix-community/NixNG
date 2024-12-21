@@ -18,10 +18,7 @@ nglib.makeSystem {
       cfg = config.services.attic;
     in
     {
-      dumb-init = {
-        enable = true;
-        type.services = { };
-      };
+      dinit.enable = true;
 
       init.services.attic = {
         shutdownOnExit = true;
