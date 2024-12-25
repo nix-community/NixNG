@@ -7,6 +7,7 @@
 }:
 let
   cfg = config.services.attic;
+  cfgInit = config.init.services.attic;
   atticd = lib.getExe cfg.package;
   settingsFormat = pkgs.formats.toml { };
 in
@@ -14,18 +15,6 @@ in
   options.services.attic = {
     enable = lib.mkEnableOption "attic";
     package = lib.mkPackageOption pkgs "attic-server" { };
-
-    user = lib.mkOption {
-      description = "attic user";
-      type = lib.types.str;
-      default = "atticd";
-    };
-
-    group = lib.mkOption {
-      description = "attic group";
-      type = lib.types.str;
-      default = "atticd";
-    };
 
     settings = lib.mkOption {
       type = lib.types.submodule {
@@ -64,6 +53,8 @@ in
   config = lib.mkIf cfg.enable {
     init.services.attic = {
       enabled = true;
+      user = lib.mkDefault "atticd";
+      group = lib.mkDefault "atticd";
 
       ensureSomething.create.storageDir = lib.mkIf (cfg.settings.storage.type == "local") {
         type = "directory";
@@ -78,21 +69,21 @@ in
           export ATTIC_SERVER_TOKEN_HS256_SECRET_BASE64="$(<'${cfg.credentialsFile}')"
         fi
 
-        chpst ${atticd} --config ${cfg.configFile}
+        ${atticd} --config ${cfg.configFile}
       '';
     };
 
     environment.systemPackages = [ cfg.package ];
 
-    users.users.${cfg.user} = nglib.mkDefaultRec {
+    users.users.${cfgInit.user} = nglib.mkDefaultRec {
       description = "atticd";
-      group = cfg.group;
+      group = cfgInit.group;
       createHome = false;
       home = "/var/empty";
       useDefaultShell = true;
       uid = config.ids.uids.attic;
     };
 
-    users.groups.${cfg.group} = nglib.mkDefaultRec { gid = config.ids.gids.attic; };
+    users.groups.${cfgInit.group} = nglib.mkDefaultRec { gid = config.ids.gids.attic; };
   };
 }
