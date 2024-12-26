@@ -36,23 +36,10 @@
   };
 
   config = {
-    users.users = lib.mkMerge [
+    users.users =
       (lib.mapAttrs (
         _: v: lib.filterAttrs (n: _: !lib.elem n [ "isSystemUser" ]) v
-      ) config.nixos.users.users)
-      {
-        buildbot.uid = 408;
-        bbworker.uid = 409;
-        buildbot-worker.uid = 410;
-      }
-    ];
-    users.groups = lib.mkMerge [
-      config.nixos.users.groups
-      {
-        buildbot.gid = 408;
-        bbworker.gid = 409;
-        buildbot-worker.gid = 410;
-      }
-    ];
+      ) config.nixos.users.users);
+    users.groups = config.nixos.users.groups;
   };
 }
