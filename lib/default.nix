@@ -1,4 +1,4 @@
-lib:
+{ lib, inputs }:
 lib.fix (
   nglib:
   let
@@ -122,6 +122,6 @@ lib.fix (
       getOptionFromPath
       ;
 
-    makeSystem = import ./make-system.nix { inherit nglib; };
+    makeSystem = import ./make-system.nix { inherit nglib inputs; };
   }
 )
