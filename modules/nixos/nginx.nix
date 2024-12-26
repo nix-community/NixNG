@@ -2,8 +2,12 @@
   lib,
   config,
   pkgs,
+  options,
   ...
 }:
+let
+  nixosOptions = options.nixos.type.getSubOptions ["nixos"];
+in
 {
   options = {
     nixos.services.nginx = {
@@ -59,10 +63,9 @@
 
   config = {
     services.nginx = {
-      enable = config.nixos.services.nginx.enable;
-      envsubst = config.nixos.services.nginx.enable;
-
-      configuration = lib.singleton {
+      enable = lib.modules.mkAliasAndWrapDefsWithPriority lib.id nixosOptions.services.nginx.enable;
+      envsubst = lib.modules.mkAliasAndWrapDefsWithPriority lib.id nixosOptions.services.nginx.enable;
+      configuration = lib.mkIf config.nixos.services.nginx.enable (lib.singleton {
         daemon = "off";
         worker_processes = 2;
         user = "nginx";
@@ -122,7 +125,7 @@
               };
             }
           ));
-      };
+      });
     };
   };
 }

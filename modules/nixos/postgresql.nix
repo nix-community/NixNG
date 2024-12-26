@@ -8,6 +8,6 @@
   };
 
   config = {
-    services.postgresql = lib.mkMerge [ config.nixos.services.postgresql ];
+    services.postgresql = config.nixos.services.postgresql;
   };
 }
