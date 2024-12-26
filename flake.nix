@@ -9,6 +9,7 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-25.11";
+    buildbot-nix.url = "github:nix-community/buildbot-nix";
     treefmt-nix.url = "github:numtide/treefmt-nix";
   };
 
@@ -17,7 +18,8 @@
       nixpkgs,
       self,
       treefmt-nix,
-    }:
+      ...
+    }@inputs:
     let
       supportedSystems = [
         "x86_64-linux"
@@ -40,7 +42,10 @@
       inherit (nixpkgs) lib;
     in
     {
-      nglib = import ./lib nixpkgs.lib;
+      nglib = import ./lib {
+        inherit (nixpkgs) lib;
+        inherit inputs;
+      };
       examples = import ./examples {
         inherit nixpkgs;
         inherit (self) nglib;
