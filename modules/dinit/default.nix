@@ -32,7 +32,7 @@ let
     { name, environment, ... }:
     pkgs.writeText "${name}.env" (
       lib.concatMapStringsSep "\n" (var: var.name + "=" + var.value) (
-        lib.mapAttrsToList lib.nameValuePair (lib.filterAttrs (n: _: !lib.elem n ["PATH"]) environment)
+        lib.mapAttrsToList lib.nameValuePair (lib.filterAttrs (n: _: !lib.elem n [ "PATH" ]) environment)
       )
     );
 
@@ -49,7 +49,11 @@ let
       command = ${pkgs.writeShellScript "${name}-start.sh" ''
         set -eo pipefail
 
-        export PATH="${lib.concatStringsSep ":" (["$PATH" ] ++(lib.optional (service.environment ? PATH) service.environment."PATH"))}"
+        export PATH="${
+          lib.concatStringsSep ":" (
+            [ "$PATH" ] ++ (lib.optional (service.environment ? PATH) service.environment."PATH")
+          )
+        }"
 
         ${pkgs.systemdTmpfilesD}/bin/systemd-tmpfiles --create ${rulesFile}
         ${nglib.maybeChangeUserAndGroup service.user service.group (
