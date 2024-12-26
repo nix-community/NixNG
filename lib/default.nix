@@ -1,10 +1,11 @@
-lib:
+{ lib, inputs }:
 let
   inherit (lib) types;
   this = {
     makeSystem = import ./make-system.nix {
       nglib = this;
       overlay = import ../overlay;
+      inherit inputs;
     };
     dag = import ./dag.nix { inherit lib; };
     generators = import ./generators.nix { inherit lib; };
