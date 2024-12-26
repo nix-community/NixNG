@@ -1,13 +1,15 @@
 lib:
-let
-  inherit (lib) types;
-  this = {
-    makeSystem = import ./make-system.nix {
-      nglib = this;
-      overlay = import ../overlay;
+lib.fix (
+  nglib:
+  let
+    overlay = import ../overlay;
+    args = {
+      inherit lib nglib overlay;
     };
-    dag = import ./dag.nix { inherit lib; };
-    generators = import ./generators.nix { inherit lib; };
+  in
+  {
+    dag = import ./dag.nix args;
+    generators = import ./generators.nix args;
     mkDefaultRec = lib.mapAttrsRecursive (_: v: lib.mkDefault v);
     mkApply = fun: x: {
       original = x;
@@ -18,31 +20,31 @@ let
       description:
       lib.mkOption {
         inherit description;
-        type = types.attrsOf (
-          types.submodule {
+        type = lib.types.attrsOf (
+          lib.types.submodule {
             options = {
               data = lib.mkOption {
                 description = ''
                   Script fragment which to run.
                 '';
-                type = types.str;
+                type = lib.types.str;
               };
               before = lib.mkOption {
                 description = ''
                   Script before dependencies. See <literal>/lib/dag.nix</literal>.
                 '';
-                type = with types; listOf str;
+                type = lib.types.listOf lib.types.str;
               };
               after = lib.mkOption {
                 description = ''
                   Script after dependencies. See <literal>/lib/dag.nix</literal>
                 '';
-                type = with types; listOf str;
+                type = lib.types.listOf lib.types.str;
               };
             };
           }
         );
-        apply = this.dag.dagTopoSort;
+        apply = nglib.dag.dagTopoSort;
         default = { };
       };
 
@@ -64,10 +66,7 @@ let
       )}
     '';
 
-    nottmpfiles = import ./nottmpfiles {
-      inherit lib;
-      nglib = this;
-    };
+    nottmpfiles = import ./nottmpfiles args;
 
     maybeChangeUserAndGroup =
       user: group: script:
@@ -75,16 +74,10 @@ let
         "chpst -u ${user}${lib.optionalString (group != null) ":${group}"} ${script}"
       else
         script;
-  };
-in
-this
-// {
-  inherit
-    (import ./options.nix {
-      inherit lib;
-      nglib = this;
-    })
-    mkUserOption
-    mkGroupOption
-    ;
-}
+
+    inherit (import ./options.nix args) mkUserOption mkGroupOption;
+
+    makeSystem = import ./make-system.nix { inherit lib nglib overlay; };
+
+  }
+)
