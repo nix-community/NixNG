@@ -78,3 +78,13 @@ let
   };
 in
 this
+// {
+  inherit
+    (import ./options.nix {
+      inherit lib;
+      nglib = this;
+    })
+    mkUserOption
+    mkGroupOption
+    ;
+}
