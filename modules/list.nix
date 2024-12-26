@@ -50,4 +50,5 @@
   ./services/dnsmasq.nix
   ./services/attic.nix
   ./services/ntfy-sh.nix
+  ./services/generic-device-plugin.nix
 ]
