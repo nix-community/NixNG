@@ -8,6 +8,7 @@
 {
   imports = lib.optionals __enableExperimentalNixOSCompatibility ([
     ./systemd.nix
+    ./buildbot.nix
     ./nginx.nix
     ./users.nix
     ./postgresql.nix
