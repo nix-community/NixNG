@@ -1,4 +1,4 @@
-lib:
+{ lib, inputs }:
 lib.fix (
   nglib:
   let
@@ -93,6 +93,6 @@ lib.fix (
       getOptionFromPath
       ;
 
-    makeSystem = import ./make-system.nix { inherit lib nglib overlay; };
+    makeSystem = import ./make-system.nix { inherit nglib overlay inputs; };
   }
 )
