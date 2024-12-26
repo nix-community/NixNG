@@ -7,6 +7,26 @@
 }:
 let
   nixosOptions = options.nixos.type.getSubOptions ["nixos"];
+
+  evalSubmoduleOption = path: options:
+    let
+      option = lib.getAttrFromPath path options;
+    in
+      lib.evalModules {
+        modules = option.type.getSubModules ++ option.definitions;
+        inherit
+          (option.type.functor.payload)
+          class
+          specialArgs
+          ;
+      };
+
+  extractWithPriority = options: submodulePath: optionPath:
+    let
+      submoduleOptions = evalSubmoduleOption submodulePath options;
+      option = lib.getAttrFromPath optionPath submoduleOptions.options;
+    in
+      lib.mkOverride (option.highestPrio) (option.value);
 in
 {
   options = {
@@ -63,8 +83,8 @@ in
 
   config = {
     services.nginx = {
-      enable = lib.modules.mkAliasAndWrapDefsWithPriority lib.id nixosOptions.services.nginx.enable;
-      envsubst = lib.modules.mkAliasAndWrapDefsWithPriority lib.id nixosOptions.services.nginx.enable;
+      enable = extractWithPriority options [ "nixos" ] [ "services" "nginx" "enable" ];
+      envsubst = extractWithPriority options [ "nixos" ] [ "services" "nginx" "enable" ];
       configuration = lib.mkIf config.nixos.services.nginx.enable (lib.singleton {
         daemon = "off";
         worker_processes = 2;
