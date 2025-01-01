@@ -3,7 +3,7 @@
   options = {
     nixos.users.users = lib.mkOption {
       type = lib.types.attrsOf (
-        lib.types.submodule {
+        lib.types.submodule ({name, ...}: {
           options = {
             description = lib.mkOption { type = lib.types.str; };
             createHome = lib.mkOption { type = lib.types.bool; };
@@ -22,8 +22,13 @@
               type = lib.types.bool;
               default = false;
             };
+            name = lib.mkOption {
+              type = lib.types.str;
+              default = name;
+              readOnly = true;
+            };
           };
-        }
+        })
       );
       default = { };
     };
@@ -38,7 +43,7 @@
   config = {
     users.users =
       (lib.mapAttrs (
-        _: v: lib.filterAttrs (n: _: !lib.elem n [ "isSystemUser" ]) v
+        _: v: lib.filterAttrs (n: _: !lib.elem n [ "name" "isSystemUser" ]) v
       ) config.nixos.users.users);
     users.groups = config.nixos.users.groups;
   };
