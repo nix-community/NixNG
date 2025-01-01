@@ -6,6 +6,8 @@
   ...
 }:
 let
+  cfg = config.nixos.services.nginx;
+
   nixosOptions = options.nixos.type.getSubOptions ["nixos"];
 
   evalSubmoduleOption = path: options:
@@ -27,6 +29,17 @@ let
       option = lib.getAttrFromPath optionPath submoduleOptions.options;
     in
       lib.mkOverride (option.highestPrio) (option.value);
+
+  recommendedProxyConfig = {
+    proxy_set_header = [
+      ["Host" "$$host"]
+      ["X-Real-IP" "$$remote_addr"]
+      ["X-Forwarded-For" "$$proxy_add_x_forwarded_for"]
+      ["X-Forwarded-Proto" "$$scheme"]
+      ["X-Forwarded-Host" "$$host"]
+      ["X-Forwarded-Server" "$$host"]
+    ];
+  };
 in
 {
   options = {
@@ -36,6 +49,20 @@ in
         default = false;
       };
 
+      recommendedProxySettings = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+      };
+
+      proxyTimeout = lib.mkOption {
+        type = lib.types.str;
+        default = "60s";
+        example = "20s";
+        description = ''
+          Change the proxy related timeouts in recommendedProxySettings.
+        '';
+      };
+
       virtualHosts = lib.mkOption {
         type = lib.types.attrsOf (
           lib.types.submodule {
@@ -43,7 +70,10 @@ in
               locations = lib.mkOption {
                 type = lib.types.attrsOf (
                   lib.types.submodule {
-                    options.proxyPass = lib.mkOption { type = lib.types.str; };
+                    options.proxyPass = lib.mkOption {
+                      type = lib.types.nullOr lib.types.str;
+                      default = null;
+                    };
 
                     options.proxyWebsockets = lib.mkOption {
                       type = lib.types.bool;
@@ -87,12 +117,12 @@ in
       envsubst = extractWithPriority options [ "nixos" ] [ "services" "nginx" "enable" ];
       configuration = lib.mkIf config.nixos.services.nginx.enable (lib.singleton {
         daemon = "off";
-        worker_processes = 2;
+        worker_processes = 8;
         user = "nginx";
 
         events."" = {
           use = "epoll";
-          worker_connections = 128;
+          worker_connections = 512;
         };
 
         error_log = [
@@ -112,9 +142,28 @@ in
                 "/dev/stdout"
                 "combined"
               ];
+
+              # $connection_upgrade is used for websocket proxying
+              map."$$http_upgrade $$connection_upgrade" = {
+                default = "upgrade";
+                "''"     = "close";
+              };
             }
           ]
-          ++ (lib.flip lib.mapAttrsToList config.nixos.services.nginx.virtualHosts (
+          ++ (lib.optionals cfg.recommendedProxySettings [
+              {
+                proxy_redirect          = "off";
+                proxy_connect_timeout   = cfg.proxyTimeout;
+                proxy_send_timeout      = cfg.proxyTimeout;
+                proxy_read_timeout      = cfg.proxyTimeout;
+                proxy_http_version      = "1.1";
+                # don't let clients close the keep-alive connection to upstream. See the nginx blog for details:
+                # https://www.nginx.com/blog/avoiding-top-10-nginx-configuration-mistakes/#no-keepalives
+                proxy_set_header        = ["Connection" "''"];
+              }
+              recommendedProxyConfig
+            ])
+          ++ (lib.flip lib.mapAttrsToList cfg.virtualHosts (
             server_name: server: {
               server."" = {
                 listen = [
@@ -125,21 +174,17 @@ in
 
                 location = lib.flip lib.mapAttrs server.locations (
                   location: settings: [
-                    { proxy_pass = settings.proxyPass; }
+                    (lib.optionalAttrs (settings.proxyPass != null && cfg.recommendedProxySettings)
+                      recommendedProxyConfig)
                     (lib.optionalAttrs settings.proxyWebsockets {
+                      proxy_http_version = "1.1";
                       proxy_set_header = [
-                        [
-                          "Host"
-                          "$$host"
-                        ]
-                        [ "X-Real-IP $$remote_addr" ]
-                        [ "X-Forwarded-For $$proxy_add_x_forwarded_for" ]
-                        [ "X-Forwarded-Proto $$scheme" ]
-                        [ "Upgrade $$http_upgrade" ]
-                        [ "Connection upgrade" ]
+                        [ "Upgrade""$$http_upgrade" ]
+                        [ "Connection" "$$connection_upgrade" ]
                       ];
                     })
                     settings.extraConfig
+                    (lib.optionalAttrs (settings.proxyPass != null) { proxy_pass = settings.proxyPass; })
                   ]
                 );
               };
