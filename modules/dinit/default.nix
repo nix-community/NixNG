@@ -114,43 +114,43 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable {
-    system.activation."dinit" = nglib.dag.dagEntryAnywhere ''
-      mkdir /sv
+  config = lib.mkMerge [
+    { init.availableInits = [ "dinit" ]; }
+    (lib.mkIf cfg.enable {
+      system.activation."dinit" = nglib.dag.dagEntryAnywhere ''
+        mkdir /sv
 
-      function linkFarm() {
-          src="$1"
-          dst="$2"
+        function linkFarm() {
+            src="$1"
+            dst="$2"
 
-          find "$src" -mindepth 1 -type d -print0 | sed -e "s~$src~~" | xargs -0 -I {} mkdir "$dst/{}"
-          find "$src" -mindepth 1 -type f -print0 | sed -e "s~$src~~" | xargs -0 -I {} ln -s "$src/{}" "$dst/{}"
-          find "$src" -mindepth 1 -type l -print0 | sed -e "s~$src~~" | xargs -0 -I {} cp "$src/{}" "$dst/{}"
-      }
+            find "$src" -mindepth 1 -type d -print0 | sed -e "s~$src~~" | xargs -0 -I {} mkdir "$dst/{}"
+            find "$src" -mindepth 1 -type f -print0 | sed -e "s~$src~~" | xargs -0 -I {} ln -s "$src/{}" "$dst/{}"
+            find "$src" -mindepth 1 -type l -print0 | sed -e "s~$src~~" | xargs -0 -I {} cp "$src/{}" "$dst/{}"
+        }
 
-      linkFarm ${cfg.serviceDirectory} /sv
-    '';
+        linkFarm ${cfg.serviceDirectory} /sv
+      '';
 
-    dinit.serviceDirectory = pkgs.runCommandNoCC "dinit-service-directory" { } ''
-      mkdir -p $out
+      dinit.serviceDirectory = pkgs.runCommandNoCC "dinit-service-directory" { } ''
+        mkdir -p $out
 
-      ${lib.concatMapStringsSep "\n" (
-        { name, value }:
-        ''
-          ln -s ${
-            generateServiceFile {
-              inherit name;
-              service = value;
-            }
-          } $out/${name}
-        ''
-      ) (lib.mapAttrsToList lib.nameValuePair config.init.services)}
+        ${lib.concatMapStringsSep "\n" (
+          { name, value }:
+          ''
+            ln -s ${
+              generateServiceFile {
+                inherit name;
+                service = value;
+              }
+            } $out/${name}
+          ''
+        ) (lib.mapAttrsToList lib.nameValuePair config.init.services)}
 
-      ln -s ${bootService} $out/boot
-    '';
+        ln -s ${bootService} $out/boot
+      '';
 
-    init = lib.mkMerge [
-      { availableInits = [ "dinit" ]; }
-      (lib.mkIf cfg.enable {
+      init = {
         type = "dinit";
         script = pkgs.writeShellScript "dinit-start" ''
           export PATH=${pkgs.busybox}/bin:${pkgs.dinit}/bin \
@@ -166,9 +166,9 @@ in
         shutdown = pkgs.writeShellScript "dinit-shutdown" ''
           exec ${lib.getExe pkgs.dinit} shutdown
         '';
-      })
-    ];
+      };
 
-    environment.systemPackages = [ pkgs.dinit ];
-  };
+      environment.systemPackages = [ pkgs.dinit ];
+    })
+  ];
 }
