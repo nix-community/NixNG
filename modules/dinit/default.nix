@@ -153,7 +153,7 @@ in
       (lib.mkIf cfg.enable {
         type = "dinit";
         script = pkgs.writeShellScript "dinit-start" ''
-          export PATH=${pkgs.busybox}/bin:${pkgs.runit}/bin:${pkgs.dinit}/bin \
+          export PATH=${pkgs.busybox}/bin:${pkgs.dinit}/bin \
                  _system_config="@systemConfig@"
           # Run activation script for this system
           "$_system_config/activation"
