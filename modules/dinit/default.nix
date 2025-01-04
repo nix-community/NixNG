@@ -168,5 +168,7 @@ in
         '';
       })
     ];
+
+    environment.systemPackages = [ pkgs.dinit ];
   };
 }
