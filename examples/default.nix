@@ -17,6 +17,7 @@ let
     "gitea-sane" = ./gitea/sane.nix;
     "apache" = ./apache;
     "nginx" = ./nginx;
+    "nginx-nixos" = ./nginx-nixos;
     "crond" = ./crond;
     "nix" = ./nix;
     "hydra" = ./hydra;
