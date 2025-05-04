@@ -38,19 +38,17 @@
     getOptionFromPath' [ ] path options;
 
   mkOptionsEqual =
-    to: from:
+    to: from: mapper:
     { config, options, ... }:
     let
       fromOpt = nglib.getOptionFromPath from options;
       toOpt = nglib.getOptionFromPath to options;
 
       prio = fromOpt.highestPrio or lib.defaultOverridePriority;
-      defsWithPrio = map (lib.mkOverride prio) fromOpt.definitions;
+      defsWithPrio = map (def: lib.mkOverride prio (mapper def)) fromOpt.definitions;
     in
     {
-      config = lib.attrsets.setAttrByPath to (
-        lib.mkMerge defsWithPrio
-      );
+      config = lib.attrsets.setAttrByPath to (lib.mkMerge defsWithPrio);
       options = lib.attrsets.setAttrByPath from (
         lib.mkOption { apply = x: lib.attrsets.getAttrFromPath to config; }
       );

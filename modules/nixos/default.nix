@@ -1,6 +1,12 @@
-{ lib, pkgs, ... }:
 {
-  imports = [
+  lib,
+  pkgs,
+  config,
+  __enableExperimentalNixOSCompatibility,
+  ...
+}:
+{
+  imports = lib.optionals __enableExperimentalNixOSCompatibility ([
     ./systemd.nix
     ./nginx.nix
     ./users.nix
@@ -10,7 +16,7 @@
     ./nix.nix
     ./meta.nix
     ./networking.nix
-  ];
+  ]);
 
   options.nixos = lib.mkOption {
     type = lib.types.submodule {

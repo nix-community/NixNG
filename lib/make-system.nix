@@ -24,6 +24,8 @@ let
   evaledModules = evalModules {
     specialArgs = specialArgs // {
       inherit nglib;
+      __enableExperimentalNixOSCompatibility =
+        specialArgs.__enableExperimentalNixOSCompatibility or false;
     };
 
     modules =

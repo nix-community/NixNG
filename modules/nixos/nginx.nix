@@ -127,110 +127,109 @@ in
   imports = [
     (nglib.mkOptionsEqual
       [
-        "nixos"
         "services"
         "nginx"
         "enable"
       ]
       [
+        "nixos"
         "services"
         "nginx"
         "enable"
       ]
+      lib.id
     )
   ];
 
   config = {
-    services.nginx = lib.mkIf config.services.nginx.enable (
-      nglib.errorExperimentalNixOS config {
-        envsubst = true;
-        configuration = lib.singleton {
-          daemon = "off";
-          worker_processes = 8;
-          user = "nginx";
+    services.nginx = lib.mkIf config.services.nginx.enable ({
+      envsubst = true;
+      configuration = lib.singleton {
+        daemon = "off";
+        worker_processes = 8;
+        user = "nginx";
 
-          events."" = {
-            use = "epoll";
-            worker_connections = 512;
-          };
-
-          error_log = [
-            "/dev/stderr"
-            "warn"
-          ];
-
-          pid = "/nginx.pid";
-
-          http."" =
-            [
-              {
-                server_tokens = "off";
-                include = [ [ "${pkgs.nginx}/conf/mime.types" ] ];
-                charset = "utf-8";
-                access_log = [
-                  "/dev/stdout"
-                  "combined"
-                ];
-
-                # $connection_upgrade is used for websocket proxying
-                map."$$http_upgrade $$connection_upgrade" = {
-                  default = "upgrade";
-                  "''" = "close";
-                };
-              }
-            ]
-            ++ (lib.optionals cfg.recommendedProxySettings [
-              {
-                proxy_redirect = "off";
-                proxy_connect_timeout = cfg.proxyTimeout;
-                proxy_send_timeout = cfg.proxyTimeout;
-                proxy_read_timeout = cfg.proxyTimeout;
-                proxy_http_version = "1.1";
-                # don't let clients close the keep-alive connection to upstream. See the nginx blog for details:
-                # https://www.nginx.com/blog/avoiding-top-10-nginx-configuration-mistakes/#no-keepalives
-                proxy_set_header = [
-                  "Connection"
-                  "''"
-                ];
-              }
-              recommendedProxyConfig
-            ])
-            ++ (lib.flip lib.mapAttrsToList cfg.virtualHosts (
-              server_name: server: {
-                server."" = {
-                  listen = [
-                    "80"
-                    "http2"
-                  ];
-                  inherit server_name;
-
-                  location = lib.flip lib.mapAttrs server.locations (
-                    location: settings: [
-                      (lib.optionalAttrs (
-                        settings.proxyPass != null && cfg.recommendedProxySettings
-                      ) recommendedProxyConfig)
-                      (lib.optionalAttrs settings.proxyWebsockets {
-                        proxy_http_version = "1.1";
-                        proxy_set_header = [
-                          [
-                            "Upgrade"
-                            "$$http_upgrade"
-                          ]
-                          [
-                            "Connection"
-                            "$$connection_upgrade"
-                          ]
-                        ];
-                      })
-                      settings.extraConfig
-                      (lib.optionalAttrs (settings.proxyPass != null) { proxy_pass = settings.proxyPass; })
-                    ]
-                  );
-                };
-              }
-            ));
+        events."" = {
+          use = "epoll";
+          worker_connections = 512;
         };
-      }
-    );
+
+        error_log = [
+          "/dev/stderr"
+          "warn"
+        ];
+
+        pid = "/nginx.pid";
+
+        http."" =
+          [
+            {
+              server_tokens = "off";
+              include = [ [ "${pkgs.nginx}/conf/mime.types" ] ];
+              charset = "utf-8";
+              access_log = [
+                "/dev/stdout"
+                "combined"
+              ];
+
+              # $connection_upgrade is used for websocket proxying
+              map."$$http_upgrade $$connection_upgrade" = {
+                default = "upgrade";
+                "''" = "close";
+              };
+            }
+          ]
+          ++ (lib.optionals cfg.recommendedProxySettings [
+            {
+              proxy_redirect = "off";
+              proxy_connect_timeout = cfg.proxyTimeout;
+              proxy_send_timeout = cfg.proxyTimeout;
+              proxy_read_timeout = cfg.proxyTimeout;
+              proxy_http_version = "1.1";
+              # don't let clients close the keep-alive connection to upstream. See the nginx blog for details:
+              # https://www.nginx.com/blog/avoiding-top-10-nginx-configuration-mistakes/#no-keepalives
+              proxy_set_header = [
+                "Connection"
+                "''"
+              ];
+            }
+            recommendedProxyConfig
+          ])
+          ++ (lib.flip lib.mapAttrsToList cfg.virtualHosts (
+            server_name: server: {
+              server."" = {
+                listen = [
+                  "80"
+                  "http2"
+                ];
+                inherit server_name;
+
+                location = lib.flip lib.mapAttrs server.locations (
+                  location: settings: [
+                    (lib.optionalAttrs (
+                      settings.proxyPass != null && cfg.recommendedProxySettings
+                    ) recommendedProxyConfig)
+                    (lib.optionalAttrs settings.proxyWebsockets {
+                      proxy_http_version = "1.1";
+                      proxy_set_header = [
+                        [
+                          "Upgrade"
+                          "$$http_upgrade"
+                        ]
+                        [
+                          "Connection"
+                          "$$connection_upgrade"
+                        ]
+                      ];
+                    })
+                    settings.extraConfig
+                    (lib.optionalAttrs (settings.proxyPass != null) { proxy_pass = settings.proxyPass; })
+                  ]
+                );
+              };
+            }
+          ));
+      };
+    });
   };
 }
