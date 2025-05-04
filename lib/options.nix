@@ -38,21 +38,21 @@
     getOptionFromPath' [ ] path options;
 
   mkOptionsEqual =
-    primaryPath: secondaryPath:
+    to: from:
     { config, options, ... }:
     let
-      secondaryOption = nglib.getOptionFromPath secondaryPath options;
-      primaryOption = nglib.getOptionFromPath primaryPath options;
+      fromOpt = nglib.getOptionFromPath from options;
+      toOpt = nglib.getOptionFromPath to options;
 
-      prio = secondaryOption.highestPrio or lib.defaultOverridePriority;
-      defsWithPrio = map (lib.mkOverride prio) secondaryOption.definitions;
+      prio = fromOpt.highestPrio or lib.defaultOverridePriority;
+      defsWithPrio = map (lib.mkOverride prio) fromOpt.definitions;
     in
     {
-      config = lib.attrsets.setAttrByPath primaryPath (
-       lib.mkMerge defsWithPrio
+      config = lib.attrsets.setAttrByPath to (
+        lib.mkMerge defsWithPrio
       );
-      options = lib.attrsets.setAttrByPath secondaryPath (
-        lib.mkOption { apply = x: lib.attrsets.getAttrFromPath primaryPath config; }
+      options = lib.attrsets.setAttrByPath from (
+        lib.mkOption { apply = x: lib.attrsets.getAttrFromPath to config; }
       );
     };
 }
