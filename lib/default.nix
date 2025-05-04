@@ -75,6 +75,6 @@ let
         "chpst -u ${user}${lib.optionalString (group != null) ":${group}"} ${script}"
       else
         script;
-  };
+  } // (import ./options.nix { inherit lib; nglib = this; });
 in
 this
