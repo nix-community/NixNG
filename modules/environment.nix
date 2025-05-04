@@ -67,10 +67,7 @@ in
   };
 
   config = {
-    environment.systemPackages = with pkgs; [
-      runit
-      busybox
-    ];
+    environment.systemPackages = with pkgs; [ busybox ];
 
     environment.shell.profile = [
       ''

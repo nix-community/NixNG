@@ -98,6 +98,8 @@ in
       linkFarm ${cfg.serviceDirectory} ${cfg.runtimeServiceDirectory}
     '';
 
+    environment.systemPackages = lib.mkIf cfg.enable [ pkgs.runit ];
+
     runit = {
       serviceDirectory = pkgs.runCommandNoCC "service-dir" { } ''
         mkdir $out
