@@ -43,10 +43,13 @@
     let
       secondaryOption = nglib.getOptionFromPath secondaryPath options;
       primaryOption = nglib.getOptionFromPath primaryPath options;
+
+      prio = secondaryOption.highestPrio or lib.defaultOverridePriority;
+      defsWithPrio = map (lib.mkOverride prio) secondaryOption.definitions;
     in
     {
       config = lib.attrsets.setAttrByPath primaryPath (
-        lib.mkOverride secondaryOption.highestPrio (lib.head secondaryOption.definitions)
+       lib.mkMerge defsWithPrio
       );
       options = lib.attrsets.setAttrByPath secondaryPath (
         lib.mkOption { apply = x: lib.attrsets.getAttrFromPath primaryPath config; }
