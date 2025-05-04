@@ -67,7 +67,6 @@ lib.fix (
         '') fragments
       )}
     '';
-
     nottmpfiles = import ./nottmpfiles args;
 
     maybeChangeUserAndGroup =
