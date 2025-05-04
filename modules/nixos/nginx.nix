@@ -3,41 +3,38 @@
   config,
   pkgs,
   options,
+  nglib,
   ...
 }:
 let
   cfg = config.nixos.services.nginx;
 
-  nixosOptions = options.nixos.type.getSubOptions ["nixos"];
-
-  evalSubmoduleOption = path: options:
-    let
-      option = lib.getAttrFromPath path options;
-    in
-      lib.evalModules {
-        modules = option.type.getSubModules ++ option.definitions;
-        inherit
-          (option.type.functor.payload)
-          class
-          specialArgs
-          ;
-      };
-
-  extractWithPriority = options: submodulePath: optionPath:
-    let
-      submoduleOptions = evalSubmoduleOption submodulePath options;
-      option = lib.getAttrFromPath optionPath submoduleOptions.options;
-    in
-      lib.mkOverride (option.highestPrio) (option.value);
-
   recommendedProxyConfig = {
     proxy_set_header = [
-      ["Host" "$$host"]
-      ["X-Real-IP" "$$remote_addr"]
-      ["X-Forwarded-For" "$$proxy_add_x_forwarded_for"]
-      ["X-Forwarded-Proto" "$$scheme"]
-      ["X-Forwarded-Host" "$$host"]
-      ["X-Forwarded-Server" "$$host"]
+      [
+        "Host"
+        "$$host"
+      ]
+      [
+        "X-Real-IP"
+        "$$remote_addr"
+      ]
+      [
+        "X-Forwarded-For"
+        "$$proxy_add_x_forwarded_for"
+      ]
+      [
+        "X-Forwarded-Proto"
+        "$$scheme"
+      ]
+      [
+        "X-Forwarded-Host"
+        "$$host"
+      ]
+      [
+        "X-Forwarded-Server"
+        "$$host"
+      ]
     ];
   };
 in
@@ -47,11 +44,24 @@ in
       enable = lib.mkOption {
         type = lib.types.bool;
         default = false;
+        description = ''
+          Enable NixOS compatible nginx module. This module should have the same
+          semantics as the upstream module, as such see
+          [the upstream options](https://search.nixos.org/options?query=services.nginx).
+
+          WARNING: this module only implements a rather small subset of the upstream
+          NixOS module, but the parts that are implemented should have mostly the same
+          semantics.
+        '';
       };
 
       recommendedProxySettings = lib.mkOption {
         type = lib.types.bool;
         default = true;
+        description = ''
+          Applies recommended proxy settings, should be the same options as the
+          upstream NixOS module.
+        '';
       };
 
       proxyTimeout = lib.mkOption {
@@ -64,6 +74,9 @@ in
       };
 
       virtualHosts = lib.mkOption {
+        description = ''
+          Declarative virtual host configuration.
+        '';
         type = lib.types.attrsOf (
           lib.types.submodule {
             options = {
@@ -111,11 +124,26 @@ in
     };
   };
 
+  imports = [
+    (nglib.mkOptionsEqual
+      [
+        "nixos"
+        "services"
+        "nginx"
+        "enable"
+      ]
+      [
+        "services"
+        "nginx"
+        "enable"
+      ]
+    )
+  ];
+
   config = {
-    services.nginx = {
-      enable = extractWithPriority options [ "nixos" ] [ "services" "nginx" "enable" ];
-      envsubst = extractWithPriority options [ "nixos" ] [ "services" "nginx" "enable" ];
-      configuration = lib.mkIf config.nixos.services.nginx.enable (lib.singleton {
+    services.nginx = lib.mkIf config.services.nginx.enable {
+      envsubst = true;
+      configuration = lib.singleton {
         daemon = "off";
         worker_processes = 8;
         user = "nginx";
@@ -146,23 +174,26 @@ in
               # $connection_upgrade is used for websocket proxying
               map."$$http_upgrade $$connection_upgrade" = {
                 default = "upgrade";
-                "''"     = "close";
+                "''" = "close";
               };
             }
           ]
           ++ (lib.optionals cfg.recommendedProxySettings [
-              {
-                proxy_redirect          = "off";
-                proxy_connect_timeout   = cfg.proxyTimeout;
-                proxy_send_timeout      = cfg.proxyTimeout;
-                proxy_read_timeout      = cfg.proxyTimeout;
-                proxy_http_version      = "1.1";
-                # don't let clients close the keep-alive connection to upstream. See the nginx blog for details:
-                # https://www.nginx.com/blog/avoiding-top-10-nginx-configuration-mistakes/#no-keepalives
-                proxy_set_header        = ["Connection" "''"];
-              }
-              recommendedProxyConfig
-            ])
+            {
+              proxy_redirect = "off";
+              proxy_connect_timeout = cfg.proxyTimeout;
+              proxy_send_timeout = cfg.proxyTimeout;
+              proxy_read_timeout = cfg.proxyTimeout;
+              proxy_http_version = "1.1";
+              # don't let clients close the keep-alive connection to upstream. See the nginx blog for details:
+              # https://www.nginx.com/blog/avoiding-top-10-nginx-configuration-mistakes/#no-keepalives
+              proxy_set_header = [
+                "Connection"
+                "''"
+              ];
+            }
+            recommendedProxyConfig
+          ])
           ++ (lib.flip lib.mapAttrsToList cfg.virtualHosts (
             server_name: server: {
               server."" = {
@@ -174,13 +205,20 @@ in
 
                 location = lib.flip lib.mapAttrs server.locations (
                   location: settings: [
-                    (lib.optionalAttrs (settings.proxyPass != null && cfg.recommendedProxySettings)
-                      recommendedProxyConfig)
+                    (lib.optionalAttrs (
+                      settings.proxyPass != null && cfg.recommendedProxySettings
+                    ) recommendedProxyConfig)
                     (lib.optionalAttrs settings.proxyWebsockets {
                       proxy_http_version = "1.1";
                       proxy_set_header = [
-                        [ "Upgrade""$$http_upgrade" ]
-                        [ "Connection" "$$connection_upgrade" ]
+                        [
+                          "Upgrade"
+                          "$$http_upgrade"
+                        ]
+                        [
+                          "Connection"
+                          "$$connection_upgrade"
+                        ]
                       ];
                     })
                     settings.extraConfig
@@ -190,7 +228,7 @@ in
               };
             }
           ));
-      });
+      };
     };
   };
 }
