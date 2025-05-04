@@ -16,43 +16,40 @@
       default = group;
     };
 
-  getOptionFromPath = path: options:
+  getOptionFromPath =
+    path: options:
     let
-      getOptionFromPath' = pathLeft: pathRight: subtree:
-        if pathRight == [] then
+      getOptionFromPath' =
+        pathLeft: pathRight: subtree:
+        if pathRight == [ ] then
           subtree
         else
           let
-            newSubtree =
-              (subtree.${lib.head pathRight}
-                or (lib.evalModules {
-                  modules = subtree.type.getSubModules ++ subtree.definitions;
-                  inherit
-                    (subtree.type.functor.payload)
-                    class
-                    specialArgs
-                    ;
-                }).options.${lib.head pathRight}
-                or (abort ("cannot find option '" + lib.concatStringsSep "." path + "'")));
+            newSubtree = (
+              subtree.${lib.head pathRight} or (lib.evalModules {
+                modules = subtree.type.getSubModules ++ subtree.definitions;
+                inherit (subtree.type.functor.payload) class specialArgs;
+              }).options.${lib.head pathRight}
+              or (abort ("cannot find option '" + lib.concatStringsSep "." path + "'"))
+            );
           in
-            getOptionFromPath' (pathLeft ++ [ (lib.head pathRight) ]) (lib.tail pathRight) newSubtree;
+          getOptionFromPath' (pathLeft ++ [ (lib.head pathRight) ]) (lib.tail pathRight) newSubtree;
     in
-      getOptionFromPath' [] path options;
+    getOptionFromPath' [ ] path options;
 
-  mkOptionsEqual = primaryPath: secondaryPath:
+  mkOptionsEqual =
+    primaryPath: secondaryPath:
     { config, options, ... }:
     let
       secondaryOption = nglib.getOptionFromPath secondaryPath options;
       primaryOption = nglib.getOptionFromPath primaryPath options;
     in
-      {
-        config = lib.attrsets.setAttrByPath
-          primaryPath
-          (lib.mkOverride secondaryOption.highestPrio (lib.head secondaryOption.definitions));
-        options = lib.attrsets.setAttrByPath
-          secondaryPath
-          (lib.mkOption {
-            apply = x: lib.attrsets.getAttrFromPath primaryPath config;
-          });
-      };
+    {
+      config = lib.attrsets.setAttrByPath primaryPath (
+        lib.mkOverride secondaryOption.highestPrio (lib.head secondaryOption.definitions)
+      );
+      options = lib.attrsets.setAttrByPath secondaryPath (
+        lib.mkOption { apply = x: lib.attrsets.getAttrFromPath primaryPath config; }
+      );
+    };
 }
