@@ -1,4 +1,9 @@
-{ lib, config, ... }:
+{
+  nglib,
+  lib,
+  config,
+  ...
+}:
 {
   options = {
     nixos.users.users = lib.mkOption {
@@ -7,22 +12,57 @@
           { name, ... }:
           {
             options = {
-              description = lib.mkOption { type = lib.types.str; };
-              createHome = lib.mkOption { type = lib.types.bool; };
-              home = lib.mkOption { type = lib.types.path; };
-              group = lib.mkOption { type = lib.types.str; };
+              description = lib.mkOption {
+                type = lib.types.str;
+                description = ''
+                  The users description;
+                '';
+              };
+              createHome = lib.mkOption {
+                type = lib.types.bool;
+                description = ''
+                  Whether to create the user's home folder.
+                '';
+              };
+              home = lib.mkOption {
+                type = lib.types.path;
+                description = ''
+                  Where should the users home folder be located.
+                '';
+              };
+              group = lib.mkOption {
+                type = lib.types.str;
+                description = ''
+                  The user's primary group.
+                '';
+              };
               extraGroups = lib.mkOption {
                 type = lib.types.listOf lib.types.str;
                 default = [ ];
+                description = ''
+                  The user's supplementary groups.
+                '';
               };
-              useDefaultShell = lib.mkOption { type = lib.types.bool; };
+              useDefaultShell = lib.mkOption {
+                type = lib.types.bool;
+                description = ''
+                  Whether to use the default shell.
+                '';
+              };
               isSystemUser = lib.mkOption {
                 type = lib.types.bool;
                 default = true;
+                description = ''
+                  This doesn't do anything on NixNG but is here for eval-time compatibility.
+                  Slight difference of behavior is expected.
+                '';
               };
               isNormalUser = lib.mkOption {
                 type = lib.types.bool;
                 default = false;
+                description = ''
+                  Indicates whether is an account for a 'real' user.
+                '';
               };
               name = lib.mkOption {
                 type = lib.types.str;
@@ -34,28 +74,65 @@
         )
       );
       default = { };
+      description = ''
+        NixOS compatible users module. This module should have the same
+        semantics as the upstream module, as such see
+        [the upstream options](https://search.nixos.org/options?query=users.users).
+
+        WARNING: this module only implements a rather small subset of the upstream
+        NixOS module, but the parts that are implemented should have mostly the same
+        semantics.
+      '';
     };
 
     nixos.users.groups = lib.mkOption {
       type = lib.types.attrsOf (lib.types.submodule { });
       default = { };
+      description = ''
+        NixOS compatible users module. This module should have the same
+        semantics as the upstream module, as such see
+        [the upstream options](https://search.nixos.org/options?query=users.users).
+
+        Also see the documentation for NixNG's `users.users`, this compatibility module
+        maps almost exactly onto it.
+
+        WARNING: this module only implements a rather small subset of the upstream
+        NixOS module, but the parts that are implemented should have mostly the same
+        semantics.
+      '';
     };
-
   };
 
-  config = {
-    users.users = (
-      lib.mapAttrs (
-        _: v:
-        lib.filterAttrs (
-          n: _:
-          !lib.elem n [
-            "name"
-            "isSystemUser"
-          ]
-        ) v
-      ) config.nixos.users.users
-    );
-    users.groups = config.nixos.users.groups;
-  };
+  imports = [
+    (nglib.mkOptionsEqual
+      [
+        "users"
+        "users"
+      ]
+      [
+        "nixos"
+        "users"
+        "users"
+      ]
+      (
+        def:
+        lib.removeAttrs (lib.traceValSeq def) [
+          "name"
+          "isSystemUser"
+        ]
+      )
+    )
+    (nglib.mkOptionsEqual
+      [
+        "users"
+        "groups"
+      ]
+      [
+        "nixos"
+        "users"
+        "groups"
+      ]
+      lib.id
+    )
+  ];
 }
