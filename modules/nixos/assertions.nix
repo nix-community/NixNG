@@ -1,6 +1,16 @@
-{ config, lib, ... }:
+{
+  config,
+  lib,
+  nglib,
+  ...
+}:
 {
   options.nixos = lib.mkOption { type = lib.types.submodule { imports = [ ../assertions.nix ]; }; };
 
-  config.assertions = config.nixos.assertions;
+  imports = [
+    (nglib.mkOptionsEqual [ "assertions" ] [
+      "nixos"
+      "assertions"
+    ] lib.id)
+  ];
 }

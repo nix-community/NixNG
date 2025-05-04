@@ -105,6 +105,16 @@
         )
       );
       default = { };
+      description = ''
+        NixOS compatible services module. This module does not have the same
+        semantics as the upstream module, as such take upstream behavior with
+        a lot of salt.
+
+        WARNING: this module only implements a tiny subset of the upstream
+        NixOS module and the parts that are implemented do NOT have the same
+        semantics. This module is enough to get very basic NixOS services to work
+        but for anything more significat it'll for sure break.
+      '';
     };
 
     nixos.systemd.tmpfiles = lib.mkOption {
