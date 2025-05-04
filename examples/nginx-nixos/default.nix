@@ -18,6 +18,7 @@ nglib.makeSystem {
         dinit = {
           enable = true;
         };
+
         init.services.nginx = {
           shutdownOnExit = true;
           ensureSomething.link."documentRoot" = {
@@ -25,7 +26,7 @@ nglib.makeSystem {
             dst = "/var/www";
           };
         };
-        # nixos.services.nginx.enable = true;
+
         nixos.services.nginx = {
           enable = true;
           virtualHosts."example.org" = {
