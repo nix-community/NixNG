@@ -12,15 +12,25 @@
   nixng,
 }:
 let
-  modifiedMakeSystem = { config ? {}, ... }@args: nglib.makeSystem ( args //{
-    config = {
-      nixos.acceptRisks = "I accept the risks";
+  modifiedMakeSystem =
+    {
+      config ? { },
+      specialArgs ? { },
+      ...
+    }@args:
+    nglib.makeSystem (
+      args
+      // {
+        config = {
+          nixos.acceptRisks = "I accept the risks";
 
-      imports = [
-        config
-      ];
-    };
-  });
+          imports = [ config ];
+        };
+        specialArgs = specialArgs // {
+          __enableExperimentalNixOSCompatibility = true;
+        };
+      }
+    );
 
   modifiedNglib = nglib // {
     makeSystem = modifiedMakeSystem;
@@ -51,4 +61,10 @@ let
     "failing" = ./failing;
   };
 in
-nixpkgs.lib.mapAttrs (_: v: import v { inherit nixpkgs nixng; nglib = modifiedNglib; }) examples
+nixpkgs.lib.mapAttrs (
+  _: v:
+  import v {
+    inherit nixpkgs nixng;
+    nglib = modifiedNglib;
+  }
+) examples

@@ -1,15 +1,22 @@
-{ lib, config, ... }:
 {
-  options = {
-    nixos.nix = {
-      settings = lib.mkOption {
-        type = lib.types.unspecified;
-        default = { };
-      };
-    };
-  };
-
-  config = {
-    nix.config = config.nixos.nix.settings;
-  };
+  nglib,
+  lib,
+  config,
+  ...
+}:
+{
+  imports = [
+    (nglib.mkOptionsEqual
+      [
+        "nix"
+        "config"
+      ]
+      [
+        "nixos"
+        "nix"
+        "config"
+      ]
+      lib.id
+    )
+  ];
 }
