@@ -12,6 +12,20 @@
   nixng,
 }:
 let
+  modifiedMakeSystem = { config ? {}, ... }@args: nglib.makeSystem ( args //{
+    config = {
+      nixos.acceptRisks = "I accept the risks";
+
+      imports = [
+        config
+      ];
+    };
+  });
+
+  modifiedNglib = nglib // {
+    makeSystem = modifiedMakeSystem;
+  };
+
   examples = {
     "gitea" = ./gitea;
     "gitea-sane" = ./gitea/sane.nix;
@@ -34,4 +48,4 @@ let
     "ntfy-sh" = ./ntfy-sh;
   };
 in
-nixpkgs.lib.mapAttrs (_: v: import v { inherit nixpkgs nglib nixng; }) examples
+nixpkgs.lib.mapAttrs (_: v: import v { inherit nixpkgs nixng; nglib = modifiedNglib; }) examples
