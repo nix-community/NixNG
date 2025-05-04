@@ -10,7 +10,6 @@
     ./nix.nix
     ./meta.nix
     ./networking.nix
-    ./buildbot.nix
   ];
 
   options.nixos = lib.mkOption {
