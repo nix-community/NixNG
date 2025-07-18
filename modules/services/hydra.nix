@@ -118,7 +118,7 @@ in
     # BEGIN Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.hydra-unstable;
+      default = pkgs.hydra_unstable;
       description = ''
         Which HydraCI package to use.
       '';

@@ -57,9 +57,9 @@ let
                   then
                     "${n} ${toString (lib.elemAt v 0)}\n${lib.concatStringsSep " " (self (lib.elemAt v 1))}"
                   else if (lib.isBool (lib.elemAt v 0)) && lib.isAttrs (lib.elemAt v 1) then
-                    "${n} ${if lib.elemAt v 0 then "true" else "false"}\n${
-                      lib.concatStringsSep " " (self (lib.elemAt v 1))
-                    }"
+                    "${n} ${
+                      if lib.elemAt v 0 then "true" else "false"
+                    }\n${lib.concatStringsSep " " (self (lib.elemAt v 1))}"
                   else
                     throw "Invalid subtree content"
                 else

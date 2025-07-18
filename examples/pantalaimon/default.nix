@@ -12,7 +12,7 @@ nglib.makeSystem {
   system = "x86_64-linux";
   name = "nixng-pantalaimon";
   config = (
-    { pkgs, ... }:
+    { pkgs, lib, ... }:
     {
       dumb-init = {
         enable = true;
@@ -22,19 +22,10 @@ nglib.makeSystem {
         shutdownOnExit = true;
       };
 
+      nixpkgs.config.allowInsecurePredicate = pkg: lib.getName pkg == "olm";
+
       services.pantalaimon = {
         enable = true;
-
-        package = (pkgs.pantalaimon.override { enableDbusUi = false; }).overrideAttrs (old: {
-          version = "0.10.2";
-          src = pkgs.fetchFromGitHub {
-            owner = "matrix-org";
-            repo = "pantalaimon";
-            rev = "0.10.2";
-            sha256 = "sha256-sjaJomKMKSZqLlKWTG7Oa87dXa5SnGQlVnrdS707A1w=";
-          };
-          patches = [ ];
-        });
 
         config = {
           Default = {

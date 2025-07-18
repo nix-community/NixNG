@@ -164,32 +164,30 @@ let
           ${targetNotFound} "$_target"
         fi
 
-        ${
-          lib.concatMapStringsSep "\n" (secret: ''
-            local _placeholder="${secret.placeholder}"
-            grep "@$_placeholder@" "$_target" || ${secretNotUsed} "$_target" "$_placeholder"
+        ${lib.concatMapStringsSep "\n" (secret: ''
+          local _placeholder="${secret.placeholder}"
+          grep "@$_placeholder@" "$_target" || ${secretNotUsed} "$_target" "$_placeholder"
 
-            unset _secret
-            local _secret
-            ${tagCase secret.source {
-              file = ''
-                if [ -f "${secret.source.file}" ] \
-                  || ${pkgs.writeShellScript "gitea-generate-${secret.placeholder}" secret.generate} "${secret.source.file}" \
-                   ; then
-                    _secret="$(cat "${secret.source.file}" | head -n 1)"
-                else
-                  ${secretNotFound} "$_target" "$_placeholder"
-                fi
-              '';
-              environment = ''
-                _secret=${secret.source.environment}
-                _secret=''${!_secret}
-              '';
-            }}
+          unset _secret
+          local _secret
+          ${tagCase secret.source {
+            file = ''
+              if [ -f "${secret.source.file}" ] \
+                || ${pkgs.writeShellScript "gitea-generate-${secret.placeholder}" secret.generate} "${secret.source.file}" \
+                 ; then
+                  _secret="$(cat "${secret.source.file}" | head -n 1)"
+              else
+                ${secretNotFound} "$_target" "$_placeholder"
+              fi
+            '';
+            environment = ''
+              _secret=${secret.source.environment}
+              _secret=''${!_secret}
+            '';
+          }}
 
-            sed -i "s,@${secret.placeholder}@,$_secret,g" "$_target"
-          '') (lib.attrValues secrets)
-        }
+          sed -i "s,@${secret.placeholder}@,$_secret,g" "$_target"
+        '') (lib.attrValues secrets)}
       }
     '';
 in

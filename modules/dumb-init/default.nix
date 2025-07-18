@@ -124,14 +124,12 @@ in
               "$_system_config/activation"
               . /etc/profile
               exec ${cfg.package}/bin/dumb-init -- \
-                ${
-                  sigell [
-                    "su"
-                    "${cfg.type.shell.user}"
-                    "-c"
-                    "${userShell} \"$@\""
-                  ]
-                }
+                ${sigell [
+                  "su"
+                  "${cfg.type.shell.user}"
+                  "-c"
+                  "${userShell} \"$@\""
+                ]}
             '';
             sigell =
               cmd:

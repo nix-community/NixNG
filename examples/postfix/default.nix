@@ -70,7 +70,7 @@ nglib.makeSystem {
 
         services.postgresql = {
           enable = true;
-          package = pkgs.postgresql_12;
+          package = pkgs.postgresql_17;
 
           config = {
             unix_socket_directories = "/run/postgresql/, /var/spool/postfix/run/postgresql/";
@@ -238,7 +238,6 @@ nglib.makeSystem {
           package = pkgs.postfix.override {
             withPgSQL = true;
             withLDAP = false;
-            postgresql = pkgs.postgresql_12;
           };
           enable = true;
 

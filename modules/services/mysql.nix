@@ -263,14 +263,12 @@ in
             echo "GRANT ALL PRIVILEGES ON *.* TO '${cfg.user}'@'localhost' WITH GRANT OPTION;"
           ) | ${cfg.package}/bin/mysql -u root -N
 
-          ${
-            lib.optionalString (cfg.initialScript != null) ''
-              # Execute initial script
-              # using toString to avoid copying the file to nix store if given as path instead of string,
-              # as it might contain credentials
-              cat ${toString cfg.initialScript} | ${cfg.package}/bin/mysql -u root -N
-            ''
-          }
+          ${lib.optionalString (cfg.initialScript != null) ''
+            # Execute initial script
+            # using toString to avoid copying the file to nix store if given as path instead of string,
+            # as it might contain credentials
+            cat ${toString cfg.initialScript} | ${cfg.package}/bin/mysql -u root -N
+          ''}
 
             rm ${cfg.dataDir}/.first_startup
         fi
@@ -286,13 +284,11 @@ in
           ( echo "CREATE USER IF NOT EXISTS '${user.name}'@'${user.address}' IDENTIFIED WITH ${
             if isMariaDB then "unix_socket" else "auth_socket"
           };"
-            ${
-              lib.concatStringsSep "\n" (
-                lib.mapAttrsToList (database: permission: ''
-                  echo "GRANT ${permission} ON ${database} TO '${user.name}'@'${user.address}';"
-                '') user.ensurePermissions
-              )
-            }
+            ${lib.concatStringsSep "\n" (
+              lib.mapAttrsToList (database: permission: ''
+                echo "GRANT ${permission} ON ${database} TO '${user.name}'@'${user.address}';"
+              '') user.ensurePermissions
+            )}
           ) | ${cfg.package}/bin/mysql -N -u root
         '') cfg.ensureUsers}
 

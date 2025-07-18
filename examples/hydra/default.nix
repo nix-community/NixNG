@@ -38,7 +38,7 @@ nglib.makeSystem {
           notificationSender = "root@example.org";
           useSubstitutes = true;
         };
-        services.postgresql.package = pkgs.postgresql_12;
+        services.postgresql.package = pkgs.postgresql_17;
         services.socklog = {
           enable = true;
           unix = "/dev/log";
