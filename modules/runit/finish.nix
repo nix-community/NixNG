@@ -83,9 +83,8 @@ writeShellScript "${n}-finish" ''
 
   (
     cd ${s.workingDirectory}
-    ${
-      lib.optionalString (s.environment != { })
-        "export ${lib.concatStringsSep " " (lib.mapAttrsToList (n: v: "${n}=${v}") s.environment)}"
+    ${lib.optionalString (s.environment != { })
+      "export ${lib.concatStringsSep " " (lib.mapAttrsToList (n: v: "${n}=${v}") s.environment)}"
     }
     ${lib.optionalString (s.execStop != null && !s.shutdownOnExit) "exec ${s.execStop}"}
     ${lib.optionalString (s.execStop != null && s.shutdownOnExit) "${s.execStop}"}

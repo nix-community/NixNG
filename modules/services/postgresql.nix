@@ -459,11 +459,9 @@ in
         )}
 
         if test -e "${cfg.dataDir}/.first_startup"; then
-          ${
-            lib.optionalString (cfg.initialScript != null) ''
-              $PSQL -f "${cfg.initialScript}" -d postgres
-            ''
-          }
+          ${lib.optionalString (cfg.initialScript != null) ''
+            $PSQL -f "${cfg.initialScript}" -d postgres
+          ''}
           rm -f "${cfg.dataDir}/.first_startup"
         fi
 

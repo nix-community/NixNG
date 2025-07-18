@@ -110,13 +110,11 @@ let
     shutdownOnExit = true;
     script = pkgs.writeShellScript "synapse-worker-${name}.sh" ''
       ${cfg.package}/bin/${bin} \
-        ${
-          concatStringsSep " \\\n  " (
-            flip mapAttrsToList cfg.arguments (
-              n: v: if isList v then concatMapStringsSep " \\\n  " (x: "--${n} \"${x}\"") v else "--${n} \"${v}\""
-            )
+        ${concatStringsSep " \\\n  " (
+          flip mapAttrsToList cfg.arguments (
+            n: v: if isList v then concatMapStringsSep " \\\n  " (x: "--${n} \"${x}\"") v else "--${n} \"${v}\""
           )
-        }
+        )}
     '';
   };
 in
