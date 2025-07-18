@@ -8,7 +8,7 @@
 
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-24.05";
+    nixpkgs.url = "github:NixOS/nixpkgs?ref=nixos-25.05";
     treefmt-nix.url = "github:numtide/treefmt-nix";
   };
 
