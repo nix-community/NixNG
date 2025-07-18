@@ -12,7 +12,7 @@ nglib.makeSystem {
   system = "x86_64-linux";
   name = "nixng-pantalaimon";
   config = (
-    { pkgs, ... }:
+    { pkgs, lib, ... }:
     {
       dumb-init = {
         enable = true;
@@ -21,6 +21,8 @@ nglib.makeSystem {
       init.services.pantalaimon = {
         shutdownOnExit = true;
       };
+
+      nixpkgs.config.allowInsecurePredicate = pkg: lib.getName pkg == "olm";
 
       services.pantalaimon = {
         enable = true;
