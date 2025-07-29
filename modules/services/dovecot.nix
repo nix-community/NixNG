@@ -93,14 +93,13 @@ in
                   package
                   bool
                 ]))
-                (attrsOf self)
+                (attrsOf (self // { description = "Dovecot config type"; }))
               ])
             );
           in
-          self // { description = "Dovecot config type"; };
+          self;
         description = "Dovecot configuration entries in Nix format.";
         default = { };
-        apply = x: pkgs.writeText "dovecot.conf" (nglib.generators.toDovecot x);
       };
 
       configFile = lib.mkOption {
