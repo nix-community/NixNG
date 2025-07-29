@@ -149,7 +149,7 @@ rec {
                 ''
               ) value
             )
-          else if isList value && name != "include'" && name != "include_try'" then
+          else if isList value && name != "!include" && name != "!include_try" then
             "${name} = "
             + concatMapStringsSep ", " (
               x:
@@ -162,14 +162,14 @@ rec {
               else if isBool x then
                 if value then "yes" else "no"
               else
-                abort "Unsupported type in Dovecot configuration attrset!"
+                abort "Unsupported type in Dovecot configuration attrset! ${toString x}"
             ) value
-          else if isList value && name == "include'" then
-            concatMapStringsSep "\n" (x: "include! " + x) value
-          else if isList value && name == "include_try'" then
-            concatMapStringsSep "\n" (x: "include_try! " + x) value
+          else if isList value && name == "!include" then
+            concatMapStringsSep "\n" (x: "!include " + x) value
+          else if isList value && name == "!include_try" then
+            concatMapStringsSep "\n" (x: "!include_try " + x) value
           else
-            abort "Unsupported type in Dovecot configuration attrset!"
+            abort "Unsupported type in Dovecot configuration attrset! ${name} = ${toString value}"
         ) cfg
       )
     else
