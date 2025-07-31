@@ -1,0 +1,22 @@
+{
+  nglib,
+  lib,
+  config,
+  ...
+}:
+{
+  imports = [
+    (nglib.mkOptionsEqual
+      [
+        "nix"
+        "config"
+      ]
+      [
+        "nixos"
+        "nix"
+        "config"
+      ]
+      lib.id
+    )
+  ];
+}
