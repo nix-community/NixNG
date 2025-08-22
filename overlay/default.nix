@@ -43,6 +43,10 @@ in
 
   setgroups = prev.writeCBin "setgroups" (builtins.readFile ./setgroups.c);
 
+  fileHammer = prev.haskell.lib.enableSeparateBinOutput (
+    prev.haskellPackages.callPackage ./haskell/file-hammer/package.nix { }
+  );
+
   # inherit
   #   (nixpkgsTrivialBuilders)
   #   writeShellScript

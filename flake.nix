@@ -75,6 +75,14 @@
         in
         {
           default = pkgs.mkShell { nativeBuildInputs = with pkgs; [ ]; };
+          haskell = pkgs.mkShell {
+            nativeBuildInputs = with pkgs; [
+              ghc
+              cabal-install
+              haskell-language-server
+              haskellPackages.implicit-hie
+            ];
+          };
         }
       );
 

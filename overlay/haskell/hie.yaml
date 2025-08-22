@@ -1,0 +1,4 @@
+cradle:
+  cabal:
+    - path: "file-hammer/app/Main.hs"
+      component: "file-hammer:exe:file-hammer"

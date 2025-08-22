@@ -1,0 +1,59 @@
+cabal-version:      3.14
+name:               file-hammer
+version:            0.1.0.0
+-- synopsis:
+-- description:
+license:            GPL-3.0-or-later
+license-file:       LICENSE
+author:             magic_rb
+maintainer:         magic_rb@redalder.org
+-- copyright:
+category:           System
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+-- extra-source-files:
+
+common warnings
+    ghc-options: -Wall
+
+executable file-hammer
+    import:           warnings
+    main-is:          Main.hs
+    other-modules:
+      Cli,
+      Config,
+      TH,
+      Action,
+    -- other-extensions:
+    default-extensions:
+      ImportQualifiedPost,
+      DeriveAnyClass,
+      BlockArguments,
+      NoFieldSelectors,
+      DuplicateRecordFields,
+      MultiWayIf,
+      OverloadedStrings,
+    build-depends:
+      base ^>=4.20.2.0,
+      aeson,
+      unordered-containers,
+      directory,
+      unix,
+      text,
+      bytestring,
+      filepath,
+      extra,
+      path,
+      microlens,
+      microlens-th,
+      microlens-mtl,
+      mtl,
+      transformers,
+      optparse-applicative,
+      bytestring-aeson-orphans,
+      template-haskell,
+      tree-diff,
+      exceptions,
+      hashable,
+    hs-source-dirs:   app
+    default-language: GHC2021

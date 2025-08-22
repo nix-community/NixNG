@@ -15,6 +15,140 @@
 }:
 let
   cfg = config.environment;
+
+  configFile = lib.mkMerge (
+    lib.mapAttrsToList (
+      name: value:
+      let
+        genDir =
+          path: final:
+          (
+            if path == [ ] then
+              final
+            else
+              {
+                directories.${lib.head path} = {
+                  content."DirectoryContentManaged" = genDir (lib.tail path) final;
+                  mode = 509;
+                  owner = {
+                    user = "root";
+                    group = "root";
+                  };
+                };
+              }
+          );
+
+        segments = lib.filter (x: x != "") (lib.splitString "/" name);
+        path = lib.init segments;
+        final = lib.last segments;
+      in
+      if value.enable then
+        genDir path (
+          if value.mode == "symlink" then
+            {
+              links.${final} = {
+                destination = value.source;
+              };
+            }
+          else
+            {
+              files.${final} = {
+                mode = lib.toInt value.mode;
+                owner = {
+                  inherit (value) user group;
+                };
+              };
+            }
+        )
+      else
+        { }
+
+    ) cfg.etc
+  );
+
+  etcEntry =
+    { name, ... }:
+    {
+      options = {
+        enable = lib.mkOption {
+          type = lib.types.bool;
+          description = ''
+            Whether this /etc file should be generated. This option allows specific /etc files to be disabled.
+          '';
+          default = true;
+        };
+
+        source = lib.mkOption {
+          type = lib.types.path;
+          description = ''
+            Path of the source file.
+          '';
+        };
+
+        text = lib.mkOption {
+          type = lib.types.path;
+          description = ''
+            Text content.
+          '';
+        };
+
+        target = lib.mkOption {
+          type = lib.types.str;
+          description = ''
+            Name of symlink (relative to `/etc`). Defaults to the attribute name.
+          '';
+          default = name;
+        };
+
+        mode = lib.mkOption {
+          type = lib.types.str;
+          description = ''
+            If set to something else than symlink, the file is copied instead of symlinked, with the given file mode.
+          '';
+          default = "symlink";
+        };
+
+        user = lib.mkOption {
+          type = lib.types.str;
+          description = ''
+            User name of file owner.
+
+            Only takes effect when the file is copied (that is, the mode is not symlink).
+
+            When services.userborn.enable, this option has no effect. You have to assign a uid instead. Otherwise this option takes precedence over uid.
+          '';
+          default = "+0";
+        };
+
+        group = lib.mkOption {
+          type = lib.types.str;
+          description = ''
+            Group name of file owner.
+
+            Only takes effect when the file is copied (that is, the mode is not symlink).
+
+            When services.userborn.enable, this option has no effect. You have to assign a gid instead. Otherwise this option takes precedence over gid.
+          '';
+          default = "+0";
+        };
+
+        uid = lib.mkOption {
+          type = lib.types.str;
+          description = ''
+            UID of created file. Only takes effect when the file is copied (that is, the mode is not 'symlink').
+          '';
+          default = "0";
+        };
+
+        gid = lib.mkOption {
+          type = lib.types.str;
+          description = ''
+            GID of created file. Only takes effect when the file is copied (that is, the mode is not ‘symlink’).
+          '';
+          default = "0";
+        };
+      };
+    };
 in
 {
   options.environment = {
@@ -64,9 +198,71 @@ in
       default = [ ];
       type = with lib.types; listOf package;
     };
+
+    etc = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.submodule etcEntry);
+      default = { };
+    };
   };
 
   config = {
+    services.file-hammer."/etc".specification = {
+      directory = {
+        mode = 509;
+        owner = {
+          user = "root";
+          group = "root";
+        };
+        content."DirectoryContentManaged" = lib.mkMerge [
+          configFile
+          {
+            files = {
+              "hostname" = {
+                content."ContentAny" = [ ];
+                mode = 420;
+                owner = {
+                  group = "root";
+                  user = "root";
+                };
+              };
+              "hosts" = {
+                content."ContentAny" = [ ];
+                mode = 420;
+                owner = {
+                  group = "root";
+                  user = "root";
+                };
+              };
+              "resolv.conf" = {
+                content."ContentAny" = [ ];
+                mode = 420;
+                owner = {
+                  group = "root";
+                  user = "root";
+                };
+              };
+              "shadow" = {
+                content."ContentAny" = [ ];
+                mode = 256;
+                owner = {
+                  group = "root";
+                  user = "root";
+                };
+              };
+            };
+          }
+        ];
+      };
+      ignores = [
+        "group"
+        "mtab"
+        "passwd"
+      ];
+    };
+    environment.etc."profile" = {
+      source = cfg.shell.profile.applied;
+      mode = "symlink";
+    };
     environment.systemPackages = with pkgs; [ busybox ];
 
     environment.shell.profile = [
