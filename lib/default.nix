@@ -70,9 +70,12 @@ let
     };
 
     maybeChangeUserAndGroup =
-      user: group: script:
+      user: group: supp: script:
       if user != null then
-        "chpst -u ${user}${lib.optionalString (group != null) ":${group}"} ${script}"
+        let
+          group' = if group != null then "${group}" else ":";
+        in
+        "setgroups ${user} ${group'} :${lib.concatStringsSep ":" supp} ${script}"
       else
         script;
   };
