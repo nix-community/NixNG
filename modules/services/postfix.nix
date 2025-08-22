@@ -140,6 +140,12 @@ in
     services.postfix = {
       enable = lib.mkEnableOption "Enable Postfix MTA.";
 
+      hashMaps = lib.mkOption {
+        description = "";
+        type = lib.types.attrsOf (lib.types.attrsOf (lib.types.oneOf [ lib.types.str lib.types.int ]));
+        default = {};
+      };
+
       package = lib.mkOption {
         description = "Postfix package.";
         type = lib.types.package;
@@ -162,6 +168,12 @@ in
         description = "Postfix privilege drop group.";
         type = lib.types.str;
         default = "postdrop";
+      };
+
+      stateDirectory = lib.mkOption {
+        description = "Postfix state directory.";
+        type = lib.types.path;
+        default = "/var/lib/postfix";
       };
 
       mainConfig = lib.mkOption {
@@ -235,8 +247,8 @@ in
         default_privs = lib.mkDefault "nobody";
 
         # NixOS specific locations
-        data_directory = lib.mkDefault "/var/lib/postfix/data";
-        queue_directory = lib.mkDefault "/var/lib/postfix/queue";
+        data_directory = lib.mkDefault "${cfg.stateDirectory}/data";
+        queue_directory = lib.mkDefault "${cfg.stateDirectory}/queue";
 
         # Default location of everything in package
         meta_directory = "${cfg.package}/etc/postfix";
@@ -417,11 +429,6 @@ in
       let
         mainCnf = pkgs.writeText "main.cf" (toMainCnf cfg.mainConfig);
         masterCnf = pkgs.writeText "master.cf" cfg.masterConfig;
-        configDir = pkgs.runCommandNoCCLocal "postfix-config-dir" { } ''
-          mkdir -p $out
-          ln -s ${mainCnf} $out/main.cf
-          ln -s ${masterCnf} $out/master.cf
-        '';
       in
       {
         ensureSomething.create."data" = lib.mkDefault {
@@ -441,11 +448,36 @@ in
         };
 
         script = pkgs.writeShellScript "postfix-run" ''
-          echo asd
+          mkdir -p ${cfg.stateDirectory} ${cfg.mainConfig.queue_directory}/{pid,public,maildrop}
+          chmod 0755 ${cfg.stateDirectory}
+          chown root:root ${cfg.stateDirectory}
 
-          mkdir -p /etc/postfix/
-          ${cfg.package}/bin/postfix -c ${configDir} set-permissions
-          ${cfg.package}/libexec/postfix/master -c ${configDir}
+          rm -rf ${cfg.stateDirectory}/conf
+          mkdir -p ${cfg.stateDirectory}/conf
+          chmod 0755 ${cfg.stateDirectory}/conf
+          ln -sf ${pkgs.postfix}/etc/postfix/postfix-files ${cfg.stateDirectory}/conf/postfix-files
+          ln -sf ${mainCnf} ${cfg.stateDirectory}/conf/main.cf
+          ln -sf ${masterCnf} ${cfg.stateDirectory}/conf/master.cf
+
+          mkdir -p ${cfg.stateDirectory}/conf/hash_maps
+          ${lib.pipe cfg.hashMaps [
+            (lib.mapAttrsToList (n: v:
+              ''
+                _map="${cfg.stateDirectory}/conf/hash_maps/${n}"
+                cat > "$_map" <<EOF
+                ${lib.pipe v [
+                  (lib.mapAttrsToList (n': v': "${n'} ${v'}"))
+                  (lib.concatStringsSep "\n")
+                ]}
+                EOF
+                ${lib.getExe' cfg.package "postmap"} -c ${cfg.stateDirectory}/conf "$_map"
+              ''
+            ))
+            (lib.concatStringsSep "\n")
+          ]}
+
+         ${cfg.package}/bin/postfix -c ${cfg.stateDirectory}/conf set-permissions
+          exec ${cfg.package}/libexec/postfix/master -c ${cfg.stateDirectory}/conf
         '';
         enabled = true;
       };

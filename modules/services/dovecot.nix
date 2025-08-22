@@ -93,40 +93,18 @@ in
                   package
                   bool
                 ]))
-                (attrsOf self)
+                (attrsOf (self // { description = "Dovecot config type"; }))
               ])
             );
           in
-          self // { description = "loop breaker"; };
+          self;
         description = "Dovecot configuration entries in Nix format.";
         default = { };
-        apply = x: pkgs.writeText "dovecot.conf" (nglib.generators.toDovecot x);
       };
 
-      extConfig = lib.mkOption {
-        type =
-          with lib.types;
-          let
-            self = attrsOf (
-              nullOr (oneOf [
-                str
-                int
-                package
-                bool
-                (listOf (oneOf [
-                  str
-                  int
-                  package
-                  bool
-                ]))
-                (attrsOf self)
-              ])
-            );
-          in
-          self // { description = "loop breaker"; };
-        description = "Extra config files to generate, if you pass in a config attrset, you can access the generated file via the `config.services.dovecot.extConfig.<name>` attribute.";
-        default = { };
-        apply = x: lib.mapAttrs (n: v: pkgs.writeText n (nglib.generators.toDovecot v)) x;
+      configFile = lib.mkOption {
+        type = lib.types.path;
+        description = "Dovecot config file.";
       };
     };
   };
@@ -154,36 +132,11 @@ in
     environment.systemPackages = [ cfg.package ];
 
     services.dovecot = {
+      configFile = lib.mkDefault (pkgs.writeText "dovecot.conf" (nglib.generators.toDovecot cfg.config));
       config = {
         default_login_user = lib.mkIf (cfg.loginUser != null) cfg.loginUser;
         default_internal_user = lib.mkIf (cfg.user != null) cfg.user;
         default_internal_group = lib.mkIf (cfg.group != null) cfg.group;
-
-        auth_mechanisms = lib.mkDefault "plain";
-
-        namespace."inbox" = {
-          inbox = true;
-
-          mailbox."Drafts" = {
-            special_use = "\\Drafts";
-          };
-
-          mailbox."Junk" = {
-            special_use = "\\Junk";
-          };
-
-          mailbox."Trash" = {
-            special_use = "\\Trash";
-          };
-
-          mailbox."Sent" = {
-            special_use = "\\Sent";
-          };
-
-          mailbox."Sent Messages" = {
-            special_use = "\\Sent";
-          };
-        };
       };
     };
 
@@ -195,7 +148,7 @@ in
       };
 
       ensureSomething.link."config" = lib.mkDefault {
-        src = cfg.config;
+        src = cfg.configFile;
         dst = "/etc/dovecot/dovecot.conf";
         persistent = false;
       };
