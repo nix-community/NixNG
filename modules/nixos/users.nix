@@ -116,10 +116,12 @@
       ]
       (
         def:
-        lib.removeAttrs (lib.traceValSeq def) [
-          "name"
-          "isSystemUser"
-        ]
+        lib.mapAttrs (_: user:
+          lib.removeAttrs user [
+            "name"
+            "isSystemUser"
+          ]
+        ) def
       )
     )
     (nglib.mkOptionsEqual
