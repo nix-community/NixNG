@@ -14,7 +14,19 @@
       [
         "nixos"
         "nix"
-        "config"
+        "settings"
+      ]
+      lib.id
+    )
+    (nglib.mkOptionsEqual
+      [
+        "nix"
+        "package"
+      ]
+      [
+        "nixos"
+        "nix"
+        "package"
       ]
       lib.id
     )
