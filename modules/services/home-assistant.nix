@@ -17,33 +17,27 @@ let
   cfg = config.services.home-assistant;
   format = pkgs.formats.yaml { };
 
-  configDir = pkgs.runCommand "home-assistant-config-dir" { } ''
-    mkdir -p $out
-    ${pkgs.remarshal}/bin/json2yaml -i ${pkgs.writeText "configuration.json" (builtins.toJSON cfg.config)} -o $out/configuration.yaml
+  configuration = pkgs.runCommand "home-assistant-config-dir" { } ''
+    ${pkgs.remarshal}/bin/json2yaml -i ${pkgs.writeText "configuration.json" (builtins.toJSON cfg.config)} -o $out
     # Hack to support custom yaml objects,
     # i.e. secrets: https://www.home-assistant.io/docs/configuration/secrets/
-    sed -i -e "s/'\!\([a-z_]\+\) \(.*\)'/\!\1 \2/;s/^\!\!/\!/;" $out/configuration.yaml
+    # transforms `test: '!secret rest_password'` into `test: !secret rest_password`
+    sed -i -e "s/'\!\([a-z_]\+\) \(.*\)'/\!\1 \2/" $out
   '';
 in
 {
   options.services.home-assistant = {
     enable = lib.mkEnableOption "Enable Home Assistant";
 
-    package = lib.mkOption {
-      type = lib.types.package;
-      default = pkgs.home-assistant;
-      description = ''
-        Which home-assistant package to use. Adding components is a shorthand for adding python packages.
-      '';
-    };
+    package = lib.mkPackageOption pkgs "home-assistant" { };
 
     customComponents = lib.mkOption {
-      type =
-        with lib.types;
-        attrsOf (oneOf [
-          package
-          str
-        ]);
+      type = lib.types.attrsOf (
+        lib.types.oneOf [
+          lib.types.package
+          lib.types.str
+        ]
+      );
       default = { };
       description = ''
         Extra components to be installed into <literal>/run/home-assistant/custom_components</custom_components>.
@@ -74,31 +68,42 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    services.home-assistant.config = nglib.mkDefaultRec { http.server_port = "8123"; };
+    services.home-assistant.config = {
+      http.server_port = lib.mkDefault "8123";
+    };
 
     init.services.home-assistant = {
-      script = pkgs.writeShellScript "home-assistant-run" ''
-        mkdir -p /var/home-assistant/
-        cp '${configDir}'/* /var/home-assistant/
-        ${lib.optionalString cfg.envsubst ''
-          rm /var/home-assistant/configuration.yaml
-          ${pkgs.envsubst}/bin/envsubst \
-            < '${configDir}/configuration.yaml' \
-            > /var/home-assistant/configuration.yaml
-        ''}
+      tmpfiles = with nglib.nottmpfiles.dsl; [
+        (d "/var/home-assistant/" "0700" "home-assistant" "home-assistant" _ _)
+      ];
 
-        ${if cfg.customComponents != { } then "mkdir -p /var/home-assistant/custom_components" else ""}
+      user = cfg.user;
+      group = cfg.group;
+
+      environment.PYTHONPATH = cfg.package.pythonPath or "";
+
+      script = pkgs.writeShellScript "home-assistant-run" ''
+        ${
+          if !cfg.envsubst then
+            ''
+              install --mode=0755 --user=${cfg.user} --group=${cfg.group} ${configuration} /var/home-assistant/configuration.yaml
+            ''
+          else
+            ''
+              ${pkgs.envsubst}/bin/envsubst \
+                < ${configuration} \
+                > /var/home-assistant/configuration.yaml
+            ''
+        }
+
+        ${lib.optionalString (cfg.customComponents != { }) "mkdir -p /var/home-assistant/custom_components"}
         ${lib.concatStringsSep "\n" (
           lib.mapAttrsToList (
             n: v: "ln -sf ${v} /var/home-assistant/custom_components/${n}"
           ) cfg.customComponents
         )}
 
-        chown -R ${cfg.user}:${cfg.group} /var/home-assistant/
-        chmod -R u=rwX,g=r-X,o= /var/home-assistant/
-
-        export PYTHONPATH=${cfg.package.pythonPath or ""}
-        chpst -u ${cfg.user}:${cfg.group} ${cfg.package}/bin/hass --config /var/home-assistant
+        exec ${cfg.package}/bin/hass --config /var/home-assistant
       '';
       enabled = true;
     };
