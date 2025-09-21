@@ -15,6 +15,83 @@
 }:
 let
   cfg = config.environment;
+
+  etcEntry =
+    { name, ... }:
+    {
+      options = {
+        enable = lib.mkOption {
+          type = lib.types.bool;
+          description = ''
+            Whether this /etc file should be generated. This option allows specific /etc files to be disabled.
+          '';
+          default = true;
+        };
+
+        source = lib.mkOption {
+          type = lib.types.path;
+          description = ''
+            Path of the source file.
+          '';
+        };
+
+        target = lib.mkOption {
+          type = lib.types.str;
+          description = ''
+            Name of symlink (relative to `/etc`). Defaults to the attribute name.
+          '';
+          default = name;
+        };
+
+        mode = lib.mkOption {
+          type = lib.types.str;
+          description = ''
+            If set to something else than symlink, the file is copied instead of symlinked, with the given file mode.
+          '';
+          default = "symlink";
+        };
+
+        user = lib.mkOption {
+          type = lib.types.str;
+          description = ''
+            User name of file owner.
+
+            Only takes effect when the file is copied (that is, the mode is not symlink).
+
+            When services.userborn.enable, this option has no effect. You have to assign a uid instead. Otherwise this option takes precedence over uid.
+          '';
+          default = "+0";
+        };
+
+        group = lib.mkOption {
+          type = lib.types.str;
+          description = ''
+            Group name of file owner.
+
+            Only takes effect when the file is copied (that is, the mode is not symlink).
+
+            When services.userborn.enable, this option has no effect. You have to assign a gid instead. Otherwise this option takes precedence over gid.
+          '';
+          default = "+0";
+        };
+
+        uid = lib.mkOption {
+          type = lib.types.str;
+          description = ''
+            UID of created file. Only takes effect when the file is copied (that is, the mode is not 'symlink').
+          '';
+          default = "0";
+        };
+
+        gid = lib.mkOption {
+          type = lib.types.str;
+          description = ''
+            GID of created file. Only takes effect when the file is copied (that is, the mode is not ‘symlink’).
+          '';
+          default = "0";
+        };
+      };
+    };
 in
 {
   options.environment = {
@@ -64,6 +141,11 @@ in
       default = [ ];
       type = with lib.types; listOf package;
     };
+
+    etc = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.submodule etcEntry);
+      default = { };
+    };
   };
 
   config = {
@@ -105,5 +187,22 @@ in
         mkdir -pm 0555 /var/empty
       ''
     );
+
+    init.services.environment-etc = {
+      enabled = true;
+      execStart =
+        let
+          start = pkgs.writers.writeHaskell "environment-etc-start" {
+            libraries = with pkgs.haskellPackages; [
+              unix
+              directory
+              filepath
+              aeson
+              unordered-containers
+            ];
+          } (builtins.readFile ./environment.hs);
+        in
+        "${start} ${pkgs.writers.writeJSON "environment-etc.json" cfg.etc}";
+    };
   };
 }
