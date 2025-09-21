@@ -97,5 +97,15 @@ writeShellScript "${n}-run" ''
   ${lib.optionalString (s.environment != { })
     "export ${lib.concatStringsSep " " (lib.mapAttrsToList (n: v: "${n}=${v}") s.environment)}"
   }
-  exec ${nglib.maybeChangeUserAndGroup s.user s.group s.supplementaryGroups s.execStart}
+  ${
+    {
+      "process" = "exec ${
+        nglib.maybeChangeUserAndGroup s.user s.group s.supplementaryGroups s.execStart
+      }";
+      "scripted" = "${
+        nglib.maybeChangeUserAndGroup s.user s.group s.supplementaryGroups s.execStart
+      } ; sleep infinity";
+    }
+    .${s.type}
+  }
 ''
