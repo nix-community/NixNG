@@ -56,7 +56,7 @@ let
         }"
 
         ${pkgs.systemdTmpfilesD}/bin/systemd-tmpfiles --create ${rulesFile}
-        ${nglib.maybeChangeUserAndGroup service.user service.group (
+        ${nglib.maybeChangeUserAndGroup service.user service.group service.supplementaryGroups (
           generateUserCommandsScript name service
         )}
         ${pkgs.systemdTmpfilesD}/bin/systemd-tmpfiles --remove ${rulesFile}
@@ -168,7 +168,10 @@ in
         '';
       };
 
-      environment.systemPackages = [ pkgs.dinit ];
+      environment.systemPackages = [
+        pkgs.dinit
+        pkgs.setgroups
+      ];
     })
   ];
 }

@@ -347,6 +347,14 @@ in
               type = lib.types.nullOr lib.types.str;
               default = null;
             };
+
+            supplementaryGroups = lib.mkOption {
+              description = ''
+                Supplementary groups for this service.
+              '';
+              type = lib.types.listOf lib.types.str;
+              default = [ ];
+            };
           };
         }
       );

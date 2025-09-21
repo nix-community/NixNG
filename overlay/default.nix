@@ -41,6 +41,8 @@ in
     writeSubstitutedShellScriptBin
     ;
 
+  setgroups = prev.writeCBin "setgroups" (builtins.readFile ./setgroups.c);
+
   # inherit
   #   (nixpkgsTrivialBuilders)
   #   writeShellScript

@@ -208,12 +208,12 @@ in
             message = "For user ${n} either `hashedPassword`, `hashedPasswordFile`, none must be non-null, but not both.";
           }
           {
-            assertion = cfg.groups ? "${v.group}";
+            assertion = lib.hasAttr v.group cfg.groups;
             message = "For user ${n} the group ${v.group} does not exist!";
           }
         ]
         ++ (map (group: {
-          assertion = cfg.groups ? v.group;
+          assertion = lib.hasAttr v.group cfg.groups;
           message = "For user ${n} the extra group ${group} does not exist!";
         }) v.extraGroups)
       ) cfg.users
