@@ -43,7 +43,7 @@ let
       rulesFile = pkgs.writeText "${name}.tmpfiles" (nglib.nottmpfiles.generate rules);
     in
     pkgs.writeText "${name}-service" ''
-      type = process
+      type = ${service.type}
       pid-file = /service/${name}/pid
 
       command = ${pkgs.writeShellScript "${name}-start.sh" ''
