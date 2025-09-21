@@ -260,6 +260,18 @@ in
             (lib.mkRenamedOptionModule [ "pwd" ] [ "workingDirectory" ])
           ];
           options = {
+            type = lib.mkOption {
+              description = ''
+                The type of service, the types are modelled after the service types
+                described in dinit-service(5).
+              '';
+              default = "process";
+              type = lib.types.enum [
+                "process"
+                "scripted"
+              ];
+            };
+
             dependencies = lib.mkOption {
               description = "Service dependencies";
               type = with lib.types; listOf str;
