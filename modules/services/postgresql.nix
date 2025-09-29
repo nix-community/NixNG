@@ -105,7 +105,10 @@ in
 
       initdbArgs = lib.mkOption {
         type = with lib.types; listOf str;
-        default = [ ];
+        default = [
+          "-E"
+          "UTF8"
+        ];
         example = [
           "--data-checksums"
           "--allow-group-access"

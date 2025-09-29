@@ -50,4 +50,6 @@
   ./services/dnsmasq.nix
   ./services/attic.nix
   ./services/ntfy-sh.nix
+
+  ./nixos
 ]
