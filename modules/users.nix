@@ -33,9 +33,16 @@ let
   cfg = config.users;
 
   userOpts =
-    { config, ... }:
+    { name, config, ... }:
     {
       options = {
+        name = mkOption {
+          type = types.str;
+          description = ''
+            The name of the user account. If undefined, the name of the
+            attribute set will be used.
+          '';
+        };
         uid = mkOption {
           description = "The account UID.";
           type = types.int;
@@ -121,12 +128,17 @@ let
         };
       };
 
-      config = mkIf config.isNormalUser {
-        group = mkDefault "users";
-        createHome = mkDefault true;
-        home = mkDefault "/home/${config.name}";
-        useDefaultShell = mkDefault true;
-      };
+      config = mkMerge [
+        {
+          name = mkDefault name;
+        }
+        (mkIf config.isNormalUser {
+          group = mkDefault "users";
+          createHome = mkDefault true;
+          home = mkDefault "/home/${config.name}";
+          useDefaultShell = mkDefault true;
+        })
+      ];
     };
 in
 {
