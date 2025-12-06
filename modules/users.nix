@@ -33,9 +33,17 @@ let
   cfg = config.users;
 
   userOpts =
-    { config, ... }:
+    { name, config, ... }:
     {
       options = {
+        name = mkOption {
+          type = types.str;
+          description = ''
+            The name of the user account. If undefined, the name of the
+            attribute set will be used.
+          '';
+          default = name;
+        };
         uid = mkOption {
           description = "The account UID.";
           type = types.int;
