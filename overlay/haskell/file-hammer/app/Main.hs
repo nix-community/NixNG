@@ -283,7 +283,7 @@ cli (Cli{root, command = Cli.CommandPlan{configuration = desired'}}) = do
     Right desired -> do
       let diff = ediff desired actual
       (_, actions) <- runWriterT $ modifyDirectory root (desired, actual)
-      forM_ actions (T.putStrLn . commandToText . actionToCommand)
+      forM_ actions (T.putStrLn . commandToText True . actionToCommand)
 
 main :: IO ()
 main = cli =<< parseCli

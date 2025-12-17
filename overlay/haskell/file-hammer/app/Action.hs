@@ -1,15 +1,21 @@
 {-# LANGUAGE CApiFFI #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module Action where
 
 import Config (Content (..))
 import Control.Exception (bracket)
+import Control.Monad (when)
 import Data.ByteString qualified as BS
 import Data.Char (intToDigit)
+import Data.Monoid.Extra (mwhen)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
+import Foreign.C (CChar)
+import Foreign.C.Error (Errno (..), eXDEV, getErrno)
+import Foreign.C.String (withCString)
 import Foreign.C.Types (CInt (..), CUInt (..))
 import Foreign.Ptr (Ptr, nullPtr)
 import Numeric.Extra (showIntAtBase)
@@ -123,17 +129,24 @@ actionToCommand Action'CreateDirectory{dirPath} =
     , stdin = Nothing
     }
 
-commandToText :: Command -> Text
-commandToText Command{cmdline, stdin} =
-  "> " <> T.intercalate " " cmdline <> case stdin of
-    Just ContentAny -> ""
-    Just (ContentText text) -> " <<\"EOF\"\n" <> text <> "EOF"
-    Just (ContentBinary _) -> T.unlines [" <<\"EOF\"", "<<binary>>", "EOF"]
-    Just (ContentFile _) -> ""
-    Nothing -> ""
+commandToText :: Bool -> Command -> Text
+commandToText verbose Command{cmdline, stdin} =
+  "> "
+    <> T.intercalate " " cmdline
+    <> ( mwhen verbose $ case stdin of
+           Just ContentAny -> ""
+           Just (ContentText text) -> " <<\"EOF\"\n" <> text <> "EOF"
+           Just (ContentBinary _) -> T.unlines [" <<\"EOF\"", "<<binary>>", "EOF"]
+           Just (ContentFile _) -> ""
+           Nothing -> ""
+       )
 
 foreign import capi "unistd.h copy_file_range"
-  copy_file_range :: Fd -> Ptr COff -> Fd -> Ptr COff -> COff -> CUInt -> IO ()
+  copy_file_range :: Fd -> Ptr COff -> Fd -> Ptr COff -> COff -> CUInt -> IO CInt
+foreign import capi "sys/sendfile.h sendfile"
+  sendfile :: Fd -> Fd -> Ptr COff -> COff -> IO CInt
+foreign import capi "errno.h perror"
+  perror :: Ptr CChar -> IO ()
 
 writeContent :: Fd -> Content -> IO ()
 writeContent _fd ContentAny = pure ()
@@ -141,37 +154,50 @@ writeContent fd (ContentBinary bs) = fdToHandle fd >>= \handle -> BS.hPut handle
 writeContent fd (ContentText text) = fdToHandle fd >>= \handle -> T.hPutStr handle text >> hFlush handle
 writeContent fd (ContentFile file) = bracket (openFd (toFilePath file) ReadOnly defaultFileFlags) closeFd \sourceFd -> do
   status <- getFdStatus sourceFd
-  copy_file_range sourceFd nullPtr fd nullPtr (fileSize status) 0
+  err <- copy_file_range sourceFd nullPtr fd nullPtr (fileSize status) 0
+  when (err < 0) $
+    getErrno >>= \case
+      x | x == eXDEV -> do
+        err' <- sendfile fd sourceFd nullPtr (fileSize status)
+        when (err' < 0) $ withCString "send file" \msg -> perror msg
+      _ -> withCString "copy_file_range failed with" \msg -> perror msg
+
+logAction :: Action -> IO ()
+logAction = T.putStrLn . commandToText False . actionToCommand
 
 runAction :: Action -> IO ()
-runAction Action'Chown{user, group, path = SomePath (toFilePath -> path)} = bracket (openFd path WriteOnly defaultFileFlags) closeFd \fd -> do
-  userEntry <- getUserEntryForName (T.unpack user)
-  groupEntry <- getGroupEntryForName (T.unpack group)
+runAction action@Action'Chown{user, group, path = SomePath (toFilePath -> path)} =
+  logAction action >> bracket (openFd path WriteOnly defaultFileFlags) closeFd \fd -> do
+    userEntry <- getUserEntryForName (T.unpack user)
+    groupEntry <- getGroupEntryForName (T.unpack group)
 
-  setFdOwnerAndGroup fd (userID userEntry) (groupID groupEntry)
-runAction Action'Chmod{mode, path = SomePath (toFilePath -> path)} = bracket (openFd path WriteOnly defaultFileFlags) closeFd \fd -> do
-  setFdMode fd mode
-runAction Action'DeleteFile{filePath} = removeLink (toFilePath filePath)
-runAction Action'CreateFile{filePath, content, user, group, mode} = bracket (openFd (toFilePath filePath) WriteOnly fileFlags) closeFd \fd -> do
-  userEntry <- getUserEntryForName (T.unpack user)
-  groupEntry <- getGroupEntryForName (T.unpack group)
+    setFdOwnerAndGroup fd (userID userEntry) (groupID groupEntry)
+runAction action@Action'Chmod{mode, path = SomePath (toFilePath -> path)} =
+  logAction action >> bracket (openFd path WriteOnly defaultFileFlags) closeFd \fd -> do
+    setFdMode fd mode
+runAction action@Action'DeleteFile{filePath} =
+  logAction action >> removeLink (toFilePath filePath)
+runAction action@Action'CreateFile{filePath, content, user, group, mode} =
+  logAction action >> bracket (openFd (toFilePath filePath) WriteOnly fileFlags) closeFd \fd -> do
+    userEntry <- getUserEntryForName (T.unpack user)
+    groupEntry <- getGroupEntryForName (T.unpack group)
 
-  writeContent fd content
+    writeContent fd content
 
-  setFdOwnerAndGroup fd (userID userEntry) (groupID groupEntry)
+    setFdOwnerAndGroup fd (userID userEntry) (groupID groupEntry)
  where
   fileFlags = defaultFileFlags{creat = Just mode, trunc = True}
-runAction Action'UpdateFile{filePath, content} = bracket (openFd (toFilePath filePath) WriteOnly fileFlags) closeFd \fd -> do
-  putStrLn "update file"
-  print content
-  writeContent fd content
+runAction action@Action'UpdateFile{filePath, content} =
+  logAction action >> bracket (openFd (toFilePath filePath) WriteOnly fileFlags) closeFd \fd -> writeContent fd content
  where
   fileFlags = defaultFileFlags{trunc = True}
-runAction Action'DeleteDirectory{dirPath} = removeDirectory (toFilePath dirPath)
-runAction Action'CreateDirectory{dirPath, user, group, mode} = bracket (openFd (toFilePath dirPath) WriteOnly fileFlags) closeFd \fd -> do
-  userEntry <- getUserEntryForName (T.unpack user)
-  groupEntry <- getGroupEntryForName (T.unpack group)
+runAction action@Action'DeleteDirectory{dirPath} =
+  logAction action >> removeDirectory (toFilePath dirPath)
+runAction action@Action'CreateDirectory{dirPath, user, group, mode} =
+  logAction action >> bracket (openFd (toFilePath dirPath) WriteOnly fileFlags) closeFd \fd -> do
+    userEntry <- getUserEntryForName (T.unpack user)
+    groupEntry <- getGroupEntryForName (T.unpack group)
 
-  setFdOwnerAndGroup fd (userID userEntry) (groupID groupEntry)
+    setFdOwnerAndGroup fd (userID userEntry) (groupID groupEntry)
  where
   fileFlags = defaultFileFlags{creat = Just mode, directory = True}
