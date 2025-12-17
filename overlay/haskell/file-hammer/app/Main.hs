@@ -82,6 +82,12 @@ getHashMaps root paths =
               dirNode
       | otherwise -> liftIO $ putStrLn "not anything?"
 
+readContent :: Path Abs File -> IO Content
+readContent path =
+  BS.readFile (fromAbsFile path) <&> \bs -> case T.decodeUtf8' bs of
+    Left unicodeException -> ContentBinary bs
+    Right text -> ContentText text
+
 readFileNode :: Path Abs File -> IO FileNode
 readFileNode path = do
   status <- getFileStatus (fromAbsFile path)
@@ -89,10 +95,7 @@ readFileNode path = do
   userEntry <- getUserEntryForID (fileOwner status)
   groupEntry <- getGroupEntryForID (fileGroup status)
 
-  fileContent <-
-    BS.readFile (fromAbsFile path) <&> \bs -> case T.decodeUtf8' bs of
-      Left unicodeException -> ContentBinary bs
-      Right text -> ContentText text
+  fileContent <- readContent path
 
   pure $
     FileNode
@@ -132,8 +135,15 @@ modifyFile root name (desired, actual) = do
     tell [Action'Chown{path = SomePath $ root </> name, user = desired ^. owner . user, group = desired ^. owner . group}]
   when (desired ^. mode /= actual ^. mode) $
     tell [Action'Chmod{path = SomePath $ root </> name, mode = desired ^. mode}]
-  when (desired ^. content /= actual ^. content) $
-    tell [Action'UpdateFile{filePath = root </> name, content = desired ^. content}]
+
+  case (desired ^. content, actual ^. content) of
+    (ContentFile path, actualContent) -> do
+      desiredContent <- io $ readContent path
+      when (desiredContent /= actualContent) $
+        tell [Action'UpdateFile{filePath = root </> name, content = desired ^. content}]
+    _ ->
+      when (desired ^. content /= actual ^. content) $
+        tell [Action'UpdateFile{filePath = root </> name, content = desired ^. content}]
 
 createFile :: Path Abs Dir -> Path Rel File -> FileNode -> WriterT [Action] IO ()
 createFile root name desired =
