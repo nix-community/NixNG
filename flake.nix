@@ -79,6 +79,7 @@
             nativeBuildInputs = with pkgs; [
               ghc
               cabal-install
+              cabal2nix
               haskell-language-server
               haskellPackages.implicit-hie
             ];
