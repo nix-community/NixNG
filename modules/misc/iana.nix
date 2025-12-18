@@ -32,12 +32,13 @@ in
   };
 
   config = {
-    system.activation."iana" = nglib.dag.dagEntryAnywhere ''
-      export PATH=${pkgs.busybox}/bin
-
-      mkdir -p /etc/
-      ln -sf ${cfg.package}/etc/services /etc/services
-      ln -sf ${cfg.package}/etc/protocols /etc/protocols
-    '';
+    environment.etc."services" = {
+      mode = "symlink";
+      source = "${cfg.package}/etc/services";
+    };
+    environment.etc."protocols" = {
+      mode = "symlink";
+      source = "${cfg.package}/etc/protocols";
+    };
   };
 }
