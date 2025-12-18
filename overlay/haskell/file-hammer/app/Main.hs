@@ -29,7 +29,7 @@ import Control.Monad (forM_, when)
 import Control.Monad.Extra (whenM)
 import Control.Monad.IO.Class
 import Control.Monad.Logger (runStderrLoggingT)
-import Control.Monad.Logger.CallStack (LoggingT)
+import Control.Monad.Logger.CallStack (LoggingT, MonadLoggerIO, logDebugN)
 import Control.Monad.State.Strict (StateT, execStateT)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Writer.Strict (WriterT, runWriterT, tell)
@@ -40,7 +40,7 @@ import Data.ByteString qualified as BS
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HM
 import Data.Hashable (Hashable)
-import Data.List (intersperse, isPrefixOf)
+import Data.List (intersperse, isPrefixOf, (\\))
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Text.IO qualified as T
@@ -71,56 +71,62 @@ getHashMaps
        GetHashMaps
        AppM
        ()
-getHashMaps exclusions root paths =
+getHashMaps exclusions root paths = do
   let
     filteredPaths = filter (\name -> not $ any (`match` (toFilePath root <> name)) exclusions) paths
-   in
-    forM_ filteredPaths \((toFilePath root <>) -> ent) -> do
-      status <- io $ getSymbolicLinkStatus ent
+    excludedNames = paths \\ filteredPaths
 
-      if
-        | isRegularFile status -> do
-            (path, absPath) <-
-              parseSomeFile ent <&> \case
-                Abs abs' -> (filename abs', abs')
-                Rel rel -> (rel, root </> rel)
+  logDebugN ("excluded names: " <> T.show excludedNames)
 
-            fileNode <- lift $ readFileNode absPath
+  forM_ filteredPaths \((toFilePath root <>) -> ent) -> do
+    status <- io $ getSymbolicLinkStatus ent
 
-            _1
-              %= HM.insert
-                path
-                fileNode
-        | isSymbolicLink status -> do
-            path <-
-              parseSomeFile ent <&> \case
-                Abs abs' -> filename abs'
-                Rel rel -> rel
-            destination <- io $ readSymbolicLink ent
-            _3 %= HM.insert path LinkNode{destination = T.pack destination}
-        | isDirectory status -> do
-            (path, absPath) <-
-              parseSomeDir ent <&> \case
-                Abs abs' -> (dirname abs', abs')
-                Rel rel -> (rel, root </> rel)
+    if
+      | isRegularFile status -> do
+          (path, absPath) <-
+            parseSomeFile ent <&> \case
+              Abs abs' -> (filename abs', abs')
+              Rel rel -> (rel, root </> rel)
 
-            dirNode <- lift $ readDir exclusions absPath
+          fileNode <- lift $ readFileNode absPath
 
-            _2
-              %= HM.insert
-                path
-                dirNode
-        | otherwise -> io . putStrLn $ ent <> "is of unknown type"
+          _1
+            %= HM.insert
+              path
+              fileNode
+      | isSymbolicLink status -> do
+          path <-
+            parseSomeFile ent <&> \case
+              Abs abs' -> filename abs'
+              Rel rel -> rel
+          destination <- io $ readSymbolicLink ent
+          _3 %= HM.insert path LinkNode{destination = T.pack destination}
+      | isDirectory status -> do
+          (path, absPath) <-
+            parseSomeDir ent <&> \case
+              Abs abs' -> (dirname abs', abs')
+              Rel rel -> (rel, root </> rel)
+
+          dirNode <- lift $ readDir exclusions absPath
+
+          _2
+            %= HM.insert
+              path
+              dirNode
+      | otherwise -> io . putStrLn $ ent <> "is of unknown type"
 
 readContent :: Path Abs File -> AppM Content
 readContent path =
-  io $
-    BS.readFile (fromAbsFile path) <&> \bs -> case T.decodeUtf8' bs of
-      Left unicodeException -> ContentBinary bs
-      Right text -> ContentText text
+  io (BS.readFile (fromAbsFile path)) >>= \bs -> case T.decodeUtf8' bs of
+    Left _unicodeException -> do
+      logDebugN ("content of " <> T.show path <> " looks binary")
+      pure $ ContentBinary bs
+    Right text -> pure $ ContentText text
 
 readFileNode :: Path Abs File -> AppM FileNode
 readFileNode path = do
+  logDebugN ("scraping file " <> T.show path)
+
   status <- io $ getFileStatus (fromAbsFile path)
 
   userEntry <- io $ getUserEntryForID (fileOwner status)
@@ -144,8 +150,11 @@ readDir exclusions path = do
   let excludesAll = any (\(decompile -> pat) -> toFilePath path `isPrefixOf` pat && toFilePath path <> "*" == pat) exclusions
   (files, directories, links) <-
     if excludesAll
-      then pure (HM.empty, HM.empty, HM.empty)
-      else
+      then do
+        logDebugN ("not recursing into directory " <> T.show path <> " due to full exclusion")
+        pure (HM.empty, HM.empty, HM.empty)
+      else do
+        logDebugN ("recursing into directory " <> T.show path)
         io (listDirectory (fromAbsDir path)) >>= (`execStateT` (HM.empty, HM.empty, HM.empty)) . getHashMaps exclusions path
 
   status <- io $ getFileStatus (fromAbsDir path)
@@ -238,6 +247,7 @@ deleteLink path name _actual = tell [Action'DeleteLink{source = path </> name}]
 hashmapCompare
   :: ( Eq v
      , MonadIO m
+     , MonadLoggerIO m
      , Show v
      )
   => [Pattern]
@@ -252,9 +262,13 @@ hashmapCompare exclusions first second create modify delete = do
     first' = (`HM.filterWithKey` first) \name _ -> excludeByName exclusions name
     second' = (`HM.filterWithKey` second) \name _ -> excludeByName exclusions name
 
+    excludedNames = (first `HM.difference` first') `HM.union` (second `HM.difference` second')
+
     deleted = first' `HM.difference` second'
     created = second' `HM.difference` first'
     updated = HM.intersectionWith maybeNotEqual second' first' & HM.mapMaybe id
+
+  logDebugN ("excluded names: " <> T.show excludedNames)
 
   forM_ (HM.toList created) . uncurry $ create
   forM_ (HM.toList updated) . uncurry $ modify
@@ -294,50 +308,6 @@ modifyDirectory path (desired, actual) = do
     (createLink path)
     (modifyLink path)
     (deleteLink path)
-
--- deleteFile :: Path Abs File -> FileNode -> WriterT [Action] AppM ()
--- deleteFile (toFilePath -> path) _ = io $ Unix.removeLink path
-
--- writeContent :: Content -> Fd -> AppM ()
--- writeContent ContentAny _ = pure ()
--- writeContent (ContentBinary bs) fd = io $ Unix.fdToHandle fd >>= (`BS.hPut` bs)
--- writeContent (ContentText text) fd = io $ Unix.fdToHandle fd >>= (`T.hPutStr` text)
-
--- updateFile :: Path Abs File -> (FileNode, FileNode) -> WriterT [Action] AppM ()
--- updateFile _ (FileNode{content = ContentAny}, _) = pure ()
--- updateFile (toFilePath -> path) (desired, actual) =
---   void $
---     generalBracket
---       (io $ Unix.openFd path Unix.WriteOnly openFlags)
---       ( \fd exitCase ->
---           io $
---             Unix.closeFd fd <* case exitCase of
---               ExitCaseException _ -> writeContent (actual ^. content) fd
---               ExitCaseAbort -> writeContent (actual ^. content) fd
---               ExitCaseSuccess _ -> pure ()
---       )
---       (io . writeContent (desired ^. content))
---  where
---   openFlags = Unix.defaultFileFlags{Unix.trunc = True, Unix.creat = Just $ desired ^. mode}
-
--- createFile :: Path Abs File -> FileNode -> WriterT [Action] AppM ()
--- createFile (toFilePath -> path) file' = do
---   void $
---     generalBracket
---       (io $ Unix.createFile path (file' ^. mode))
---       ( \fd exitCase ->
---           io $
---             Unix.closeFd fd <* case exitCase of
---               ExitCaseException _ -> Unix.removeLink path
---               ExitCaseAbort -> Unix.removeLink path
---               ExitCaseSuccess _ -> Unix.closeFd fd
---       )
---       ( \fd -> do
---           case file' ^. content of
---             ContentAny -> pure ()
---             ContentText text -> io $ Unix.fdToHandle fd >>= (`T.hPutStr` text)
---             ContentBinary bytestring -> io $ Unix.fdToHandle fd >>= (`BS.hPut` bytestring)
---       )
 
 io :: (MonadIO m) => IO a -> m a
 io = liftIO
