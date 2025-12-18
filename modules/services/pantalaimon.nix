@@ -54,7 +54,7 @@ in
         with lib.types;
         attrsOf (
           attrsOf (oneOf [
-            string
+            str
             int
           ])
         );
