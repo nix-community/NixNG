@@ -29,7 +29,7 @@ import Control.Monad (forM_, when)
 import Control.Monad.Extra (whenM)
 import Control.Monad.IO.Class
 import Control.Monad.Logger (runStderrLoggingT)
-import Control.Monad.Logger.CallStack (LoggingT, MonadLoggerIO, logDebugN)
+import Control.Monad.Logger.CallStack (LoggingT, MonadLoggerIO, logDebugN, logWarnN)
 import Control.Monad.State.Strict (StateT, execStateT)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Writer.Strict (WriterT, runWriterT, tell)
@@ -40,7 +40,8 @@ import Data.ByteString qualified as BS
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HM
 import Data.Hashable (Hashable)
-import Data.List (intersperse, isPrefixOf, (\\))
+import Data.List (intersperse, isPrefixOf, nub, stripPrefix, (\\))
+import Data.Maybe (catMaybes)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Text.IO qualified as T
@@ -113,7 +114,7 @@ getHashMaps exclusions root paths = do
             %= HM.insert
               path
               dirNode
-      | otherwise -> io . putStrLn $ ent <> "is of unknown type"
+      | otherwise -> logWarnN $ T.show ent <> " is of an unknown type"
 
 readContent :: Path Abs File -> AppM Content
 readContent path =
@@ -147,7 +148,16 @@ readFileNode path = do
 
 readDir :: [Pattern] -> Path Abs Dir -> AppM DirectoryNode
 readDir exclusions path = do
-  let excludesAll = any (\(decompile -> pat) -> toFilePath path `isPrefixOf` pat && toFilePath path <> "*" == pat) exclusions
+  let
+    relativeExclusions =
+      map compile
+        . filter (not . ('/' `elem`))
+        . nub
+        . catMaybes
+        . map
+          (\(decompile -> pat) -> stripPrefix (toFilePath path) pat)
+        $ exclusions
+    excludesAll = any (\(decompile -> pat) -> toFilePath path `isPrefixOf` pat && toFilePath path <> "*" == pat) exclusions
   (files, directories, links) <-
     if excludesAll
       then do
@@ -164,7 +174,7 @@ readDir exclusions path = do
 
   pure
     DirectoryNode
-      { ignoreGlobs = []
+      { ignoreGlobs = relativeExclusions
       , owner =
           Owner
             { user = T.pack $ userName userEntry
