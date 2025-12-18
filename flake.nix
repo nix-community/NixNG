@@ -84,6 +84,7 @@
               haskellPackages.implicit-hie
               fourmolu
               jq
+              zlib
             ];
           };
         }

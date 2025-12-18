@@ -57,5 +57,6 @@ executable file-hammer
       hashable,
       pretty,
       Glob,
+      monad-logger,
     hs-source-dirs:   app
     default-language: GHC2021

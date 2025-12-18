@@ -12,6 +12,7 @@ import Data.ByteString (ByteString)
 import Data.Char (toLower)
 import Data.Function ((&))
 import Data.HashMap.Strict (HashMap)
+import Data.HashMap.Strict qualified as HM
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.TreeDiff (Expr (App), ToExpr (..))
@@ -64,6 +65,13 @@ data LinkNode
   { destination :: Text
   }
   deriving (A.FromJSON, A.ToJSON, Eq, Generic, Show, ToExpr)
+
+getGlobs :: DirectoryNode -> [Pattern]
+getGlobs directory' = getGlobs' "" directory'
+ where
+  getGlobs' path DirectoryNode{ignoreGlobs, directory} =
+    map (compile . (path <>) . decompile) ignoreGlobs
+      ++ concatMap (\(name, next) -> getGlobs' (path <> toFilePath name) next) (HM.toList directory)
 
 instance ToExpr (Path p t) where
   toExpr :: Path p t -> Expr

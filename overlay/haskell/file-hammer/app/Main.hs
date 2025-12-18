@@ -17,6 +17,7 @@ import Config (
   destination,
   directory,
   file,
+  getGlobs,
   group,
   ignoreGlobs,
   link,
@@ -27,7 +28,10 @@ import Config (
 import Control.Monad (forM_, when)
 import Control.Monad.Extra (whenM)
 import Control.Monad.IO.Class
+import Control.Monad.Logger (runStderrLoggingT)
+import Control.Monad.Logger.CallStack (LoggingT)
 import Control.Monad.State.Strict (StateT, execStateT)
+import Control.Monad.Trans.Class (lift)
 import Control.Monad.Writer.Strict (WriterT, runWriterT, tell)
 import Data.Aeson qualified as A
 import Data.Aeson.Text qualified as A
@@ -36,7 +40,7 @@ import Data.ByteString qualified as BS
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HM
 import Data.Hashable (Hashable)
-import Data.List (intersperse)
+import Data.List (intersperse, isPrefixOf)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Text.IO qualified as T
@@ -46,65 +50,81 @@ import Lens.Micro
 import Lens.Micro.Mtl
 import Path.Posix
 import System.Directory hiding (createDirectory, isSymbolicLink)
-import System.FilePath.Glob (Pattern, match)
+import System.FilePath.Glob (Pattern, compile, decompile, match)
 import System.Posix.Files hiding (createLink)
 import System.Posix.User
 import Text.PrettyPrint (render)
 
+type AppM = LoggingT IO
+
+type GetHashMaps =
+  ( HashMap (Path Rel File) FileNode
+  , HashMap (Path Rel Dir) DirectoryNode
+  , HashMap (Path Rel File) LinkNode
+  )
+
 getHashMaps
-  :: Path Abs Dir
+  :: [Pattern]
+  -> Path Abs Dir
   -> [FilePath]
-  -> StateT (HashMap (Path Rel File) FileNode, HashMap (Path Rel Dir) DirectoryNode, HashMap (Path Rel File) LinkNode) IO ()
-getHashMaps root paths =
-  forM_ paths \((toFilePath root <>) -> ent) -> do
-    status <- io $ getSymbolicLinkStatus ent
+  -> StateT
+       GetHashMaps
+       AppM
+       ()
+getHashMaps exclusions root paths =
+  let
+    filteredPaths = filter (\name -> not $ any (`match` (toFilePath root <> name)) exclusions) paths
+   in
+    forM_ filteredPaths \((toFilePath root <>) -> ent) -> do
+      status <- io $ getSymbolicLinkStatus ent
 
-    if
-      | isRegularFile status -> do
-          (path, absPath) <-
-            parseSomeFile ent <&> \case
-              Abs abs' -> (filename abs', abs')
-              Rel rel -> (rel, root </> rel)
+      if
+        | isRegularFile status -> do
+            (path, absPath) <-
+              parseSomeFile ent <&> \case
+                Abs abs' -> (filename abs', abs')
+                Rel rel -> (rel, root </> rel)
 
-          fileNode <- liftIO $ readFileNode absPath
+            fileNode <- lift $ readFileNode absPath
 
-          _1
-            %= HM.insert
-              path
-              fileNode
-      | isSymbolicLink status -> do
-          path <-
-            parseSomeFile ent <&> \case
-              Abs abs' -> filename abs'
-              Rel rel -> rel
-          destination <- io $ readSymbolicLink ent
-          _3 %= HM.insert path LinkNode{destination = T.pack destination}
-      | isDirectory status -> do
-          (path, absPath) <-
-            parseSomeDir ent <&> \case
-              Abs abs' -> (dirname abs', abs')
-              Rel rel -> (rel, root </> rel)
+            _1
+              %= HM.insert
+                path
+                fileNode
+        | isSymbolicLink status -> do
+            path <-
+              parseSomeFile ent <&> \case
+                Abs abs' -> filename abs'
+                Rel rel -> rel
+            destination <- io $ readSymbolicLink ent
+            _3 %= HM.insert path LinkNode{destination = T.pack destination}
+        | isDirectory status -> do
+            (path, absPath) <-
+              parseSomeDir ent <&> \case
+                Abs abs' -> (dirname abs', abs')
+                Rel rel -> (rel, root </> rel)
 
-          dirNode <- liftIO $ readDir absPath
+            dirNode <- lift $ readDir exclusions absPath
 
-          _2
-            %= HM.insert
-              path
-              dirNode
-      | otherwise -> liftIO $ putStrLn "not anything?"
+            _2
+              %= HM.insert
+                path
+                dirNode
+        | otherwise -> io . putStrLn $ ent <> "is of unknown type"
 
-readContent :: Path Abs File -> IO Content
+readContent :: Path Abs File -> AppM Content
 readContent path =
-  BS.readFile (fromAbsFile path) <&> \bs -> case T.decodeUtf8' bs of
-    Left unicodeException -> ContentBinary bs
-    Right text -> ContentText text
+  io $
+    BS.readFile (fromAbsFile path) <&> \bs -> case T.decodeUtf8' bs of
+      Left unicodeException -> ContentBinary bs
+      Right text -> ContentText text
 
-readFileNode :: Path Abs File -> IO FileNode
+readFileNode :: Path Abs File -> AppM FileNode
 readFileNode path = do
-  status <- getFileStatus (fromAbsFile path)
+  status <- io $ getFileStatus (fromAbsFile path)
 
-  userEntry <- getUserEntryForID (fileOwner status)
-  groupEntry <- getGroupEntryForID (fileGroup status)
+  userEntry <- io $ getUserEntryForID (fileOwner status)
+  groupEntry <- io $ getGroupEntryForID (fileGroup status)
 
   fileContent <- readContent path
 
@@ -119,14 +139,19 @@ readFileNode path = do
       , content = fileContent
       }
 
-readDir :: Path Abs Dir -> IO DirectoryNode
-readDir path = do
+readDir :: [Pattern] -> Path Abs Dir -> AppM DirectoryNode
+readDir exclusions path = do
+  let excludesAll = any (\(decompile -> pat) -> toFilePath path `isPrefixOf` pat && toFilePath path <> "*" == pat) exclusions
   (files, directories, links) <-
-    listDirectory (fromAbsDir path) >>= (`execStateT` (HM.empty, HM.empty, HM.empty)) . getHashMaps path
-  status <- getFileStatus (fromAbsDir path)
+    if excludesAll
+      then pure (HM.empty, HM.empty, HM.empty)
+      else
+        io (listDirectory (fromAbsDir path)) >>= (`execStateT` (HM.empty, HM.empty, HM.empty)) . getHashMaps exclusions path
 
-  userEntry <- getUserEntryForID (fileOwner status)
-  groupEntry <- getGroupEntryForID (fileGroup status)
+  status <- io $ getFileStatus (fromAbsDir path)
+
+  userEntry <- io $ getUserEntryForID (fileOwner status)
+  groupEntry <- io $ getGroupEntryForID (fileGroup status)
 
   pure
     DirectoryNode
@@ -142,7 +167,7 @@ readDir path = do
       , link = links
       }
 
-modifyFile :: Path Abs Dir -> Path Rel File -> (FileNode, FileNode) -> WriterT [Action] IO ()
+modifyFile :: Path Abs Dir -> Path Rel File -> (FileNode, FileNode) -> WriterT [Action] AppM ()
 modifyFile path name (desired, actual) = do
   when (desired ^. owner /= actual ^. owner) $
     tell [Action'Chown{path = SomePath $ path </> name, user = desired ^. owner . user, group = desired ^. owner . group}]
@@ -151,14 +176,14 @@ modifyFile path name (desired, actual) = do
 
   case (desired ^. content, actual ^. content) of
     (ContentFile contentPath, actualContent) -> do
-      desiredContent <- io $ readContent contentPath
+      desiredContent <- lift $ readContent contentPath
       when (desiredContent /= actualContent) $
         tell [Action'UpdateFile{filePath = path </> name, content = desired ^. content}]
     _ ->
       when (desired ^. content /= actual ^. content) $
         tell [Action'UpdateFile{filePath = path </> name, content = desired ^. content}]
 
-createFile :: Path Abs Dir -> Path Rel File -> FileNode -> WriterT [Action] IO ()
+createFile :: Path Abs Dir -> Path Rel File -> FileNode -> WriterT [Action] AppM ()
 createFile path name desired =
   tell
     [ Action'CreateFile
@@ -170,13 +195,20 @@ createFile path name desired =
         }
     ]
 
-deleteFile :: Path Abs Dir -> Path Rel File -> FileNode -> WriterT [Action] IO ()
+deleteFile :: Path Abs Dir -> Path Rel File -> FileNode -> WriterT [Action] AppM ()
 deleteFile root name _ =
   tell [Action'DeleteFile{filePath = root </> name}]
 
-createDirectory :: Path Abs Dir -> Path Rel Dir -> DirectoryNode -> WriterT [Action] IO ()
+excludeByName :: [Pattern] -> Path Rel t -> Bool
+excludeByName exclusions (toFilePath -> name) = not $ any (`match` name') exclusions
+ where
+  name' = if last name == '/' then init name else name
+
+createDirectory :: Path Abs Dir -> Path Rel Dir -> DirectoryNode -> WriterT [Action] AppM ()
 createDirectory path name desired = do
-  let path' = path </> name
+  let
+    path' = path </> name
+    filterByExclusions = filter \(name, _) -> excludeByName (desired ^. ignoreGlobs) name
 
   tell
     [ Action'CreateDirectory
@@ -187,20 +219,20 @@ createDirectory path name desired = do
         }
     ]
 
-  forM_ (HM.toList $ desired ^. file) . uncurry $ createFile path'
-  forM_ (HM.toList $ desired ^. directory) . uncurry $ createDirectory path'
+  forM_ (filterByExclusions . HM.toList $ desired ^. file) . uncurry $ createFile path'
+  forM_ (filterByExclusions . HM.toList $ desired ^. directory) . uncurry $ createDirectory path'
 
-deleteDirectory :: Path Abs Dir -> Path Rel Dir -> DirectoryNode -> WriterT [Action] IO ()
+deleteDirectory :: Path Abs Dir -> Path Rel Dir -> DirectoryNode -> WriterT [Action] AppM ()
 deleteDirectory path name _actual =
   tell [Action'DeleteDirectory{dirPath = path </> name}]
 
-createLink :: Path Abs Dir -> Path Rel File -> LinkNode -> WriterT [Action] IO ()
+createLink :: Path Abs Dir -> Path Rel File -> LinkNode -> WriterT [Action] AppM ()
 createLink path name desired = tell [Action'CreateLink{source = path </> name, destination = desired ^. destination}]
 
-modifyLink :: Path Abs Dir -> Path Rel File -> (LinkNode, LinkNode) -> WriterT [Action] IO ()
+modifyLink :: Path Abs Dir -> Path Rel File -> (LinkNode, LinkNode) -> WriterT [Action] AppM ()
 modifyLink path name (desired, _actual) = tell [Action'UpdateLink{source = path </> name, destination = desired ^. destination}]
 
-deleteLink :: Path Abs Dir -> Path Rel File -> LinkNode -> WriterT [Action] IO ()
+deleteLink :: Path Abs Dir -> Path Rel File -> LinkNode -> WriterT [Action] AppM ()
 deleteLink path name _actual = tell [Action'DeleteLink{source = path </> name}]
 
 hashmapCompare
@@ -209,24 +241,20 @@ hashmapCompare
      , Show v
      )
   => [Pattern]
-  -> HashMap (Path b t) v
-  -> HashMap (Path b t) v
-  -> (Path b t -> v -> m ())
-  -> (Path b t -> (v, v) -> m ())
-  -> (Path b t -> v -> m ())
+  -> HashMap (Path Rel t) v
+  -> HashMap (Path Rel t) v
+  -> (Path Rel t -> v -> m ())
+  -> (Path Rel t -> (v, v) -> m ())
+  -> (Path Rel t -> v -> m ())
   -> m ()
 hashmapCompare exclusions first second create modify delete = do
   let
-    first' = (`HM.filterWithKey` first) \name _ -> not $ any (`match` (toFilePath name)) exclusions
-    second' = (`HM.filterWithKey` second) \name _ -> not $ any (`match` (toFilePath name)) exclusions
+    first' = (`HM.filterWithKey` first) \name _ -> excludeByName exclusions name
+    second' = (`HM.filterWithKey` second) \name _ -> excludeByName exclusions name
 
     deleted = first' `HM.difference` second'
     created = second' `HM.difference` first'
     updated = HM.intersectionWith maybeNotEqual second' first' & HM.mapMaybe id
-
-  io $ print exclusions
-  io $ print first'
-  io $ print second'
 
   forM_ (HM.toList created) . uncurry $ create
   forM_ (HM.toList updated) . uncurry $ modify
@@ -234,7 +262,7 @@ hashmapCompare exclusions first second create modify delete = do
  where
   maybeNotEqual a b = if a /= b then Just (a, b) else Nothing
 
-modifyDirectory :: Path Abs Dir -> (DirectoryNode, DirectoryNode) -> WriterT [Action] IO ()
+modifyDirectory :: Path Abs Dir -> (DirectoryNode, DirectoryNode) -> WriterT [Action] AppM ()
 modifyDirectory path (desired, actual) = do
   when
     (desired ^. owner /= actual ^. owner)
@@ -267,15 +295,15 @@ modifyDirectory path (desired, actual) = do
     (modifyLink path)
     (deleteLink path)
 
--- deleteFile :: Path Abs File -> FileNode -> WriterT [Action] IO ()
+-- deleteFile :: Path Abs File -> FileNode -> WriterT [Action] AppM ()
 -- deleteFile (toFilePath -> path) _ = io $ Unix.removeLink path
 
--- writeContent :: Content -> Fd -> IO ()
+-- writeContent :: Content -> Fd -> AppM ()
 -- writeContent ContentAny _ = pure ()
 -- writeContent (ContentBinary bs) fd = io $ Unix.fdToHandle fd >>= (`BS.hPut` bs)
 -- writeContent (ContentText text) fd = io $ Unix.fdToHandle fd >>= (`T.hPutStr` text)
 
--- updateFile :: Path Abs File -> (FileNode, FileNode) -> WriterT [Action] IO ()
+-- updateFile :: Path Abs File -> (FileNode, FileNode) -> WriterT [Action] AppM ()
 -- updateFile _ (FileNode{content = ContentAny}, _) = pure ()
 -- updateFile (toFilePath -> path) (desired, actual) =
 --   void $
@@ -292,7 +320,7 @@ modifyDirectory path (desired, actual) = do
 --  where
 --   openFlags = Unix.defaultFileFlags{Unix.trunc = True, Unix.creat = Just $ desired ^. mode}
 
--- createFile :: Path Abs File -> FileNode -> WriterT [Action] IO ()
+-- createFile :: Path Abs File -> FileNode -> WriterT [Action] AppM ()
 -- createFile (toFilePath -> path) file' = do
 --   void $
 --     generalBracket
@@ -314,31 +342,37 @@ modifyDirectory path (desired, actual) = do
 io :: (MonadIO m) => IO a -> m a
 io = liftIO
 
-cli :: Cli -> IO ()
-cli (Cli{root, command = Cli.CommandShow}) = do
-  io (readDir root) <&> A.encodeToLazyText >>= io . TL.putStrLn
+cli :: Cli -> AppM ()
+cli (Cli{root, command = Cli.CommandShow{exclusions}}) = do
+  readDir (map (compile . (toFilePath root <>) . decompile) exclusions) root
+    <&> A.encodeToLazyText
+    >>= io . TL.putStrLn
 cli (Cli{root, diff, command = Cli.CommandApply{configuration = desired'}}) = do
-  actual <- io $ readDir root
   io (A.eitherDecodeFileStrict (toFilePath desired')) >>= \case
     Left err -> io $ putStrLn err
     Right desired -> do
+      let exclusions = getGlobs desired
+      actual <- readDir (map (compile . (toFilePath root <>) . decompile) exclusions) root
+
       when diff $
-        putStrLn . render . prettyEditExprCompact $
+        io . putStrLn . render . prettyEditExprCompact $
           ediff desired actual
 
       (_, actions) <- runWriterT $ modifyDirectory root (desired, actual)
-      forM_ actions runAction
+      forM_ actions (io . runAction)
 cli (Cli{root, diff, command = Cli.CommandPlan{configuration = desired'}}) = do
-  actual <- io $ readDir root
   io (A.eitherDecodeFileStrict (toFilePath desired')) >>= \case
     Left err -> io $ putStrLn err
     Right desired -> do
+      let exclusions = getGlobs desired
+      actual <- readDir (map (compile . (toFilePath root <>) . decompile) exclusions) root
+
       when diff $
-        putStrLn . render . prettyEditExprCompact $
+        io . putStrLn . render . prettyEditExprCompact $
           ediff desired actual
 
       (_, actions) <- runWriterT $ modifyDirectory root (desired, actual)
-      forM_ actions (T.putStrLn . commandToText True . actionToCommand)
+      forM_ actions (io . T.putStrLn . commandToText True . actionToCommand)
 
 main :: IO ()
-main = cli =<< parseCli
+main = runStderrLoggingT $ cli =<< io parseCli

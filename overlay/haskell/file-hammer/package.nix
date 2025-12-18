@@ -14,6 +14,7 @@
   microlens,
   microlens-mtl,
   microlens-th,
+  monad-logger,
   mtl,
   optparse-applicative,
   path,
@@ -23,6 +24,7 @@
   tree-diff,
   unix,
   unordered-containers,
+  zlib,
 }:
 mkDerivation {
   pname = "file-hammer";
@@ -44,6 +46,7 @@ mkDerivation {
     microlens
     microlens-mtl
     microlens-th
+    monad-logger
     mtl
     optparse-applicative
     path
@@ -53,6 +56,7 @@ mkDerivation {
     tree-diff
     unix
     unordered-containers
+    zlib
   ];
   license = lib.licenses.gpl3Plus;
   mainProgram = "file-hammer";

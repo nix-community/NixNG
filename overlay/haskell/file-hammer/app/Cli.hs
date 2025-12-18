@@ -3,6 +3,7 @@ module Cli where
 import Options.Applicative hiding (command)
 import Options.Applicative qualified as O
 import Path
+import System.FilePath.Glob (Pattern, compile)
 import Prelude hiding (show)
 import Prelude qualified
 
@@ -16,8 +17,13 @@ pathAbsDir = eitherReader \arg -> case parseAbsDir arg of
   Left err -> Left (Prelude.show err)
   Right res -> Right res
 
+patternM :: ReadM Pattern
+patternM = eitherReader \arg -> Right $ compile arg
+
 data Command
   = CommandShow
+      { exclusions :: [Pattern]
+      }
   | CommandApply
       { configuration :: Path Abs File
       }
@@ -33,7 +39,7 @@ data Cli
   }
 
 show :: Parser Command
-show = pure CommandShow
+show = CommandShow <$> many (option patternM (long "ignore" <> short 'i'))
 
 apply :: Parser Command
 apply = CommandApply <$> option pathAbsFile (long "configuration" <> short 'c')
