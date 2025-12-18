@@ -17,6 +17,7 @@ nglib.makeSystem {
     {
       dinit.enable = true;
       environment.etc."test".text = "test content";
+      environment.etc."test2".text = "test content";
     }
   );
 }

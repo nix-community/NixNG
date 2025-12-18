@@ -67,7 +67,7 @@ let
   );
 
   etcEntry =
-    { name, ... }:
+    { name, config, ... }:
     {
       options = {
         enable = lib.mkOption {
@@ -83,10 +83,11 @@ let
           description = ''
             Path of the source file.
           '';
+          default = pkgs.writeText (lib.replaceString "/" "-" name) config.text;
         };
 
         text = lib.mkOption {
-          type = lib.types.path;
+          type = lib.types.lines;
           description = ''
             Text content.
           '';
@@ -152,6 +153,15 @@ let
 in
 {
   options.environment = {
+    hammer = lib.mkOption {
+      type = (pkgs.formats.json { }).type;
+    };
+
+    hammerFile = lib.mkOption {
+      type = lib.types.path;
+      default = (pkgs.formats.json { }).generate "fila-hammer.json" cfg.hammer;
+    };
+
     variables = lib.mkOption {
       default = { };
       example = {
