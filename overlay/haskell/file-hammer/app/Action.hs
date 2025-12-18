@@ -221,14 +221,14 @@ runAction action@Action'UpdateFile{filePath, content} =
   fileFlags = defaultFileFlags{trunc = True}
 runAction action@Action'DeleteDirectory{dirPath} =
   logAction action >> removeDirectoryRecursive (toFilePath dirPath)
-runAction action@Action'CreateDirectory{dirPath, user, group, mode} =
-  logAction action >> bracket (openFd (toFilePath dirPath) WriteOnly fileFlags) closeFd \fd -> do
+runAction action@Action'CreateDirectory{dirPath = toFilePath -> path, user, group, mode} =
+  logAction action >> do
+    createDirectory path mode
+
     userEntry <- getUserEntryForName (T.unpack user)
     groupEntry <- getGroupEntryForName (T.unpack group)
 
-    setFdOwnerAndGroup fd (userID userEntry) (groupID groupEntry)
- where
-  fileFlags = defaultFileFlags{creat = Just mode, directory = True}
+    setOwnerAndGroup path (userID userEntry) (groupID groupEntry)
 runAction action@Action'CreateLink{source = toFilePath -> source, destination = T.unpack -> destination} =
   logAction action >> createSymbolicLink destination source
 runAction action@Action'UpdateLink{source = toFilePath -> source, destination = T.unpack -> destination} =
