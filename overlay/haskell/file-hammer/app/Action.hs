@@ -88,9 +88,7 @@ actionToCommand Action'Chown{user, group, path} =
   Command
     { cmdline =
         [ "chown"
-        , user
-        , ":"
-        , group
+        , user <> ":" <> group
         , " "
         , case path of SomePath path' -> toFilePathText path'
         ]
