@@ -22,7 +22,7 @@ import Numeric.Extra (showIntAtBase)
 import Path.Posix (Abs, Dir, File, Path, Rel, toFilePath)
 import System.IO.Extra (hFlush)
 import System.Posix (COff (..), OpenMode (ReadOnly), createDirectory, fdToHandle, removeDirectory)
-import System.Posix.Files (fileSize, getFdStatus, removeLink, setFdMode, setFdOwnerAndGroup)
+import System.Posix.Files (createSymbolicLink, fileSize, getFdStatus, removeLink, rename, setFdMode, setFdOwnerAndGroup)
 import System.Posix.IO (OpenFileFlags (..), OpenMode (WriteOnly), closeFd, defaultFileFlags, openFd)
 import System.Posix.Types (CMode, Fd (..))
 import System.Posix.User (getGroupEntryForName, getUserEntryForName, groupID, userID)
@@ -43,6 +43,9 @@ data Action
   | Action'UpdateFile {filePath :: Path Abs File, content :: Content}
   | Action'DeleteDirectory {dirPath :: Path Abs Dir}
   | Action'CreateDirectory {dirPath :: Path Abs Dir, user :: Text, group :: Text, mode :: CMode}
+  | Action'CreateLink {source :: Path Abs File, destination :: Text}
+  | Action'UpdateLink {source :: Path Abs File, destination :: Text}
+  | Action'DeleteLink {source :: Path Abs File}
   deriving (Show)
 
 newtype Action'Show = Action'Show Action
@@ -128,6 +131,21 @@ actionToCommand Action'CreateDirectory{dirPath} =
     { cmdline = ["mkdir", toFilePathText dirPath]
     , stdin = Nothing
     }
+actionToCommand Action'CreateLink{source, destination} =
+  Command
+    { cmdline = ["ln", "--no-target-directory", "--symbolic", destination, toFilePathText source]
+    , stdin = Nothing
+    }
+actionToCommand Action'UpdateLink{source, destination} =
+  Command
+    { cmdline = ["ln", "--no-target-directory", "--symbolic", "--force", destination, toFilePathText source]
+    , stdin = Nothing
+    }
+actionToCommand Action'DeleteLink{source} =
+  Command
+    { cmdline = ["rm", toFilePathText source]
+    , stdin = Nothing
+    }
 
 commandToText :: Bool -> Command -> Text
 commandToText verbose Command{cmdline, stdin} =
@@ -201,3 +219,11 @@ runAction action@Action'CreateDirectory{dirPath, user, group, mode} =
     setFdOwnerAndGroup fd (userID userEntry) (groupID groupEntry)
  where
   fileFlags = defaultFileFlags{creat = Just mode, directory = True}
+runAction action@Action'CreateLink{source = toFilePath -> source, destination = T.unpack -> destination} =
+  logAction action >> createSymbolicLink destination source
+runAction action@Action'UpdateLink{source = toFilePath -> source, destination = T.unpack -> destination} =
+  logAction action >> do
+    createSymbolicLink destination (source <> ".new")
+    rename (source <> ".new") source
+runAction action@Action'DeleteLink{source = toFilePath -> source} =
+  logAction action >> removeLink source

@@ -11,12 +11,15 @@ import Config (
   Content (..),
   DirectoryNode (..),
   FileNode (..),
+  LinkNode (..),
   Owner (..),
   content,
+  destination,
   directory,
   file,
   group,
   ignoreExtra,
+  link,
   mode,
   owner,
   user,
@@ -42,21 +45,20 @@ import Data.TreeDiff
 import Lens.Micro
 import Lens.Micro.Mtl
 import Path.Posix
-import System.Directory hiding (createDirectory)
-import System.Posix.Files
+import System.Directory hiding (createDirectory, isSymbolicLink)
+import System.Posix.Files hiding (createLink)
 import System.Posix.User
 
 getHashMaps
   :: Path Abs Dir
   -> [FilePath]
-  -> StateT (HashMap (Path Rel File) FileNode, HashMap (Path Rel Dir) DirectoryNode) IO ()
+  -> StateT (HashMap (Path Rel File) FileNode, HashMap (Path Rel Dir) DirectoryNode, HashMap (Path Rel File) LinkNode) IO ()
 getHashMaps root paths =
   forM_ paths \((toFilePath root <>) -> ent) -> do
-    file <- liftIO $ doesFileExist ent
-    directory <- liftIO $ doesDirectoryExist ent
+    status <- io $ getSymbolicLinkStatus ent
 
     if
-      | file -> do
+      | isRegularFile status -> do
           (path, absPath) <-
             parseSomeFile ent <&> \case
               Abs abs' -> (filename abs', abs')
@@ -68,7 +70,14 @@ getHashMaps root paths =
             %= HM.insert
               path
               fileNode
-      | directory -> do
+      | isSymbolicLink status -> do
+          path <-
+            parseSomeFile ent <&> \case
+              Abs abs' -> filename abs'
+              Rel rel -> rel
+          destination <- io $ readSymbolicLink ent
+          _3 %= HM.insert path LinkNode{destination = T.pack destination}
+      | isDirectory status -> do
           (path, absPath) <-
             parseSomeDir ent <&> \case
               Abs abs' -> (dirname abs', abs')
@@ -110,7 +119,8 @@ readFileNode path = do
 
 readDir :: Path Abs Dir -> IO DirectoryNode
 readDir path = do
-  (files, directories) <- listDirectory (fromAbsDir path) >>= (`execStateT` (HM.empty, HM.empty)) . getHashMaps path
+  (files, directories, links) <-
+    listDirectory (fromAbsDir path) >>= (`execStateT` (HM.empty, HM.empty, HM.empty)) . getHashMaps path
   status <- getFileStatus (fromAbsDir path)
 
   userEntry <- getUserEntryForID (fileOwner status)
@@ -127,6 +137,7 @@ readDir path = do
       , mode = fileMode status
       , file = files
       , directory = directories
+      , link = links
       }
 
 modifyFile :: Path Abs Dir -> Path Rel File -> (FileNode, FileNode) -> WriterT [Action] IO ()
@@ -176,8 +187,17 @@ createDirectory path desired = do
   forM_ (HM.toList $ desired ^. directory) . uncurry $ createDirectory . (path </>)
 
 deleteDirectory :: Path Abs Dir -> DirectoryNode -> WriterT [Action] IO ()
-deleteDirectory path _desired =
+deleteDirectory path _actual =
   tell [Action'DeleteDirectory{dirPath = path}]
+
+createLink :: Path Abs File -> LinkNode -> WriterT [Action] IO ()
+createLink path desired = tell [Action'CreateLink{source = path, destination = desired ^. destination}]
+
+modifyLink :: Path Abs File -> (LinkNode, LinkNode) -> WriterT [Action] IO ()
+modifyLink path (desired, _actual) = tell [Action'UpdateLink{source = path, destination = desired ^. destination}]
+
+deleteLink :: Path Abs File -> LinkNode -> WriterT [Action] IO ()
+deleteLink path _actual = tell [Action'DeleteLink{source = path}]
 
 hashmapCompare
   :: ( Eq v
@@ -227,6 +247,14 @@ modifyDirectory path (desired, actual) = do
     (modifyDirectory . (path </>))
     (not $ desired ^. ignoreExtra)
     (deleteDirectory . (path </>))
+
+  hashmapCompare
+    (actual ^. link)
+    (desired ^. link)
+    (createLink . (path </>))
+    (modifyLink . (path </>))
+    (not $ desired ^. ignoreExtra)
+    (deleteLink . (path </>))
 
 -- deleteFile :: Path Abs File -> FileNode -> WriterT [Action] IO ()
 -- deleteFile (toFilePath -> path) _ = io $ Unix.removeLink path

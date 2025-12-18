@@ -51,7 +51,14 @@ data DirectoryNode
   , owner :: Owner
   , mode :: CMode
   , file :: HashMap (Path Rel File) FileNode
+  , link :: HashMap (Path Rel File) LinkNode
   , directory :: HashMap (Path Rel Dir) DirectoryNode
+  }
+  deriving (A.FromJSON, A.ToJSON, Eq, Generic, Show, ToExpr)
+
+data LinkNode
+  = LinkNode
+  { destination :: Text
   }
   deriving (A.FromJSON, A.ToJSON, Eq, Generic, Show, ToExpr)
 
@@ -63,3 +70,4 @@ makeLensesWith duplicateRules ''Owner
 makeLensesWith duplicateRules ''Content
 makeLensesWith duplicateRules ''FileNode
 makeLensesWith duplicateRules ''DirectoryNode
+makeLensesWith duplicateRules ''LinkNode
