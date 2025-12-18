@@ -7,15 +7,18 @@ module Config where
 
 import ByteString.Aeson.Orphans ()
 import Data.Aeson qualified as A
+import Data.Aeson.Types qualified as A
 import Data.ByteString (ByteString)
 import Data.Char (toLower)
 import Data.Function ((&))
 import Data.HashMap.Strict (HashMap)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.TreeDiff (Expr (App), ToExpr (..))
 import GHC.Generics (Generic)
 import Lens.Micro.TH (makeLensesWith)
 import Path
+import System.FilePath.Glob (Pattern, compile, decompile)
 import System.Posix.Types (CMode (..))
 import TH
 
@@ -47,7 +50,7 @@ data FileNode
 
 data DirectoryNode
   = DirectoryNode
-  { ignoreExtra :: Bool
+  { ignoreGlobs :: [Pattern]
   , owner :: Owner
   , mode :: CMode
   , file :: HashMap (Path Rel File) FileNode
@@ -65,6 +68,18 @@ data LinkNode
 instance ToExpr (Path p t) where
   toExpr :: Path p t -> Expr
   toExpr path = App (toFilePath path) []
+
+instance ToExpr Pattern where
+  toExpr :: Pattern -> Expr
+  toExpr pat = App (show pat) []
+
+instance A.ToJSON Pattern where
+  toJSON :: Pattern -> A.Value
+  toJSON pat = A.String . T.pack $ decompile pat
+
+instance A.FromJSON Pattern where
+  parseJSON :: A.Value -> A.Parser Pattern
+  parseJSON = A.withText "Pattern" (pure . compile . T.unpack)
 
 makeLensesWith duplicateRules ''Owner
 makeLensesWith duplicateRules ''Content

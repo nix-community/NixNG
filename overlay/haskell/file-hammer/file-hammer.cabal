@@ -56,5 +56,6 @@ executable file-hammer
       exceptions,
       hashable,
       pretty,
+      Glob,
     hs-source-dirs:   app
     default-language: GHC2021

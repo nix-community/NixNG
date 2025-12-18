@@ -18,7 +18,7 @@ import Config (
   directory,
   file,
   group,
-  ignoreExtra,
+  ignoreGlobs,
   link,
   mode,
   owner,
@@ -46,6 +46,7 @@ import Lens.Micro
 import Lens.Micro.Mtl
 import Path.Posix
 import System.Directory hiding (createDirectory, isSymbolicLink)
+import System.FilePath.Glob (Pattern, match)
 import System.Posix.Files hiding (createLink)
 import System.Posix.User
 import Text.PrettyPrint (render)
@@ -129,7 +130,7 @@ readDir path = do
 
   pure
     DirectoryNode
-      { ignoreExtra = True
+      { ignoreGlobs = []
       , owner =
           Owner
             { user = T.pack $ userName userEntry
@@ -142,26 +143,26 @@ readDir path = do
       }
 
 modifyFile :: Path Abs Dir -> Path Rel File -> (FileNode, FileNode) -> WriterT [Action] IO ()
-modifyFile root name (desired, actual) = do
+modifyFile path name (desired, actual) = do
   when (desired ^. owner /= actual ^. owner) $
-    tell [Action'Chown{path = SomePath $ root </> name, user = desired ^. owner . user, group = desired ^. owner . group}]
+    tell [Action'Chown{path = SomePath $ path </> name, user = desired ^. owner . user, group = desired ^. owner . group}]
   when (desired ^. mode /= actual ^. mode) $
-    tell [Action'Chmod{path = SomePath $ root </> name, mode = desired ^. mode}]
+    tell [Action'Chmod{path = SomePath $ path </> name, mode = desired ^. mode}]
 
   case (desired ^. content, actual ^. content) of
-    (ContentFile path, actualContent) -> do
-      desiredContent <- io $ readContent path
+    (ContentFile contentPath, actualContent) -> do
+      desiredContent <- io $ readContent contentPath
       when (desiredContent /= actualContent) $
-        tell [Action'UpdateFile{filePath = root </> name, content = desired ^. content}]
+        tell [Action'UpdateFile{filePath = path </> name, content = desired ^. content}]
     _ ->
       when (desired ^. content /= actual ^. content) $
-        tell [Action'UpdateFile{filePath = root </> name, content = desired ^. content}]
+        tell [Action'UpdateFile{filePath = path </> name, content = desired ^. content}]
 
 createFile :: Path Abs Dir -> Path Rel File -> FileNode -> WriterT [Action] IO ()
-createFile root name desired =
+createFile path name desired =
   tell
     [ Action'CreateFile
-        { filePath = root </> name
+        { filePath = path </> name
         , content = desired ^. content
         , user = desired ^. owner . user
         , group = desired ^. owner . group
@@ -173,54 +174,63 @@ deleteFile :: Path Abs Dir -> Path Rel File -> FileNode -> WriterT [Action] IO (
 deleteFile root name _ =
   tell [Action'DeleteFile{filePath = root </> name}]
 
-createDirectory :: Path Abs Dir -> DirectoryNode -> WriterT [Action] IO ()
-createDirectory path desired = do
+createDirectory :: Path Abs Dir -> Path Rel Dir -> DirectoryNode -> WriterT [Action] IO ()
+createDirectory path name desired = do
+  let path' = path </> name
+
   tell
     [ Action'CreateDirectory
-        { dirPath = path
+        { dirPath = path'
         , user = desired ^. owner . user
         , group = desired ^. owner . group
         , mode = desired ^. mode
         }
     ]
 
-  forM_ (HM.toList $ desired ^. file) . uncurry $ createFile path
-  forM_ (HM.toList $ desired ^. directory) . uncurry $ createDirectory . (path </>)
+  forM_ (HM.toList $ desired ^. file) . uncurry $ createFile path'
+  forM_ (HM.toList $ desired ^. directory) . uncurry $ createDirectory path'
 
-deleteDirectory :: Path Abs Dir -> DirectoryNode -> WriterT [Action] IO ()
-deleteDirectory path _actual =
-  tell [Action'DeleteDirectory{dirPath = path}]
+deleteDirectory :: Path Abs Dir -> Path Rel Dir -> DirectoryNode -> WriterT [Action] IO ()
+deleteDirectory path name _actual =
+  tell [Action'DeleteDirectory{dirPath = path </> name}]
 
-createLink :: Path Abs File -> LinkNode -> WriterT [Action] IO ()
-createLink path desired = tell [Action'CreateLink{source = path, destination = desired ^. destination}]
+createLink :: Path Abs Dir -> Path Rel File -> LinkNode -> WriterT [Action] IO ()
+createLink path name desired = tell [Action'CreateLink{source = path </> name, destination = desired ^. destination}]
 
-modifyLink :: Path Abs File -> (LinkNode, LinkNode) -> WriterT [Action] IO ()
-modifyLink path (desired, _actual) = tell [Action'UpdateLink{source = path, destination = desired ^. destination}]
+modifyLink :: Path Abs Dir -> Path Rel File -> (LinkNode, LinkNode) -> WriterT [Action] IO ()
+modifyLink path name (desired, _actual) = tell [Action'UpdateLink{source = path </> name, destination = desired ^. destination}]
 
-deleteLink :: Path Abs File -> LinkNode -> WriterT [Action] IO ()
-deleteLink path _actual = tell [Action'DeleteLink{source = path}]
+deleteLink :: Path Abs Dir -> Path Rel File -> LinkNode -> WriterT [Action] IO ()
+deleteLink path name _actual = tell [Action'DeleteLink{source = path </> name}]
 
 hashmapCompare
   :: ( Eq v
-     , Hashable k
-     , Monad m
+     , MonadIO m
+     , Show v
      )
-  => HashMap k v
-  -> HashMap k v
-  -> (k -> v -> m ())
-  -> (k -> (v, v) -> m ())
-  -> Bool
-  -> (k -> v -> m ())
+  => [Pattern]
+  -> HashMap (Path b t) v
+  -> HashMap (Path b t) v
+  -> (Path b t -> v -> m ())
+  -> (Path b t -> (v, v) -> m ())
+  -> (Path b t -> v -> m ())
   -> m ()
-hashmapCompare first second create modify deleteGuard delete = do
+hashmapCompare exclusions first second create modify delete = do
   let
-    deleted = first `HM.difference` second
-    created = second `HM.difference` first
-    updated = HM.intersectionWith maybeNotEqual second first & HM.mapMaybe id
+    first' = (`HM.filterWithKey` first) \name _ -> not $ any (`match` (toFilePath name)) exclusions
+    second' = (`HM.filterWithKey` second) \name _ -> not $ any (`match` (toFilePath name)) exclusions
+
+    deleted = first' `HM.difference` second'
+    created = second' `HM.difference` first'
+    updated = HM.intersectionWith maybeNotEqual second' first' & HM.mapMaybe id
+
+  io $ print exclusions
+  io $ print first'
+  io $ print second'
 
   forM_ (HM.toList created) . uncurry $ create
   forM_ (HM.toList updated) . uncurry $ modify
-  when deleteGuard $ forM_ (HM.toList deleted) . uncurry $ delete
+  forM_ (HM.toList deleted) . uncurry $ delete
  where
   maybeNotEqual a b = if a /= b then Just (a, b) else Nothing
 
@@ -234,28 +244,28 @@ modifyDirectory path (desired, actual) = do
     (tell [Action'Chmod{mode = desired ^. mode, path = SomePath path}])
 
   hashmapCompare
+    (desired ^. ignoreGlobs)
     (actual ^. file)
     (desired ^. file)
     (createFile path)
     (modifyFile path)
-    (not $ desired ^. ignoreExtra)
     (deleteFile path)
 
   hashmapCompare
+    (desired ^. ignoreGlobs)
     (actual ^. directory)
     (desired ^. directory)
-    (createDirectory . (path </>))
+    (createDirectory path)
     (modifyDirectory . (path </>))
-    (not $ desired ^. ignoreExtra)
-    (deleteDirectory . (path </>))
+    (deleteDirectory path)
 
   hashmapCompare
+    (desired ^. ignoreGlobs)
     (actual ^. link)
     (desired ^. link)
-    (createLink . (path </>))
-    (modifyLink . (path </>))
-    (not $ desired ^. ignoreExtra)
-    (deleteLink . (path </>))
+    (createLink path)
+    (modifyLink path)
+    (deleteLink path)
 
 -- deleteFile :: Path Abs File -> FileNode -> WriterT [Action] IO ()
 -- deleteFile (toFilePath -> path) _ = io $ Unix.removeLink path

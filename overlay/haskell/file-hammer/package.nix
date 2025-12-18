@@ -8,6 +8,7 @@
   exceptions,
   extra,
   filepath,
+  Glob,
   hashable,
   lib,
   microlens,
@@ -38,6 +39,7 @@ mkDerivation {
     exceptions
     extra
     filepath
+    Glob
     hashable
     microlens
     microlens-mtl

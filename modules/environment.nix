@@ -282,14 +282,6 @@ in
       ''
     ];
 
-    system.activation.shellProfile = nglib.dag.dagEntryAnywhere ''
-      export PATH=${pkgs.busybox}/bin
-
-      mkdir -m 0755 -p /etc
-      ln -sfn ${cfg.shell.profile.applied} /etc/.profile.tmp
-      mv /etc/.profile.tmp /etc/profile # atomically replace /etc/profile
-    '';
-
     system.activation.createBaseEnv = lib.mkIf cfg.createBaseEnv (
       nglib.dag.dagEntryAnywhere ''
         export PATH=${pkgs.busybox}/bin
