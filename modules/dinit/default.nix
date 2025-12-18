@@ -158,8 +158,6 @@ in
           # Run activation script for this system
           "$_system_config/activation"
 
-          . /etc/profile
-
           exec ${lib.getExe pkgs.dinit} -d /sv -s
         '';
 
