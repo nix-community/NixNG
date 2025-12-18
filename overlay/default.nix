@@ -27,12 +27,10 @@ in
   };
   runit = prev.runit.overrideAttrs (old: {
     nativeBuildInputs = old.nativeBuildInputs or [ ] ++ (with prev; [ makeWrapper ]);
-    fixupPhase =
-      old.fixupPhase or ""
-      + ''
-        wrapProgram $out/bin/sv \
-          --set SVDIR "/service/"
-      '';
+    fixupPhase = old.fixupPhase or "" + ''
+      wrapProgram $out/bin/sv \
+        --set SVDIR "/service/"
+    '';
   });
 
   inherit (callPackage ./trivial-builders.nix { })

@@ -171,16 +171,16 @@ in
                 "internalToken"
                 "jwtSecret"
                 "secretKey"
-              ] ++ (optional remoteDatabase "databasePassword");
+              ]
+              ++ (optional remoteDatabase "databasePassword");
             in
             [
               {
                 assertion = lib.foldl (a: b: a && (cfg.secrets ? ${b})) true [ ];
-                message =
-                  ''
-                    The Gitea sane requires the following secrets:
-                  ''
-                  + concatMapStringsSep "\n" (secret: "  - ${secret}") requiredSecrets;
+                message = ''
+                  The Gitea sane requires the following secrets:
+                ''
+                + concatMapStringsSep "\n" (secret: "  - ${secret}") requiredSecrets;
               }
               {
                 assertion =

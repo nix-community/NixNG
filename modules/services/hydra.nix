@@ -27,19 +27,18 @@ let
     HYDRA_DATA = "${baseDir}";
   };
 
-  env =
-    {
-      NIX_REMOTE = "daemon";
-      SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt";
-      PGPASSFILE = "${baseDir}/pgpass";
-      # NIX_REMOTE_SYSTEMS = concatStringsSep ":" cfg.buildMachinesFiles;
-    }
-    // lib.optionalAttrs (cfg.smtpHost != null) {
-      EMAIL_SENDER_TRANSPORT = "SMTP";
-      EMAIL_SENDER_TRANSPORT_host = cfg.smtpHost;
-    }
-    // hydraEnv
-    // cfg.extraEnv;
+  env = {
+    NIX_REMOTE = "daemon";
+    SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt";
+    PGPASSFILE = "${baseDir}/pgpass";
+    # NIX_REMOTE_SYSTEMS = concatStringsSep ":" cfg.buildMachinesFiles;
+  }
+  // lib.optionalAttrs (cfg.smtpHost != null) {
+    EMAIL_SENDER_TRANSPORT = "SMTP";
+    EMAIL_SENDER_TRANSPORT_host = cfg.smtpHost;
+  }
+  // hydraEnv
+  // cfg.extraEnv;
 
   serverEnv =
     env

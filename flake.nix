@@ -89,27 +89,26 @@
         }
       );
 
-      checks =
-        {
-          formatting = forAllSystems (system: treefmtEval.${system}.config.build.check self);
-          examples = recurseIntoAttrs (
-            nixpkgs.lib.mapAttrs (n: v: v.config.system.build.toplevel) self.examples
-          );
-        }
-        // forAllSystems (
-          system:
-          let
-            pkgs = pkgsForSystem system;
-          in
-          {
-            with-lib = pkgs.callPackage ./checks/with-lib.nix { inherit self; } {
-              allowed = [
-                "/doc/style_and_vocabulary.org"
-                "/checks"
-              ];
-            };
-          }
+      checks = {
+        formatting = forAllSystems (system: treefmtEval.${system}.config.build.check self);
+        examples = recurseIntoAttrs (
+          nixpkgs.lib.mapAttrs (n: v: v.config.system.build.toplevel) self.examples
         );
+      }
+      // forAllSystems (
+        system:
+        let
+          pkgs = pkgsForSystem system;
+        in
+        {
+          with-lib = pkgs.callPackage ./checks/with-lib.nix { inherit self; } {
+            allowed = [
+              "/doc/style_and_vocabulary.org"
+              "/checks"
+            ];
+          };
+        }
+      );
 
       formatter = forAllSystems (system: (treefmtEval.${system}.config.build.wrapper));
     };
