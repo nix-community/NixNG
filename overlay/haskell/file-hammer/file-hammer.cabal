@@ -1,4 +1,4 @@
-cabal-version:      3.14
+cabal-version:      3.8
 name:               file-hammer
 version:            0.1.0.0
 -- synopsis:
@@ -55,5 +55,6 @@ executable file-hammer
       tree-diff,
       exceptions,
       hashable,
+      pretty,
     hs-source-dirs:   app
     default-language: GHC2021

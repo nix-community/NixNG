@@ -48,6 +48,7 @@ import Path.Posix
 import System.Directory hiding (createDirectory, isSymbolicLink)
 import System.Posix.Files hiding (createLink)
 import System.Posix.User
+import Text.PrettyPrint (render)
 
 getHashMaps
   :: Path Abs Dir
@@ -134,7 +135,7 @@ readDir path = do
             { user = T.pack $ userName userEntry
             , group = T.pack $ groupName groupEntry
             }
-      , mode = fileMode status
+      , mode = fileMode status .&. 0b111111111
       , file = files
       , directory = directories
       , link = links
@@ -306,24 +307,28 @@ io = liftIO
 cli :: Cli -> IO ()
 cli (Cli{root, command = Cli.CommandShow}) = do
   io (readDir root) <&> A.encodeToLazyText >>= io . TL.putStrLn
-cli (Cli{root, command = Cli.CommandApply{configuration = desired'}}) = do
+cli (Cli{root, diff, command = Cli.CommandApply{configuration = desired'}}) = do
   actual <- io $ readDir root
   io (A.eitherDecodeFileStrict (toFilePath desired')) >>= \case
     Left err -> io $ putStrLn err
     Right desired -> do
-      (_, actions) <- runWriterT $ modifyDirectory root (desired, actual)
+      when diff $
+        putStrLn . render . prettyEditExprCompact $
+          ediff desired actual
 
+      (_, actions) <- runWriterT $ modifyDirectory root (desired, actual)
       forM_ actions runAction
-cli (Cli{root, command = Cli.CommandPlan{configuration = desired'}}) = do
+cli (Cli{root, diff, command = Cli.CommandPlan{configuration = desired'}}) = do
   actual <- io $ readDir root
   io (A.eitherDecodeFileStrict (toFilePath desired')) >>= \case
     Left err -> io $ putStrLn err
     Right desired -> do
-      let diff = ediff desired actual
+      when diff $
+        putStrLn . render . prettyEditExprCompact $
+          ediff desired actual
+
       (_, actions) <- runWriterT $ modifyDirectory root (desired, actual)
       forM_ actions (T.putStrLn . commandToText True . actionToCommand)
 
 main :: IO ()
 main = cli =<< parseCli
-
--- forM_ actions (T.putStrLn . commandToText . actionToCommand)

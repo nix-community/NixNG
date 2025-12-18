@@ -20,9 +20,22 @@ import Foreign.C.Types (CInt (..), CUInt (..))
 import Foreign.Ptr (Ptr, nullPtr)
 import Numeric.Extra (showIntAtBase)
 import Path.Posix (Abs, Dir, File, Path, Rel, toFilePath)
+import System.Directory.Extra (removeDirectoryRecursive)
 import System.IO.Extra (hFlush)
 import System.Posix (COff (..), OpenMode (ReadOnly), createDirectory, fdToHandle, removeDirectory)
-import System.Posix.Files (createSymbolicLink, fileSize, getFdStatus, removeLink, rename, setFdMode, setFdOwnerAndGroup)
+import System.Posix.Files (
+  createSymbolicLink,
+  fileSize,
+  getFdStatus,
+  getFileStatus,
+  isDirectory,
+  removeLink,
+  rename,
+  setFdMode,
+  setFdOwnerAndGroup,
+  setFileMode,
+  setOwnerAndGroup,
+ )
 import System.Posix.IO (OpenFileFlags (..), OpenMode (WriteOnly), closeFd, defaultFileFlags, openFd)
 import System.Posix.Types (CMode, Fd (..))
 import System.Posix.User (getGroupEntryForName, getUserEntryForName, groupID, userID)
@@ -185,14 +198,13 @@ logAction = T.putStrLn . commandToText False . actionToCommand
 
 runAction :: Action -> IO ()
 runAction action@Action'Chown{user, group, path = SomePath (toFilePath -> path)} =
-  logAction action >> bracket (openFd path WriteOnly defaultFileFlags) closeFd \fd -> do
+  logAction action >> do
     userEntry <- getUserEntryForName (T.unpack user)
     groupEntry <- getGroupEntryForName (T.unpack group)
 
-    setFdOwnerAndGroup fd (userID userEntry) (groupID groupEntry)
+    setOwnerAndGroup path (userID userEntry) (groupID groupEntry)
 runAction action@Action'Chmod{mode, path = SomePath (toFilePath -> path)} =
-  logAction action >> bracket (openFd path WriteOnly defaultFileFlags) closeFd \fd -> do
-    setFdMode fd mode
+  logAction action >> setFileMode path mode
 runAction action@Action'DeleteFile{filePath} =
   logAction action >> removeLink (toFilePath filePath)
 runAction action@Action'CreateFile{filePath, content, user, group, mode} =
@@ -210,7 +222,7 @@ runAction action@Action'UpdateFile{filePath, content} =
  where
   fileFlags = defaultFileFlags{trunc = True}
 runAction action@Action'DeleteDirectory{dirPath} =
-  logAction action >> removeDirectory (toFilePath dirPath)
+  logAction action >> removeDirectoryRecursive (toFilePath dirPath)
 runAction action@Action'CreateDirectory{dirPath, user, group, mode} =
   logAction action >> bracket (openFd (toFilePath dirPath) WriteOnly fileFlags) closeFd \fd -> do
     userEntry <- getUserEntryForName (T.unpack user)

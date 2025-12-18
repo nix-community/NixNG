@@ -28,6 +28,7 @@ data Command
 data Cli
   = Cli
   { root :: Path Abs Dir
+  , diff :: Bool
   , command :: Command
   }
 
@@ -52,6 +53,7 @@ cli :: Parser Cli
 cli =
   Cli
     <$> option pathAbsDir (long "root" <> short 'r')
+    <*> switch (long "diff" <> short 'd')
     <*> command
 
 parseCli :: IO Cli
