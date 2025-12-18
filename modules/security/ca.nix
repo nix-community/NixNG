@@ -67,18 +67,15 @@ in
   config = {
     security.ca.certificateFiles = [ "${cacertPackage}/etc/ssl/certs/ca-bundle.crt" ];
 
-    system.activation.cacerts = nglib.dag.dagEntryAnywhere ''
-      export PATH=${pkgs.busybox}/bin
-
-      # NixOS canonical location + Debian/Ubuntu/Arch/Gentoo compatibility.
-      mkdir -m 0755 -p /etc/ssl/certs
-      ln -sfn ${caCertificates} /etc/ssl/certs/.ca-certificates.crt.tmp
-      mv /etc/ssl/certs/.ca-certificates.crt.tmp /etc/ssl/certs/ca-certificates.crt # atomically replace /etc/ssl/certs/ca-certificates.crt
-
-      # CentOS/Fedora compatibility.
-      mkdir -m 0755 -p /etc/pki/tls/certs
-      ln -sfn ${caCertificates} /etc/pki/tls/certs/.ca-bundle.crt.tmp
-      mv /etc/pki/tls/certs/.ca-bundle.crt.tmp /etc/pki/tls/certs/ca-bundle.crt # atomically replace /etc/pki/tls/certs/ca-bundle.crt
-    '';
+    # NixOS canonical location + Debian/Ubuntu/Arch/Gentoo compatibility.
+    environment.etc."ssl/certs/ca-certificates.crt" = {
+      mode = "symlink";
+      source = "${caCertificates}";
+    };
+    # CentOS/Fedora compatibility.
+    environment.etc."pki/tls/certs/ca-bundle.crt" = {
+      mode = "symlink";
+      source = "${caCertificates}";
+    };
   };
 }
