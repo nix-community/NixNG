@@ -24,6 +24,8 @@ executable file-hammer
       Config,
       TH,
       Action,
+      Orphans,
+      SomePath,
     -- other-extensions:
     default-extensions:
       ImportQualifiedPost,

@@ -9,6 +9,7 @@ import Control.Exception (bracket)
 import Control.Monad (when)
 import Data.ByteString qualified as BS
 import Data.Char (intToDigit)
+import Data.Hashable (Hashable (hashWithSalt))
 import Data.Monoid.Extra (mwhen)
 import Data.Text (Text)
 import Data.Text qualified as T
@@ -20,6 +21,7 @@ import Foreign.C.Types (CInt (..), CUInt (..))
 import Foreign.Ptr (Ptr, nullPtr)
 import Numeric.Extra (showIntAtBase)
 import Path.Posix (Abs, Dir, File, Path, Rel, toFilePath)
+import SomePath (SomePath (..))
 import System.Directory.Extra (removeDirectoryRecursive)
 import System.IO.Extra (hFlush)
 import System.Posix (COff (..), OpenMode (ReadOnly), createDirectory, fdToHandle, removeDirectory)
@@ -39,14 +41,6 @@ import System.Posix.Files (
 import System.Posix.IO (OpenFileFlags (..), OpenMode (WriteOnly), closeFd, defaultFileFlags, openFd)
 import System.Posix.Types (CMode, Fd (..))
 import System.Posix.User (getGroupEntryForName, getUserEntryForName, groupID, userID)
-
-data SomePath b = forall t. SomePath (Path b t)
-
-instance Show (SomePath Abs) where
-  show (SomePath path) = show path
-
-instance Show (SomePath Rel) where
-  show (SomePath path) = show path
 
 data Action
   = Action'Chown {user :: Text, group :: Text, path :: SomePath Abs}

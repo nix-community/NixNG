@@ -1,9 +1,24 @@
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 module Cli where
 
+import Control.Monad.Logger (LogLevel (..))
+import Control.Monad.Logger.CallStack (LogLevel (LevelInfo))
+import Data.Char (toLower)
+import Data.Functor ((<&>))
+import Data.HashSet (HashSet)
+import Data.HashSet qualified as HS
+import Data.Hashable (Hashable (..))
+import Data.Text qualified as T
+import Lens.Micro.TH (makeLensesWith)
 import Options.Applicative hiding (command)
 import Options.Applicative qualified as O
+import Orphans
 import Path
+import SomePath (SomePath (..))
 import System.FilePath.Glob (Pattern, compile)
+import TH
 import Prelude hiding (show)
 import Prelude qualified
 
@@ -17,18 +32,41 @@ pathAbsDir = eitherReader \arg -> case parseAbsDir arg of
   Left err -> Left (Prelude.show err)
   Right res -> Right res
 
+somePathRelM :: ReadM (SomePath Rel)
+somePathRelM = eitherReader \arg -> go parseRelFile arg <> go parseRelDir arg
+ where
+  go fn path = case fn path of
+    Left err -> Left (Prelude.show err)
+    Right res -> Right (SomePath res)
+
+pathRelDir :: ReadM (Path Rel Dir)
+pathRelDir = eitherReader \arg -> case parseRelDir arg of
+  Left err -> Left (Prelude.show err)
+  Right res -> Right res
+
 patternM :: ReadM Pattern
 patternM = eitherReader \arg -> Right $ compile arg
 
+logLevelM :: ReadM LogLevel
+logLevelM = eitherReader \arg ->
+  case map toLower arg of
+    "debug" -> Right LevelDebug
+    "info" -> Right LevelInfo
+    "warn" -> Right LevelWarn
+    "error" -> Right LevelError
+    _ -> Left ("Invalid log level: " <> Prelude.show arg)
+
 data Command
   = CommandShow
-      { exclusions :: [Pattern]
+      { ignores :: HashSet Pattern
+      , unmanaged :: HashSet (SomePath Rel)
       }
   | CommandApply
       { configuration :: Path Abs File
       }
   | CommandPlan
       { configuration :: Path Abs File
+      , showContents :: Bool
       }
 
 data Cli
@@ -36,19 +74,27 @@ data Cli
   { root :: Path Abs Dir
   , diff :: Bool
   , command :: Command
+  , logLevel :: LogLevel
   }
+makeLensesWith duplicateRules ''Cli
 
 show :: Parser Command
-show = CommandShow <$> many (option patternM (long "ignore" <> short 'i'))
+show =
+  CommandShow
+    <$> (many (option patternM (long "ignore" <> short 'i')) <&> HS.fromList)
+    <*> (many (option somePathRelM (long "unmanaged" <> short 'u')) <&> HS.fromList)
 
 apply :: Parser Command
 apply = CommandApply <$> option pathAbsFile (long "configuration" <> short 'c')
 
 plan :: Parser Command
-plan = CommandPlan <$> option pathAbsFile (long "configuration" <> short 'c')
+plan =
+  CommandPlan
+    <$> option pathAbsFile (long "configuration" <> short 'c')
+    <*> switch (long "show-contents" <> short 'C')
 
-command :: Parser Command
-command =
+parseCommand :: Parser Command
+parseCommand =
   subparser
     ( O.command "show" (info show (progDesc "Show current configuration"))
         <> O.command "apply" (info apply (progDesc "Apply configuration from file"))
@@ -60,7 +106,8 @@ cli =
   Cli
     <$> option pathAbsDir (long "root" <> short 'r')
     <*> switch (long "diff" <> short 'd')
-    <*> command
+    <*> parseCommand
+    <*> (optional (option logLevelM (long "log-level" <> short 'L')) <&> maybe LevelInfo id)
 
 parseCli :: IO Cli
 parseCli = execParser opts

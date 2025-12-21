@@ -15,13 +15,8 @@ duplicateRules =
       .~ camelCaseNamer
 
 camelCaseNamer :: Name -> [Name] -> Name -> [DefName]
-camelCaseNamer tyName fields field = maybeToList $ do
+camelCaseNamer _tyName _fields field = maybeToList $ do
   let fieldPart = case nameBase field of
         (x : xs) -> toUpper x : xs
         [] -> []
-  method <- computeMethod fieldPart
-  let cls = "Has" ++ fieldPart
-  return (MethodName (mkName cls) (mkName method))
- where
-  computeMethod (x : xs) | isUpper x = Just (toLower x : xs)
-  computeMethod _ = Nothing
+  return $ MethodName (mkName $ "Has" ++ fieldPart) (mkName . ('_' :) $ nameBase field)
