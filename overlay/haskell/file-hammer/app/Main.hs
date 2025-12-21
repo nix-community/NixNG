@@ -24,9 +24,9 @@ import Config (
   _destination,
   _directories,
   _directory,
-  _file,
+  _files,
   _group,
-  _link,
+  _links,
   _mode,
   _owner,
   _user,
@@ -207,8 +207,8 @@ readDir path = do
 
         pure $
           DirectoryContentManaged
-            { file = file'
-            , link = link'
+            { files = file'
+            , links = link'
             , directories = directory'
             }
 
@@ -296,9 +296,9 @@ createDirectory path name desired = do
 
   case desired ^. _content of
     managed@DirectoryContentManaged{} -> do
-      forM_ (filterByExclusions . HM.toList $ managed ^. _file) . uncurry $ createFile path'
+      forM_ (filterByExclusions . HM.toList $ managed ^. _files) . uncurry $ createFile path'
       forM_ (filterByExclusions . HM.toList $ managed ^. _directories) . uncurry $ createDirectory path'
-      forM_ (filterByExclusions . HM.toList $ managed ^. _link) . uncurry $ createLink path'
+      forM_ (filterByExclusions . HM.toList $ managed ^. _links) . uncurry $ createLink path'
     DirectoryContentUnmanaged -> pure ()
 
 deleteDirectory
@@ -375,8 +375,8 @@ modifyDirectory path (desired, actual) = do
     (managed'desired@DirectoryContentManaged{}, managed'actual@DirectoryContentManaged{}) -> do
       hashmapCompare
         ignores
-        (managed'actual ^. _file)
-        (managed'desired ^. _file)
+        (managed'actual ^. _files)
+        (managed'desired ^. _files)
         (createFile path)
         (modifyFile path)
         (deleteFile path)
@@ -391,8 +391,8 @@ modifyDirectory path (desired, actual) = do
 
       hashmapCompare
         ignores
-        (managed'actual ^. _link)
-        (managed'desired ^. _link)
+        (managed'actual ^. _links)
+        (managed'desired ^. _links)
         (createLink path)
         (modifyLink path)
         (deleteLink path)
