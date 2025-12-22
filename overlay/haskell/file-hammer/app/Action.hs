@@ -92,13 +92,7 @@ resolveUidFromUser (UserId id') = pure id'
 
 resolveGidFromGroup :: Group -> IO GroupID
 resolveGidFromGroup (GroupName group) = getGroupEntryForName (T.unpack group) <&> groupID
-resolveGlib.types.attrTag {
-        UserName = lib.mkOption {
-        };
-
-        UserID = lib.mkOption {
-        };
-      };idFromGroup (GroupId id') = pure id'
+resolveGidFromGroup (GroupId id') = pure id'
 
 actionToCommand :: Action -> Command
 actionToCommand Action'Chown{user, group, path} =

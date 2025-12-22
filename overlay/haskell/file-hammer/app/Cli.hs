@@ -63,6 +63,7 @@ data Command
       }
   | CommandApply
       { configuration :: Path Abs File
+      , parent :: Bool
       }
   | CommandPlan
       { configuration :: Path Abs File
@@ -85,7 +86,10 @@ show =
     <*> (many (option somePathRelM (long "unmanaged" <> short 'u')) <&> HS.fromList)
 
 apply :: Parser Command
-apply = CommandApply <$> option pathAbsFile (long "configuration" <> short 'c')
+apply =
+  CommandApply
+    <$> option pathAbsFile (long "configuration" <> short 'c')
+    <*> switch (long "parent" <> short 'p')
 
 plan :: Parser Command
 plan =

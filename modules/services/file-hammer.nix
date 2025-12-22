@@ -228,9 +228,7 @@ in
 
       type = "scripted";
 
-    execStart = pkgs.writeShellScript "environment-etc" ''
-      mkdir "${name}"
-      ${lib.getExe pkgs.fileHammer} --root "${name}" apply --configuration ${cfg.specificationFile}
-    '';
-  }) cfg;
+      execStart = ''${lib.getExe pkgs.fileHammer} --root "${name}" apply --parent --configuration ${cfg.specificationFile}'';
+    }
+  ) cfg;
 }

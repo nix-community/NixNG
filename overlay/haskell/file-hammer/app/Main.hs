@@ -36,6 +36,7 @@ import Config (
 import Control.Exception (Exception)
 import Control.Monad (forM_, when)
 import Control.Monad.Catch (MonadThrow, throwM)
+import Control.Monad.Extra ((&&^))
 import Control.Monad.IO.Class
 import Control.Monad.Logger (LogLevel (LevelDebug), runStderrLoggingT)
 import Control.Monad.Logger.CallStack (
@@ -61,7 +62,7 @@ import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HM
 import Data.HashSet (HashSet)
 import Data.HashSet qualified as HS
-import Data.List (find)
+import Data.List (find, inits)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Text.IO qualified as T
@@ -74,7 +75,9 @@ import Path.Posix
 import SomePath (SomePath (..))
 import System.Directory hiding (createDirectory, isSymbolicLink)
 import System.FilePath.Glob (Pattern, match)
+import System.Posix qualified as Posix
 import System.Posix.Files hiding (createLink)
+import System.Posix.Types (FileMode)
 import System.Posix.User
 import TH
 import Text.PrettyPrint (render)
@@ -416,12 +419,24 @@ readSpecification path =
     Left err -> throwM $ InvalidSpecification err
     Right specification -> pure specification
 
+createDirectoryRecursive :: (MonadIO m) => Path Abs Dir -> FileMode -> m ()
+createDirectoryRecursive path mode = forM_ (map (toFilePath . foldl (</>) [absdir|/|]) . inits . reverse $ segmentPath path) \superPath -> do
+  directoryExists <- io $ fileExist superPath &&^ (getFileStatus superPath <&> isDirectory)
+  when (not directoryExists) . io $ Posix.createDirectory superPath mode
+  pure ()
+ where
+  segmentPath :: Path Abs Dir -> [Path Rel Dir]
+  segmentPath path' =
+    if path' == [absdir|/|]
+      then []
+      else dirname path' : segmentPath (parent path')
+
 cli :: Cli -> LoggingT IO ()
 cli (Cli{root, command = Cli.CommandShow{ignores, unmanaged}}) = do
   directoryNode <- (`runReaderT` (FilterInfo{ignores, unmanaged, root})) $ readDir [reldir|.|]
 
   io $ TL.putStrLn (A.encodeToLazyText Specification{directory = directoryNode, ignores = ignores})
-cli (Cli{root, diff, command = Cli.CommandApply{configuration}}) = do
+cli (Cli{root, diff, command = Cli.CommandApply{configuration, parent}}) = do
   specification <- readSpecification configuration
 
   ( `runReaderT`
@@ -432,6 +447,7 @@ cli (Cli{root, diff, command = Cli.CommandApply{configuration}}) = do
         }
     )
     do
+      when parent $ createDirectoryRecursive root 0o775
       actual <- readDir [reldir|.|]
 
       when diff $
