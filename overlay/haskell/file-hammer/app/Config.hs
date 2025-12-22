@@ -3,7 +3,30 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Config where
+module Config (
+  getUnmanaged,
+  Content (..),
+  Group (..),
+  User (..),
+  DirectoryContent (..),
+  DirectoryNode (..),
+  FileNode (..),
+  LinkNode (..),
+  Owner (..),
+  Specification (..),
+  HasIgnores (),
+  _content,
+  _destination,
+  _directories,
+  _directory,
+  _files,
+  _group,
+  _ignores,
+  _links,
+  _mode,
+  _owner,
+  _user,
+) where
 
 import ByteString.Aeson.Orphans ()
 import Data.Aeson qualified as A
@@ -22,16 +45,16 @@ import Data.HashSet (HashSet)
 import Data.HashSet qualified as HS
 import Data.Maybe (catMaybes)
 import Data.Text (Text)
-import Data.TreeDiff (ToExpr (..))
+import Data.TreeDiff (ToExpr)
 import GHC.Generics (Generic)
 import Lens.Micro ((^.))
 import Lens.Micro.TH (makeLensesWith)
 import Orphans ()
-import Path
-import SomePath (SomePath (..))
+import Path (Abs, Dir, File, Path, Rel, (</>))
+import SomePath (SomePath (SomePath))
 import System.FilePath.Glob (Pattern)
-import System.Posix.Types (CMode (..), GroupID, UserID)
-import TH
+import System.Posix.Types (CMode, GroupID, UserID)
+import TH (duplicateRules)
 
 customOptions :: A.Options
 customOptions =

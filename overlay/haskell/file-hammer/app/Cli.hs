@@ -1,24 +1,50 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Cli where
+module Cli (Cli (..), parseCli, _logLevel, Command (..)) where
 
-import Control.Monad.Logger (LogLevel (..))
+import Control.Monad.Logger.CallStack (LogLevel (LevelDebug, LevelError, LevelInfo, LevelWarn))
 import Data.Bifunctor (first)
 import Data.Char (toLower)
 import Data.Functor ((<&>))
 import Data.HashSet (HashSet)
 import Data.HashSet qualified as HS
 import Lens.Micro.TH (makeLensesWith)
-import Options.Applicative hiding (command)
+import Options.Applicative (
+  Alternative (many),
+  Parser,
+  ReadM,
+  eitherReader,
+  execParser,
+  fullDesc,
+  header,
+  helper,
+  info,
+  long,
+  option,
+  optional,
+  progDesc,
+  short,
+  subparser,
+  switch,
+  (<**>),
+ )
 import Options.Applicative qualified as O
 import Orphans ()
-import Path
-import SomePath (SomePath (..))
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  parseAbsDir,
+  parseAbsFile,
+  parseRelDir,
+  parseRelFile,
+ )
+import SomePath (SomePath (SomePath))
 import System.FilePath.Glob (Pattern, compile)
-import TH
-import Prelude hiding (show)
-import Prelude qualified
+import TH (duplicateRules)
 
 pathAbsFile :: ReadM (Path Abs File)
 pathAbsFile = eitherReader (first Prelude.show . parseAbsFile)
@@ -32,9 +58,6 @@ somePathRelM = eitherReader \arg -> go parseRelFile arg <> go parseRelDir arg
   go fn path = case fn path of
     Left err -> Left (Prelude.show err)
     Right res -> Right (SomePath res)
-
-pathRelDir :: ReadM (Path Rel Dir)
-pathRelDir = eitherReader (first Prelude.show . parseRelDir)
 
 logLevelM :: ReadM LogLevel
 logLevelM = eitherReader \arg ->
@@ -71,20 +94,20 @@ data Cli
   }
 makeLensesWith duplicateRules ''Cli
 
-show :: Parser Command
-show =
+showCommand :: Parser Command
+showCommand =
   CommandShow
     <$> (many (option patternM (long "ignore" <> short 'i')) <&> HS.fromList)
     <*> (many (option somePathRelM (long "unmanaged" <> short 'u')) <&> HS.fromList)
 
-apply :: Parser Command
-apply =
+applyCommand :: Parser Command
+applyCommand =
   CommandApply
     <$> option pathAbsFile (long "configuration" <> short 'c')
     <*> switch (long "parent" <> short 'p')
 
-plan :: Parser Command
-plan =
+planCommand :: Parser Command
+planCommand =
   CommandPlan
     <$> option pathAbsFile (long "configuration" <> short 'c')
     <*> switch (long "show-contents" <> short 'C')
@@ -92,9 +115,9 @@ plan =
 parseCommand :: Parser Command
 parseCommand =
   subparser
-    ( O.command "show" (info show (progDesc "Show current configuration"))
-        <> O.command "apply" (info apply (progDesc "Apply configuration from file"))
-        <> O.command "plan" (info plan (progDesc "Plan the changes of configurations from file"))
+    ( O.command "show" (info showCommand (progDesc "Show current configuration"))
+        <> O.command "apply" (info applyCommand (progDesc "Apply configuration from file"))
+        <> O.command "plan" (info planCommand (progDesc "Plan the changes of configurations from file"))
     )
 
 cli :: Parser Cli

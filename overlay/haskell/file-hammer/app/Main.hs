@@ -6,21 +6,46 @@
 
 module Main (main) where
 
-import Action (Action (..), actionToCommand, commandToText, runAction)
+import Action (
+  Action (
+    Action'Chmod,
+    Action'Chown,
+    Action'CreateDirectory,
+    Action'CreateFile,
+    Action'CreateLink,
+    Action'DeleteDirectory,
+    Action'DeleteFile,
+    Action'DeleteLink,
+    Action'UpdateFile,
+    Action'UpdateLink,
+    content,
+    destination,
+    dirPath,
+    filePath,
+    group,
+    mode,
+    path,
+    source,
+    user
+  ),
+  actionToCommand,
+  commandToText,
+  runAction,
+ )
 import ByteString.Aeson.Orphans ()
-import Cli (Cli (..), parseCli, _logLevel)
+import Cli (Cli (Cli), parseCli, _logLevel)
 import Cli qualified
 import Config (
-  Content (..),
-  DirectoryContent (..),
-  DirectoryNode (..),
-  FileNode (..),
+  Content (ContentAny, ContentBinary, ContentFile, ContentText),
+  DirectoryContent (DirectoryContentManaged, DirectoryContentUnmanaged, directories, files, links),
+  DirectoryNode (DirectoryNode, content, mode, owner),
+  FileNode (FileNode, content, mode, owner),
   Group (GroupName),
-  HasIgnores (..),
-  LinkNode (..),
-  Owner (..),
-  Specification (..),
-  User (..),
+  HasIgnores (),
+  LinkNode (LinkNode, destination),
+  Owner (Owner, group, user),
+  Specification (Specification, directory, ignores),
+  User (UserName),
   getUnmanaged,
   _content,
   _destination,
@@ -28,6 +53,7 @@ import Config (
   _directory,
   _files,
   _group,
+  _ignores,
   _links,
   _mode,
   _owner,
@@ -37,7 +63,7 @@ import Control.Exception (Exception)
 import Control.Monad (forM_, when)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Control.Monad.Extra ((&&^))
-import Control.Monad.IO.Class
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Logger.CallStack (
   LoggingT,
   MonadLogger,
@@ -66,20 +92,55 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Text.IO qualified as T
 import Data.Text.Lazy.IO qualified as TL
-import Data.TreeDiff
-import Lens.Micro
-import Lens.Micro.Mtl
+import Data.TreeDiff (ediff, prettyEditExprCompact)
+import Lens.Micro (
+  Field1 (_1),
+  Field2 (_2),
+  Field3 (_3),
+  (<&>),
+  (^.),
+ )
+import Lens.Micro.Mtl (view, (%=))
 import Lens.Micro.TH (makeLensesWith)
-import Path.Posix hiding (parent)
+import Path.Posix (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  absdir,
+  dirname,
+  parseRelDir,
+  parseRelFile,
+  reldir,
+  toFilePath,
+  (</>),
+ )
 import Path.Posix qualified as Posix
-import SomePath (SomePath (..))
-import System.Directory hiding (createDirectory, isSymbolicLink)
+import SomePath (SomePath (SomePath))
+import System.Directory (listDirectory)
 import System.FilePath.Glob (Pattern, match)
 import System.Posix qualified as Posix
-import System.Posix.Files hiding (createLink)
+import System.Posix.Files (
+  fileExist,
+  fileGroup,
+  fileMode,
+  fileOwner,
+  getFileStatus,
+  getSymbolicLinkStatus,
+  isDirectory,
+  isRegularFile,
+  isSymbolicLink,
+  readSymbolicLink,
+ )
 import System.Posix.Types (FileMode)
-import System.Posix.User
-import TH
+import System.Posix.User (
+  getGroupEntryForID,
+  getUserEntryForID,
+  groupName,
+  userName,
+ )
+import TH (duplicateRules)
 import Text.PrettyPrint (render)
 
 data FilterInfo = FilterInfo

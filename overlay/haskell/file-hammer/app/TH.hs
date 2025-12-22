@@ -1,11 +1,11 @@
-module TH where
+module TH (duplicateRules) where
 
 import Data.Char (toUpper)
 import Data.Function ((&))
 import Data.Maybe (maybeToList)
 import Language.Haskell.TH.Syntax (Name, mkName, nameBase)
 import Lens.Micro ((.~))
-import Lens.Micro.TH (DefName (..), LensRules, camelCaseFields, lensField)
+import Lens.Micro.TH (DefName (MethodName), LensRules, camelCaseFields, lensField)
 
 duplicateRules :: LensRules
 duplicateRules =

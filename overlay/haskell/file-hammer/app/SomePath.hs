@@ -1,6 +1,6 @@
-module SomePath where
+module SomePath (SomePath (..)) where
 
-import Data.Hashable (Hashable (..))
+import Data.Hashable (Hashable (hashWithSalt))
 import Path.Posix (Abs, Path, Rel, toFilePath)
 
 data SomePath b = forall t. SomePath (Path b t)
@@ -16,6 +16,3 @@ instance Eq (SomePath Rel) where
 
 instance Hashable (SomePath Rel) where
   hashWithSalt salt (SomePath path) = hashWithSalt salt path
-
-mapSomePath :: (forall t. Path b t -> a) -> SomePath b -> a
-mapSomePath fn (SomePath path) = fn path

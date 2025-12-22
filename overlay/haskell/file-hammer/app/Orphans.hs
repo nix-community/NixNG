@@ -1,16 +1,16 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Orphans where
+module Orphans () where
 
 import Data.Aeson.Types qualified as A
-import Data.Hashable (Hashable (..))
+import Data.Hashable (Hashable (hashWithSalt))
 import Data.Text qualified as T
-import Data.TreeDiff.Class (ToExpr (..))
-import Data.TreeDiff.Expr (Expr (..))
+import Data.TreeDiff.Class (ToExpr (toExpr))
+import Data.TreeDiff.Expr (Expr (App))
 import Path.Posix (Path, toFilePath)
 import System.FilePath.Glob (Pattern, compile, decompile)
-import System.Posix.Types (CGid (..), CMode (..), CUid (..), GroupID, UserID)
+import System.Posix.Types (CGid (CGid), CMode (CMode), CUid (CUid), GroupID, UserID)
 
 instance ToExpr (Path p t) where
   toExpr :: Path p t -> Expr

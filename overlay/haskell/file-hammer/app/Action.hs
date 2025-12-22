@@ -2,9 +2,13 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module Action where
+module Action (Action (..), actionToCommand, commandToText, runAction) where
 
-import Config (Content (..), Group (..), User (..))
+import Config (
+  Content (ContentAny, ContentBinary, ContentFile, ContentText),
+  Group (GroupId, GroupName),
+  User (UserId, UserName),
+ )
 import Control.Exception (bracket)
 import Control.Monad (when)
 import Data.ByteString qualified as BS
@@ -17,14 +21,14 @@ import Data.Text.IO qualified as T
 import Foreign.C (CChar)
 import Foreign.C.Error (eXDEV, getErrno)
 import Foreign.C.String (withCString)
-import Foreign.C.Types (CInt (..), CUInt (..))
+import Foreign.C.Types (CInt (CInt), CUInt (CUInt))
 import Foreign.Ptr (Ptr, nullPtr)
 import Numeric.Extra (showIntAtBase)
 import Path.Posix (Abs, Dir, File, Path, toFilePath)
-import SomePath (SomePath (..))
+import SomePath (SomePath (SomePath))
 import System.Directory.Extra (removeDirectoryRecursive)
 import System.IO.Extra (hFlush)
-import System.Posix (COff (..), OpenMode (ReadOnly), createDirectory, fdToHandle)
+import System.Posix (COff (COff), createDirectory, fdToHandle)
 import System.Posix.Files (
   createSymbolicLink,
   fileSize,
@@ -35,8 +39,8 @@ import System.Posix.Files (
   setFileMode,
   setOwnerAndGroup,
  )
-import System.Posix.IO (OpenFileFlags (..), OpenMode (WriteOnly), closeFd, defaultFileFlags, openFd)
-import System.Posix.Types (CMode, Fd (..), GroupID, UserID)
+import System.Posix.IO (OpenFileFlags (creat, trunc), OpenMode (ReadOnly, WriteOnly), closeFd, defaultFileFlags, openFd)
+import System.Posix.Types (CMode, Fd (Fd), GroupID, UserID)
 import System.Posix.User (getGroupEntryForName, getUserEntryForName, groupID, userID)
 
 data Action
