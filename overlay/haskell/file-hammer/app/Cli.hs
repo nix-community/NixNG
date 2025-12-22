@@ -4,6 +4,7 @@
 module Cli where
 
 import Control.Monad.Logger (LogLevel (..))
+import Data.Bifunctor (first)
 import Data.Char (toLower)
 import Data.Functor ((<&>))
 import Data.HashSet (HashSet)
@@ -20,14 +21,10 @@ import Prelude hiding (show)
 import Prelude qualified
 
 pathAbsFile :: ReadM (Path Abs File)
-pathAbsFile = eitherReader \arg -> case parseAbsFile arg of
-  Left err -> Left (Prelude.show err)
-  Right res -> Right res
+pathAbsFile = eitherReader (first Prelude.show . parseAbsFile)
 
 pathAbsDir :: ReadM (Path Abs Dir)
-pathAbsDir = eitherReader \arg -> case parseAbsDir arg of
-  Left err -> Left (Prelude.show err)
-  Right res -> Right res
+pathAbsDir = eitherReader (first Prelude.show . parseAbsDir)
 
 somePathRelM :: ReadM (SomePath Rel)
 somePathRelM = eitherReader \arg -> go parseRelFile arg <> go parseRelDir arg
@@ -37,12 +34,7 @@ somePathRelM = eitherReader \arg -> go parseRelFile arg <> go parseRelDir arg
     Right res -> Right (SomePath res)
 
 pathRelDir :: ReadM (Path Rel Dir)
-pathRelDir = eitherReader \arg -> case parseRelDir arg of
-  Left err -> Left (Prelude.show err)
-  Right res -> Right res
-
-patternM :: ReadM Pattern
-patternM = eitherReader \arg -> Right $ compile arg
+pathRelDir = eitherReader (first Prelude.show . parseRelDir)
 
 logLevelM :: ReadM LogLevel
 logLevelM = eitherReader \arg ->
@@ -52,6 +44,9 @@ logLevelM = eitherReader \arg ->
     "warn" -> Right LevelWarn
     "error" -> Right LevelError
     _ -> Left ("Invalid log level: " <> Prelude.show arg)
+
+patternM :: ReadM Pattern
+patternM = eitherReader \arg -> Right $ compile arg
 
 data Command
   = CommandShow

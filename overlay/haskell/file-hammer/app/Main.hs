@@ -183,7 +183,7 @@ readFileNode path = do
             { user = UserName . T.pack $ userName userEntry
             , group = GroupName . T.pack $ groupName groupEntry
             }
-      , mode = fileMode status .&. 0b111111111
+      , mode = fileMode status .&. 0b11111111
       , content = fileContent
       }
 
@@ -241,14 +241,11 @@ modifyFile path name (desired, actual) = do
   when (desired ^. _mode /= actual ^. _mode) $
     tell [Action'Chmod{path = SomePath $ path </> name, mode = desired ^. _mode}]
 
-  case (desired ^. _content, actual ^. _content) of
-    (ContentFile contentPath, actualContent) -> do
-      desiredContent <- readContent contentPath
-      when (desiredContent /= actualContent) $
-        tell [Action'UpdateFile{filePath = path </> name, content = desired ^. _content}]
-    _ ->
-      when (desired ^. _content /= actual ^. _content) $
-        tell [Action'UpdateFile{filePath = path </> name, content = desired ^. _content}]
+  desiredContent <- case (desired ^. _content) of
+    (ContentFile contentPath) -> readContent contentPath
+    _ -> pure $ actual ^. _content
+  when (desiredContent /= actual ^. _content) $
+    tell [Action'UpdateFile{filePath = path </> name, content = desired ^. _content}]
 
 createFile
   :: (MonadWriter [Action] m)
@@ -347,15 +344,13 @@ hashmapCompare ignores first second create modify delete = do
 
     deleted = first' `HM.difference` second'
     created = second' `HM.difference` first'
-    updated = HM.intersectionWith maybeNotEqual second' first' & HM.mapMaybe id
+    updated = HM.filter (uncurry (/=)) $ HM.intersectionWith (,) second' first'
 
   logDebugN ("excluded names: " <> T.show excludedNames)
 
   forM_ (HM.toList created) . uncurry $ create
   forM_ (HM.toList updated) . uncurry $ modify
   forM_ (HM.toList deleted) . uncurry $ delete
- where
-  maybeNotEqual a b = if a /= b then Just (a, b) else Nothing
 
 modifyDirectory
   :: ( MonadLoggerIO m
@@ -407,9 +402,9 @@ modifyDirectory path (desired, actual) = do
 io :: (MonadIO m) => IO a -> m a
 io = liftIO
 
-data FileHammerExcption = InvalidSpecification String
+data FileHammerException = InvalidSpecification String
   deriving (Show)
-instance Exception FileHammerExcption
+instance Exception FileHammerException
 
 readSpecification :: (MonadIO m, MonadThrow m) => Path Abs File -> m Specification
 readSpecification path =
@@ -453,7 +448,7 @@ cli (Cli{root, diff, command = Cli.CommandApply{configuration, parent}}) = do
           ediff (specification ^. _directory) actual
 
       (_, actions) <- runWriterT $ modifyDirectory root (specification ^. _directory, actual)
-      forM_ actions (io . runAction)
+      io . forM_ actions $ runAction
 cli (Cli{root, diff, command = Cli.CommandPlan{configuration, showContents}}) = do
   specification <- readSpecification configuration
 
