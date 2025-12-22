@@ -10,7 +10,7 @@ import Data.TreeDiff.Class (ToExpr (..))
 import Data.TreeDiff.Expr (Expr (..))
 import Path.Posix (Path, toFilePath)
 import System.FilePath.Glob (Pattern, compile, decompile)
-import System.Posix.Types (CMode (..))
+import System.Posix.Types (CGid (..), CMode (..), CUid (..), GroupID, UserID)
 
 instance ToExpr (Path p t) where
   toExpr :: Path p t -> Expr
@@ -35,3 +35,11 @@ instance Hashable Pattern where
 deriving newtype instance A.FromJSON CMode
 deriving newtype instance A.ToJSON CMode
 deriving newtype instance ToExpr CMode
+
+deriving newtype instance ToExpr UserID
+deriving newtype instance A.FromJSON UserID
+deriving newtype instance A.ToJSON UserID
+
+deriving newtype instance ToExpr GroupID
+deriving newtype instance A.FromJSON GroupID
+deriving newtype instance A.ToJSON GroupID

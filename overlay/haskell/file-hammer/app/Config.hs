@@ -1,5 +1,6 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Config where
@@ -34,7 +35,7 @@ import Orphans
 import Path
 import SomePath (SomePath (..))
 import System.FilePath.Glob (Pattern, compile, decompile)
-import System.Posix.Types (CMode (..))
+import System.Posix.Types (CMode (..), GroupID, UserID)
 import TH
 
 customOptions :: A.Options
@@ -44,14 +45,38 @@ customOptions =
     }
 
 {- |
+  A user described either by their name or numeric ID
+-}
+data User = UserName Text | UserId UserID
+  deriving (Eq, Generic, Show, ToExpr)
+
+instance A.FromJSON User where
+  parseJSON = genericParseJSON customOptions
+instance A.ToJSON User where
+  toJSON = genericToJSON customOptions
+  toEncoding = genericToEncoding customOptions
+
+{- |
+  A group described either by their name or numeric ID
+-}
+data Group = GroupName Text | GroupId GroupID
+  deriving (Eq, Generic, Show, ToExpr)
+
+instance A.FromJSON Group where
+  parseJSON = genericParseJSON customOptions
+instance A.ToJSON Group where
+  toJSON = genericToJSON customOptions
+  toEncoding = genericToEncoding customOptions
+
+{- |
   Owner specification of a filesystem node, containing the ownning
   user and group.
 -}
 data Owner
   = Owner
-  { user :: Text
+  { user :: User
   -- ^ The owning user of a filesystem node.
-  , group :: Text
+  , group :: Group
   -- ^ The owning group of a filesystem node.
   }
   deriving (Eq, Generic, Show, ToExpr)
@@ -199,6 +224,8 @@ instance A.ToJSON Specification where
   toJSON = genericToJSON customOptions
   toEncoding = genericToEncoding customOptions
 
+makeLensesWith duplicateRules ''User
+makeLensesWith duplicateRules ''Group
 makeLensesWith duplicateRules ''Owner
 makeLensesWith duplicateRules ''Content
 makeLensesWith duplicateRules ''FileNode

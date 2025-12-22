@@ -31,8 +31,8 @@ let
                   content."DirectoryContentManaged" = genDir (lib.tail path) final;
                   mode = 509;
                   owner = {
-                    user = "root";
-                    group = "root";
+                    user."UserName" = "root";
+                    group."GroupName" = "root";
                   };
                 };
               }
@@ -55,7 +55,14 @@ let
               files.${final} = {
                 mode = lib.toInt value.mode;
                 owner = {
-                  inherit (value) user group;
+                  user = {
+                    ${if value.user != null then "UserName" else null} = value.user;
+                    ${if value.uid != null then "UserId" else null} = value.uid;
+                  };
+                  group = {
+                    ${if value.group != null then "GroupName" else null} = value.group;
+                    ${if value.gid != null then "UserId" else null} = value.gid;
+                  };
                 };
               };
             }
@@ -110,7 +117,7 @@ let
         };
 
         user = lib.mkOption {
-          type = lib.types.str;
+          type = lib.types.nullOr lib.types.str;
           description = ''
             User name of file owner.
 
@@ -118,11 +125,11 @@ let
 
             When services.userborn.enable, this option has no effect. You have to assign a uid instead. Otherwise this option takes precedence over uid.
           '';
-          default = "+0";
+          default = "root";
         };
 
         group = lib.mkOption {
-          type = lib.types.str;
+          type = lib.types.nullOr lib.types.str;
           description = ''
             Group name of file owner.
 
@@ -130,23 +137,23 @@ let
 
             When services.userborn.enable, this option has no effect. You have to assign a gid instead. Otherwise this option takes precedence over gid.
           '';
-          default = "+0";
+          default = "root";
         };
 
         uid = lib.mkOption {
-          type = lib.types.str;
+          type = lib.types.nullOr lib.types.str;
           description = ''
             UID of created file. Only takes effect when the file is copied (that is, the mode is not 'symlink').
           '';
-          default = "0";
+          default = null;
         };
 
         gid = lib.mkOption {
-          type = lib.types.str;
+          type = lib.types.nullOr lib.types.str;
           description = ''
             GID of created file. Only takes effect when the file is copied (that is, the mode is not ‘symlink’).
           '';
-          default = "0";
+          default = null;
         };
       };
     };
@@ -220,8 +227,8 @@ in
       directory = {
         mode = 509;
         owner = {
-          user = "root";
-          group = "root";
+          user."UserName" = "root";
+          group."GroupName" = "root";
         };
         content."DirectoryContentManaged" = lib.mkMerge [
           configFile
@@ -231,32 +238,32 @@ in
                 content."ContentAny" = [ ];
                 mode = 420;
                 owner = {
-                  group = "root";
-                  user = "root";
+                  group."GroupName" = "root";
+                  user."UserName" = "root";
                 };
               };
               "hosts" = {
                 content."ContentAny" = [ ];
                 mode = 420;
                 owner = {
-                  group = "root";
-                  user = "root";
+                  group."GroupName" = "root";
+                  user."UserName" = "root";
                 };
               };
               "resolv.conf" = {
                 content."ContentAny" = [ ];
                 mode = 420;
                 owner = {
-                  group = "root";
-                  user = "root";
+                  group."GroupName" = "root";
+                  user."UserName" = "root";
                 };
               };
               "shadow" = {
                 content."ContentAny" = [ ];
                 mode = 256;
                 owner = {
-                  group = "root";
-                  user = "root";
+                  group."GroupName" = "root";
+                  user."UserName" = "root";
                 };
               };
             };

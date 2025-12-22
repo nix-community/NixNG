@@ -23,8 +23,8 @@ nglib.makeSystem {
 
           directory = {
             owner = {
-              user = "nobody";
-              group = "nogroup";
+              user."UserName" = "nobody";
+              group."GroupName" = "nogroup";
             };
 
             mode = 0;
@@ -33,8 +33,8 @@ nglib.makeSystem {
               files = {
                 "testfoo" = {
                   owner = {
-                    user = "root";
-                    group = "root";
+                    user."UserName" = "root";
+                    group."GroupName" = "root";
                   };
 
                   mode = 0;

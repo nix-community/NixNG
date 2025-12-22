@@ -15,10 +15,12 @@ import Config (
   DirectoryContent (..),
   DirectoryNode (..),
   FileNode (..),
+  Group (GroupName),
   HasIgnores (..),
   LinkNode (..),
   Owner (..),
   Specification (..),
+  User (..),
   getUnmanaged,
   _content,
   _destination,
@@ -177,8 +179,8 @@ readFileNode path = do
     FileNode
       { owner =
           Owner
-            { user = T.pack $ userName userEntry
-            , group = T.pack $ groupName groupEntry
+            { user = UserName . T.pack $ userName userEntry
+            , group = GroupName . T.pack $ groupName groupEntry
             }
       , mode = fileMode status .&. 0b111111111
       , content = fileContent
@@ -221,8 +223,8 @@ readDir path = do
     DirectoryNode
       { owner =
           Owner
-            { user = T.pack $ userName userEntry
-            , group = T.pack $ groupName groupEntry
+            { user = UserName . T.pack $ userName userEntry
+            , group = GroupName . T.pack $ groupName groupEntry
             }
       , mode = fileMode status .&. 0b111111111
       , content

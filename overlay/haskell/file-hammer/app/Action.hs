@@ -4,11 +4,12 @@
 
 module Action where
 
-import Config (Content (..))
+import Config (Content (..), Group (..), User (..))
 import Control.Exception (bracket)
 import Control.Monad (when)
 import Data.ByteString qualified as BS
 import Data.Char (intToDigit)
+import Data.Functor ((<&>))
 import Data.Hashable (Hashable (hashWithSalt))
 import Data.Monoid.Extra (mwhen)
 import Data.Text (Text)
@@ -39,17 +40,17 @@ import System.Posix.Files (
   setOwnerAndGroup,
  )
 import System.Posix.IO (OpenFileFlags (..), OpenMode (WriteOnly), closeFd, defaultFileFlags, openFd)
-import System.Posix.Types (CMode, Fd (..))
+import System.Posix.Types (CMode, Fd (..), GroupID, UserID)
 import System.Posix.User (getGroupEntryForName, getUserEntryForName, groupID, userID)
 
 data Action
-  = Action'Chown {user :: Text, group :: Text, path :: SomePath Abs}
+  = Action'Chown {user :: User, group :: Group, path :: SomePath Abs}
   | Action'Chmod {mode :: CMode, path :: SomePath Abs}
   | Action'DeleteFile {filePath :: Path Abs File}
-  | Action'CreateFile {filePath :: Path Abs File, content :: Content, user :: Text, group :: Text, mode :: CMode}
+  | Action'CreateFile {filePath :: Path Abs File, content :: Content, user :: User, group :: Group, mode :: CMode}
   | Action'UpdateFile {filePath :: Path Abs File, content :: Content}
   | Action'DeleteDirectory {dirPath :: Path Abs Dir}
-  | Action'CreateDirectory {dirPath :: Path Abs Dir, user :: Text, group :: Text, mode :: CMode}
+  | Action'CreateDirectory {dirPath :: Path Abs Dir, user :: User, group :: Group, mode :: CMode}
   | Action'CreateLink {source :: Path Abs File, destination :: Text}
   | Action'UpdateLink {source :: Path Abs File, destination :: Text}
   | Action'DeleteLink {source :: Path Abs File}
@@ -77,13 +78,34 @@ toFilePathText = T.pack . toFilePath
 
 data Command = Command {cmdline :: [Text], stdin :: Maybe Content}
 
+userToText :: User -> Text
+userToText (UserName text) = text
+userToText (UserId id') = T.show id'
+
+groupToText :: Group -> Text
+groupToText (GroupName text) = text
+groupToText (GroupId id') = T.show id'
+
+resolveUidFromUser :: User -> IO UserID
+resolveUidFromUser (UserName user) = getUserEntryForName (T.unpack user) <&> userID
+resolveUidFromUser (UserId id') = pure id'
+
+resolveGidFromGroup :: Group -> IO GroupID
+resolveGidFromGroup (GroupName group) = getGroupEntryForName (T.unpack group) <&> groupID
+resolveGlib.types.attrTag {
+        UserName = lib.mkOption {
+        };
+
+        UserID = lib.mkOption {
+        };
+      };idFromGroup (GroupId id') = pure id'
+
 actionToCommand :: Action -> Command
 actionToCommand Action'Chown{user, group, path} =
   Command
     { cmdline =
         [ "chown"
-        , user <> ":" <> group
-        , " "
+        , userToText user <> ":" <> groupToText group
         , case path of SomePath path' -> toFilePathText path'
         ]
     , stdin = Nothing
@@ -108,8 +130,8 @@ actionToCommand Action'CreateFile{filePath, content, user, group, mode} =
     { cmdline =
         [ "install"
         , "--no-target-directory"
-        , "--owner=" <> user
-        , "--group=" <> group
+        , "--owner=" <> userToText user
+        , "--group=" <> groupToText group
         , "--mode=" <> T.pack (showIntAtBase 8 intToDigit mode "")
         ]
           <> case content of
@@ -191,22 +213,22 @@ logAction = T.putStrLn . commandToText False . actionToCommand
 runAction :: Action -> IO ()
 runAction action@Action'Chown{user, group, path = SomePath (toFilePath -> path)} =
   logAction action >> do
-    userEntry <- getUserEntryForName (T.unpack user)
-    groupEntry <- getGroupEntryForName (T.unpack group)
+    uid <- resolveUidFromUser user
+    gid <- resolveGidFromGroup group
 
-    setOwnerAndGroup path (userID userEntry) (groupID groupEntry)
+    setOwnerAndGroup path uid gid
 runAction action@Action'Chmod{mode, path = SomePath (toFilePath -> path)} =
   logAction action >> setFileMode path mode
 runAction action@Action'DeleteFile{filePath} =
   logAction action >> removeLink (toFilePath filePath)
 runAction action@Action'CreateFile{filePath, content, user, group, mode} =
   logAction action >> bracket (openFd (toFilePath filePath) WriteOnly fileFlags) closeFd \fd -> do
-    userEntry <- getUserEntryForName (T.unpack user)
-    groupEntry <- getGroupEntryForName (T.unpack group)
+    uid <- resolveUidFromUser user
+    gid <- resolveGidFromGroup group
 
     writeContent fd content
 
-    setFdOwnerAndGroup fd (userID userEntry) (groupID groupEntry)
+    setFdOwnerAndGroup fd uid gid
  where
   fileFlags = defaultFileFlags{creat = Just mode, trunc = True}
 runAction action@Action'UpdateFile{filePath, content} =
@@ -219,10 +241,10 @@ runAction action@Action'CreateDirectory{dirPath = toFilePath -> path, user, grou
   logAction action >> do
     createDirectory path mode
 
-    userEntry <- getUserEntryForName (T.unpack user)
-    groupEntry <- getGroupEntryForName (T.unpack group)
+    uid <- resolveUidFromUser user
+    gid <- resolveGidFromGroup group
 
-    setOwnerAndGroup path (userID userEntry) (groupID groupEntry)
+    setOwnerAndGroup path uid gid
 runAction action@Action'CreateLink{source = toFilePath -> source, destination = T.unpack -> destination} =
   logAction action >> createSymbolicLink destination source
 runAction action@Action'UpdateLink{source = toFilePath -> source, destination = T.unpack -> destination} =

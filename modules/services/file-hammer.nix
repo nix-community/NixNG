@@ -9,12 +9,28 @@ let
 
   ownerOption = {
     user = lib.mkOption {
-      type = lib.types.str;
+      type = lib.types.attrTag {
+        UserName = lib.mkOption {
+          type = lib.types.str;
+        };
+
+        UserID = lib.mkOption {
+          type = lib.types.int;
+        };
+      };
       description = "The owning user of a filesystem node.";
     };
 
     group = lib.mkOption {
-      type = lib.types.str;
+      type = lib.types.attrTag {
+        GroupName = lib.mkOption {
+          type = lib.types.str;
+        };
+
+        GroupID = lib.mkOption {
+          type = lib.types.int;
+        };
+      };
       description = "The owning group of a filesystem node.";
     };
   };
