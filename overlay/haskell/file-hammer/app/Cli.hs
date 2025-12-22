@@ -4,17 +4,14 @@
 module Cli where
 
 import Control.Monad.Logger (LogLevel (..))
-import Control.Monad.Logger.CallStack (LogLevel (LevelInfo))
 import Data.Char (toLower)
 import Data.Functor ((<&>))
 import Data.HashSet (HashSet)
 import Data.HashSet qualified as HS
-import Data.Hashable (Hashable (..))
-import Data.Text qualified as T
 import Lens.Micro.TH (makeLensesWith)
 import Options.Applicative hiding (command)
 import Options.Applicative qualified as O
-import Orphans
+import Orphans ()
 import Path
 import SomePath (SomePath (..))
 import System.FilePath.Glob (Pattern, compile)

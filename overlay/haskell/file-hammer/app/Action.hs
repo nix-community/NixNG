@@ -10,31 +10,27 @@ import Control.Monad (when)
 import Data.ByteString qualified as BS
 import Data.Char (intToDigit)
 import Data.Functor ((<&>))
-import Data.Hashable (Hashable (hashWithSalt))
 import Data.Monoid.Extra (mwhen)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Foreign.C (CChar)
-import Foreign.C.Error (Errno (..), eXDEV, getErrno)
+import Foreign.C.Error (eXDEV, getErrno)
 import Foreign.C.String (withCString)
 import Foreign.C.Types (CInt (..), CUInt (..))
 import Foreign.Ptr (Ptr, nullPtr)
 import Numeric.Extra (showIntAtBase)
-import Path.Posix (Abs, Dir, File, Path, Rel, toFilePath)
+import Path.Posix (Abs, Dir, File, Path, toFilePath)
 import SomePath (SomePath (..))
 import System.Directory.Extra (removeDirectoryRecursive)
 import System.IO.Extra (hFlush)
-import System.Posix (COff (..), OpenMode (ReadOnly), createDirectory, fdToHandle, removeDirectory)
+import System.Posix (COff (..), OpenMode (ReadOnly), createDirectory, fdToHandle)
 import System.Posix.Files (
   createSymbolicLink,
   fileSize,
   getFdStatus,
-  getFileStatus,
-  isDirectory,
   removeLink,
   rename,
-  setFdMode,
   setFdOwnerAndGroup,
   setFileMode,
   setOwnerAndGroup,

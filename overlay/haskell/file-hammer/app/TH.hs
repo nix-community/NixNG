@@ -1,11 +1,10 @@
 module TH where
 
-import Data.Char (isUpper, toLower, toUpper)
+import Data.Char (toUpper)
 import Data.Function ((&))
-import Data.List (isPrefixOf, stripPrefix)
 import Data.Maybe (maybeToList)
 import Language.Haskell.TH.Syntax (Name, mkName, nameBase)
-import Lens.Micro (over, (.~))
+import Lens.Micro ((.~))
 import Lens.Micro.TH (DefName (..), LensRules, camelCaseFields, lensField)
 
 duplicateRules :: LensRules

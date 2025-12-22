@@ -38,19 +38,18 @@ import Control.Monad (forM_, when)
 import Control.Monad.Catch (MonadThrow, throwM)
 import Control.Monad.Extra ((&&^))
 import Control.Monad.IO.Class
-import Control.Monad.Logger (LogLevel (LevelDebug), runStderrLoggingT)
 import Control.Monad.Logger.CallStack (
-  LogLevel (LevelInfo),
   LoggingT,
   MonadLogger,
   MonadLoggerIO,
   filterLogger,
   logDebugN,
   logWarnN,
+  runStderrLoggingT,
  )
 import Control.Monad.Reader.Class (MonadReader)
 import Control.Monad.State.Strict (StateT, execStateT)
-import Control.Monad.Trans.Reader (ReaderT, runReaderT)
+import Control.Monad.Trans.Reader (runReaderT)
 import Control.Monad.Writer.Strict (MonadWriter, WriterT, runWriterT, tell)
 import Data.Aeson qualified as A
 import Data.Aeson.Text qualified as A
@@ -71,7 +70,8 @@ import Data.TreeDiff
 import Lens.Micro
 import Lens.Micro.Mtl
 import Lens.Micro.TH (makeLensesWith)
-import Path.Posix
+import Path.Posix hiding (parent)
+import Path.Posix qualified as Posix
 import SomePath (SomePath (..))
 import System.Directory hiding (createDirectory, isSymbolicLink)
 import System.FilePath.Glob (Pattern, match)
@@ -89,8 +89,6 @@ data FilterInfo = FilterInfo
   }
 
 makeLensesWith duplicateRules ''FilterInfo
-
-type AppM = ReaderT FilterInfo (LoggingT IO)
 
 type GetHashMaps =
   ( HashMap (Path Rel File) FileNode
@@ -288,7 +286,7 @@ createDirectory path name desired = do
   ignores <- view _ignores
   let
     path' = path </> name
-    filterByExclusions = filter \(name, _) -> excludeByName ignores name
+    filterByExclusions = filter \(item, _) -> excludeByName ignores item
 
   tell
     [ Action'CreateDirectory
@@ -429,7 +427,7 @@ createDirectoryRecursive path mode = forM_ (map (toFilePath . foldl (</>) [absdi
   segmentPath path' =
     if path' == [absdir|/|]
       then []
-      else dirname path' : segmentPath (parent path')
+      else dirname path' : segmentPath (Posix.parent path')
 
 cli :: Cli -> LoggingT IO ()
 cli (Cli{root, command = Cli.CommandShow{ignores, unmanaged}}) = do

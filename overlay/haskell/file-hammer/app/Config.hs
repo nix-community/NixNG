@@ -15,26 +15,21 @@ import Data.Aeson.Types (
   genericToJSON,
   sumEncoding,
  )
-import Data.Aeson.Types qualified as A
 import Data.ByteString (ByteString)
-import Data.Char (toLower)
-import Data.Function ((&))
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HM
 import Data.HashSet (HashSet)
 import Data.HashSet qualified as HS
-import Data.Hashable (Hashable (..))
 import Data.Maybe (catMaybes)
 import Data.Text (Text)
-import Data.Text qualified as T
-import Data.TreeDiff (Expr (App), ToExpr (..))
+import Data.TreeDiff (ToExpr (..))
 import GHC.Generics (Generic)
 import Lens.Micro ((^.))
 import Lens.Micro.TH (makeLensesWith)
-import Orphans
+import Orphans ()
 import Path
 import SomePath (SomePath (..))
-import System.FilePath.Glob (Pattern, compile, decompile)
+import System.FilePath.Glob (Pattern)
 import System.Posix.Types (CMode (..), GroupID, UserID)
 import TH
 
