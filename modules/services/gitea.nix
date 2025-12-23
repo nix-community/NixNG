@@ -248,7 +248,7 @@ in
         Path to Gitea's runtime generated configuration, with secrets.
       '';
       type = lib.types.path;
-      default = "/var/run/gitea/app.ini";
+      default = "/run/gitea/app.ini";
     };
     # add explicit path settings and ensure them, also add to config but only as defaults
   };
@@ -271,7 +271,7 @@ in
         type = "file";
         mode = "600";
         owner =
-          if (cfg.settings.default.RUN_USER or null) != null then
+          if (cfg.settings.default or { }) ? RUN_USER then
             "${cfg.settings.default.RUN_USER}:nogroup"
           else
             "root:root";
