@@ -258,14 +258,14 @@ in
                   user."UserName" = "root";
                 };
               };
-              "shadow" = {
-                content."ContentAny" = [ ];
-                mode = 256;
-                owner = {
-                  group."GroupName" = "root";
-                  user."UserName" = "root";
-                };
-              };
+              # "shadow" = {
+              #   content."ContentAny" = [ ];
+              #   mode = 256;
+              #   owner = {
+              #     group."GroupName" = "root";
+              #     user."UserName" = "root";
+              #   };
+              # };
             };
           }
         ];
@@ -274,6 +274,7 @@ in
         "group"
         "mtab"
         "passwd"
+        "shadow"
       ];
     };
     environment.etc."profile" = {
