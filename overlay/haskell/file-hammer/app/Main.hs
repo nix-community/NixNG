@@ -40,12 +40,12 @@ import Config (
   DirectoryContent (DirectoryContentManaged, DirectoryContentUnmanaged, directories, files, links),
   DirectoryNode (DirectoryNode, content, mode, owner),
   FileNode (FileNode, content, mode, owner),
-  Group (GroupName),
+  Group (GroupId, GroupName),
   HasIgnores (),
   LinkNode (LinkNode, destination),
   Owner (Owner, group, user),
   Specification (Specification, directory, ignores),
-  User (UserName),
+  User (UserId, UserName),
   getUnmanaged,
   _content,
   _destination,
@@ -61,7 +61,7 @@ import Config (
  )
 import Control.Exception (Exception)
 import Control.Monad (forM_, when)
-import Control.Monad.Catch (MonadThrow, throwM)
+import Control.Monad.Catch (MonadCatch, MonadThrow, handleIf, throwM)
 import Control.Monad.Extra ((&&^))
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Logger.CallStack (
@@ -120,6 +120,7 @@ import Path.Posix qualified as Posix
 import SomePath (SomePath (SomePath))
 import System.Directory (listDirectory)
 import System.FilePath.Glob (Pattern, match)
+import System.IO.Error (ioeGetErrorType, isDoesNotExistErrorType)
 import System.Posix qualified as Posix
 import System.Posix.Files (
   fileExist,
@@ -158,7 +159,8 @@ type GetHashMaps =
   )
 
 getHashMaps
-  :: ( MonadIO m
+  :: ( MonadCatch m
+     , MonadIO m
      , MonadLogger m
      , MonadReader FilterInfo m
      , MonadThrow m
@@ -213,10 +215,26 @@ readContent path =
       pure $ ContentBinary bs
     Right text -> pure $ ContentText text
 
+getUserFromStatus :: (MonadCatch m, MonadIO m) => Posix.FileStatus -> m User
+getUserFromStatus (fileOwner -> userId) = handleIf predicate fallback action
+ where
+  predicate = isDoesNotExistErrorType . ioeGetErrorType
+  fallback = const . pure . UserId $ userId
+  action = io $ getUserEntryForID userId <&> UserName . T.pack . userName
+
+getGroupFromStatus :: (MonadCatch m, MonadIO m) => Posix.FileStatus -> m Group
+getGroupFromStatus (fileGroup -> groupId) = handleIf predicate fallback action
+ where
+  predicate = isDoesNotExistErrorType . ioeGetErrorType
+  fallback = const . pure . GroupId $ groupId
+  action = io $ getGroupEntryForID groupId <&> GroupName . T.pack . groupName
+
 readFileNode
-  :: ( MonadIO m
+  :: ( MonadCatch m
+     , MonadIO m
      , MonadLogger m
      , MonadReader FilterInfo m
+     , MonadThrow m
      )
   => Path Rel File -> m FileNode
 readFileNode path = do
@@ -225,8 +243,8 @@ readFileNode path = do
 
   status <- io $ getFileStatus (toFilePath $ root </> path)
 
-  userEntry <- io $ getUserEntryForID (fileOwner status)
-  groupEntry <- io $ getGroupEntryForID (fileGroup status)
+  user <- getUserFromStatus status
+  group <- getGroupFromStatus status
 
   fileContent <-
     if SomePath path `HS.member` unmanaged
@@ -241,15 +259,16 @@ readFileNode path = do
     FileNode
       { owner =
           Owner
-            { user = UserName . T.pack $ userName userEntry
-            , group = GroupName . T.pack $ groupName groupEntry
+            { user
+            , group
             }
       , mode = fileMode status .&. 0b11111111
       , content = fileContent
       }
 
 readDir
-  :: ( MonadIO m
+  :: ( MonadCatch m
+     , MonadIO m
      , MonadLogger m
      , MonadReader FilterInfo m
      , MonadThrow m
@@ -278,15 +297,15 @@ readDir path = do
 
   status <- io . getFileStatus . toFilePath $ root </> path
 
-  userEntry <- io $ getUserEntryForID (fileOwner status)
-  groupEntry <- io $ getGroupEntryForID (fileGroup status)
+  user <- getUserFromStatus status
+  group <- getGroupFromStatus status
 
   pure
     DirectoryNode
       { owner =
           Owner
-            { user = UserName . T.pack $ userName userEntry
-            , group = GroupName . T.pack $ groupName groupEntry
+            { user = user
+            , group = group
             }
       , mode = fileMode status .&. 0b111111111
       , content
