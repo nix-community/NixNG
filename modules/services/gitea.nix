@@ -297,7 +297,7 @@ in
 
           ${lib.optionalString (cfg.package.name == pkgs.forgejo.name) ''
             mkdir -p ${cfg.settings.server.APP_DATA_PATH}/conf
-            ln -sf ${cfg.package}/locasle ${cfg.settings.server.APP_DATA_PATH}/conf
+            ln -sf ${cfg.package}/locale ${cfg.settings.server.APP_DATA_PATH}/conf
           ''}
 
           export HOME=${cfg.settings.server.APP_DATA_PATH}
