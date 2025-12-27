@@ -55,7 +55,9 @@ let
 
         export PATH="${
           lib.concatStringsSep ":" (
-            [ "$PATH" ] ++ (lib.optional (service.environment ? PATH) service.environment."PATH")
+            [ "$PATH" ]
+            ++ (lib.optional (service.environment ? PATH) service.environment."PATH")
+            ++ [ (pkgs.setgroups + "/bin") ]
           )
         }"
 
@@ -174,7 +176,6 @@ in
 
       environment.systemPackages = [
         pkgs.dinit
-        pkgs.setgroups
       ];
     })
   ];
