@@ -21,7 +21,7 @@ nglib.makeSystem {
       };
       nix = {
         enable = true;
-        package = pkgs.nixStable;
+        package = pkgs.nix;
         config = {
           experimental-features = [
             "nix-command"

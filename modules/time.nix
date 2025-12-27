@@ -37,9 +37,15 @@ in
   };
 
   config = {
-    system.activation."tzdata" = nglib.dag.dagEntryAnywhere ''
-      ln -s "${cfg.tzdata}/share/zoneinfo" "/etc/zoneinfo"
-      ln -s "/etc/zoneinfo/${cfg.timezone}" "/etc/localtime"
-    '';
+    environment.etc = {
+      "zoneinfo" = {
+        source = "${cfg.tzdata}/share/zoneinfo";
+        mode = "symlink";
+      };
+      "localtime" = {
+        source = "/etc/zoneinfo/${cfg.timezone}";
+        mode = "symlink";
+      };
+    };
   };
 }

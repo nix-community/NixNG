@@ -26,7 +26,10 @@ let
       ${lib.optionalString (service.execStop != null) service.execStop}
     '';
 
-  generateDependsOn = lib.concatMapStringsSep "\n" (dep: "depends-on: ${dep}");
+  generateDependsOn = lib.concatMapStringsSep "\n" (dep: ''
+    depends-on: ${dep}
+    waits-for: ${dep}
+  '');
 
   generateEnvFile =
     { name, environment, ... }:
@@ -41,6 +44,7 @@ let
     let
       rules = (nglib.nottmpfiles.ensureSomethings service.ensureSomething) ++ service.tmpfiles;
       rulesFile = pkgs.writeText "${name}.tmpfiles" (nglib.nottmpfiles.generate rules);
+      filehammerEtcService = "file-hammer@" + nglib.escapeSystemdPath "/etc";
     in
     pkgs.writeText "${name}-service" ''
       type = ${service.type}
@@ -51,7 +55,9 @@ let
 
         export PATH="${
           lib.concatStringsSep ":" (
-            [ "$PATH" ] ++ (lib.optional (service.environment ? PATH) service.environment."PATH")
+            [ "$PATH" ]
+            ++ (lib.optional (service.environment ? PATH) service.environment."PATH")
+            ++ [ (pkgs.setgroups + "/bin") ]
           )
         }"
 
@@ -74,7 +80,9 @@ let
         }
       }
       working-dir = ${service.workingDirectory}
-      ${generateDependsOn service.dependencies}
+      ${generateDependsOn (
+        service.dependencies ++ (lib.optional (name != filehammerEtcService) filehammerEtcService)
+      )}
     '';
 
   bootService = pkgs.writeText "dinit-boot-service" ''
@@ -158,8 +166,6 @@ in
           # Run activation script for this system
           "$_system_config/activation"
 
-          . /etc/profile
-
           exec ${lib.getExe pkgs.dinit} -d /sv -s
         '';
 
@@ -170,7 +176,6 @@ in
 
       environment.systemPackages = [
         pkgs.dinit
-        pkgs.setgroups
       ];
     })
   ];

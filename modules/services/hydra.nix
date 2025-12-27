@@ -27,19 +27,18 @@ let
     HYDRA_DATA = "${baseDir}";
   };
 
-  env =
-    {
-      NIX_REMOTE = "daemon";
-      SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt";
-      PGPASSFILE = "${baseDir}/pgpass";
-      # NIX_REMOTE_SYSTEMS = concatStringsSep ":" cfg.buildMachinesFiles;
-    }
-    // lib.optionalAttrs (cfg.smtpHost != null) {
-      EMAIL_SENDER_TRANSPORT = "SMTP";
-      EMAIL_SENDER_TRANSPORT_host = cfg.smtpHost;
-    }
-    // hydraEnv
-    // cfg.extraEnv;
+  env = {
+    NIX_REMOTE = "daemon";
+    SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt";
+    PGPASSFILE = "${baseDir}/pgpass";
+    # NIX_REMOTE_SYSTEMS = concatStringsSep ":" cfg.buildMachinesFiles;
+  }
+  // lib.optionalAttrs (cfg.smtpHost != null) {
+    EMAIL_SENDER_TRANSPORT = "SMTP";
+    EMAIL_SENDER_TRANSPORT_host = cfg.smtpHost;
+  }
+  // hydraEnv
+  // cfg.extraEnv;
 
   serverEnv =
     env
@@ -118,7 +117,7 @@ in
     # BEGIN Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.hydra_unstable;
+      default = pkgs.hydra;
       description = ''
         Which HydraCI package to use.
       '';
