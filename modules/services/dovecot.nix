@@ -18,7 +18,7 @@ let
 
   modulesDir = pkgs.symlinkJoin {
     name = "dovecot-modules";
-    paths = map (pkg: "${cfg.package}/lib/dovecot") (
+    paths = map (pkg: "${pkg}/lib/dovecot/modules") (
       [ cfg.package ] ++ map (module: module.override { dovecot = cfg.package; }) cfg.modules
     );
   };
