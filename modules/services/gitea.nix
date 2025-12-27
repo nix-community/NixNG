@@ -297,13 +297,13 @@ in
 
           ${lib.optionalString (cfg.package.name == pkgs.forgejo.name) ''
             mkdir -p ${cfg.settings.server.APP_DATA_PATH}/conf
-            ln -sf ${cfg.package}/locasle ${cfg.settings.server.APP_DATA_PATH}/conf
+            ln -sf ${cfg.package}/locale ${cfg.settings.server.APP_DATA_PATH}/conf
           ''}
 
           export HOME=${cfg.settings.server.APP_DATA_PATH}
           chpst -u ${
             cfg.settings.default.RUN_USER or "root"
-          }:nogroup ${cfg.package}/bin/gitea -c ${cfg.runConfig}
+          }:nogroup ${lib.getExe cfg.package} -c ${cfg.runConfig}
         ''
       );
 
