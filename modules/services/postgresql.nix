@@ -129,6 +129,23 @@ in
         '';
       };
 
+      startScript = lib.mkOption {
+        type = lib.types.lines;
+        description = ''
+          PostgresSQL script to run on every startup.
+        '';
+        default = "";
+      };
+
+      earlyStartScript = lib.mkOption {
+        type = lib.types.lines;
+        description = ''
+          PostgresSQL script to run on every startup, very early.
+        '';
+        default = "";
+      };
+
+
       ensureExtensions = lib.mkOption {
         type = with lib.types; attrsOf (listOf str);
         default = { };
@@ -405,11 +422,13 @@ in
         chpst -u postgres:postgres ${cfg.package}/bin/postgres &
         postgresql=$!
 
-        PSQL="chpst -u postgres:postgres ${cfg.package}/bin/psql --port=${cfg.port}"
+        PSQL="chpst -u postgres:postgres ${cfg.package}/bin/psql --port=${cfg.port} -X"
         while ! $PSQL -d postgres -c "" 2> /dev/null ; do
           if ! kill -0 "$postgresql"; then exit 1; fi
           sleep 0.1
         done
+
+        $PSQL -f "${pkgs.writeText "postgres-start-early.sql" cfg.earlyStartScript}"
 
         ${lib.concatMapStrings
           (
@@ -464,6 +483,8 @@ in
           ''}
           rm -f "${cfg.dataDir}/.first_startup"
         fi
+
+        $PSQL -f "${pkgs.writeText "postgres-start.sql" cfg.startScript}"
 
         wait $postgresql
       '';
