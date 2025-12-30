@@ -128,7 +128,7 @@ in
                   "su"
                   "${cfg.type.shell.user}"
                   "-c"
-                  "${userShell} \"$@\""
+                  "${userShell} \${1+-c} \"\${*@Q}\""
                 ]}
             '';
             sigell =
