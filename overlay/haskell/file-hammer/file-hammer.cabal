@@ -22,10 +22,8 @@ executable file-hammer
     other-modules:
       Cli,
       Config,
-      TH,
       Action,
       Orphans,
-      SomePath,
     -- other-extensions:
     default-extensions:
       ImportQualifiedPost,
@@ -53,12 +51,12 @@ executable file-hammer
       transformers,
       optparse-applicative,
       bytestring-aeson-orphans,
-      template-haskell,
       tree-diff,
       exceptions,
       hashable,
       pretty,
       Glob,
       monad-logger,
+      nixng,
     hs-source-dirs:   app
     default-language: GHC2021
