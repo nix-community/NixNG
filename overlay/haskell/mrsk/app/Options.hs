@@ -9,10 +9,16 @@ import Data.Text (Text)
 import Options.Applicative
 import Options.Applicative.Types (readerAsk)
 import Path.Posix (Abs, Dir, File, Path, parseAbsFile)
+import Remote (SwitchAction (..))
 import System.NixNG.SomePath (pathAbsDir)
 
 data Command
-  = Deploy {hosts :: Maybe (NonEmpty Text), flake :: Text, sudo :: Bool}
+  = Deploy
+      { hosts :: Maybe (NonEmpty Text)
+      , flake :: Text
+      , sudo :: Bool
+      , action :: SwitchAction
+      }
   | Far
 
 data Logging
@@ -39,12 +45,23 @@ readLoggingM =
             Right path -> Right $ Logging'File path
     _ -> Left "Invalid logging setting"
 
+readSwitchActionM :: ReadM SwitchAction
+readSwitchActionM =
+  eitherReader \case
+    "check" -> Right SwitchAction'Check
+    "switch" -> Right SwitchAction'Switch
+    "boot" -> Right SwitchAction'Boot
+    "test" -> Right SwitchAction'Test
+    "dry-activate" -> Right SwitchAction'DryActivate
+    _ -> Left "Invalid switch action"
+
 parseDeploy :: Parser Command
 parseDeploy =
   Deploy
     <$> (many (strArgument (metavar "HOST")) <&> nonEmpty)
     <*> option str (metavar "FLAKE" <> short 'f' <> long "flake")
     <*> switch (long "sudo" <> short 'S')
+    <*> option readSwitchActionM (metavar "SWITCH-ACTION" <> short 'a' <> long "action")
 
 parseFar :: Parser Command
 parseFar = pure Far
@@ -56,7 +73,7 @@ parseCommand =
     <|> subparser (command "far" (info parseFar (progDesc "Serve the far end of a SSH connection")) <> internal)
 
 parseLogging :: Parser Logging
-parseLogging = option readLoggingM (metavar "LOGGING" <> short 'l' <> long "logging")
+parseLogging = option readLoggingM (metavar "LOGGING" <> short 'l' <> long "logging") <|> pure Logging'Blackhole
 
 parseOptions :: Parser Options
 parseOptions =

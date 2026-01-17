@@ -7,9 +7,9 @@
 
 module Main (main) where
 
-import Cli (CliEffect, runCliEffect, tellBuildFinished, tellBuildStarted)
+import Cli (CliEffect, runCliEffect, tellBuildFinished, tellBuildStarted, tellFoundConfigurations)
 import Control.Exception (Exception, throw)
-import Control.Monad (forM, forM_)
+import Control.Monad (forM, forM_, void)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson.Key qualified as A
 import Data.Aeson.KeyMap qualified as A
@@ -117,10 +117,12 @@ type TopLevelEffects =
 
 mrsk :: (RequireCallStack) => Options -> Eff TopLevelEffects ()
 mrsk Options{command = Far} = serveFar
-mrsk Options{command = Deploy{hosts, flake, sudo}} = do
+mrsk Options{command = Deploy{hosts, flake, sudo, action}} = do
   configurations <- case hosts of
     Just hosts' -> getNixOSConfigurations (Just (NE.toList hosts')) flake
     Nothing -> getNixOSConfigurations Nothing flake
+
+  tellFoundConfigurations (HM.keys configurations)
 
   derivations :: HashMap Text (Path Abs File) <-
     HM.fromList
@@ -154,12 +156,12 @@ mrsk Options{command = Deploy{hosts, flake, sudo}} = do
       near handle $
         Near'SwitchNixos
           { configuration = (builtPaths HM.! name)
-          , action =
-              SwitchAction'Switch
+          , action
           , sudo
           }
 
-    liftIO . T.putStrLn $ T.show output
+    pure ()
+  -- liftIO . T.putStrLn $ T.show output
 
   pure ()
 
@@ -167,7 +169,13 @@ main :: IO ()
 main =
   provideCallStack $
     liftIO (execParser options) >>= \opts@Options{logging} ->
-      effectStack logging $ mrsk opts
+      effectStack logging $ do
+        mrsk opts
+        case logging of
+          Logging'OtherTerminal -> do
+            logInfoN "Press any key to continue"
+            void $ liftIO getLine
+          _ -> pure ()
  where
   effectStack
     :: (RequireCallStack)

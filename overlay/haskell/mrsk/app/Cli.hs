@@ -13,7 +13,7 @@ import Brick.Main (App (..), customMain, halt, neverShowCursor)
 import Brick.Types (BrickEvent (..), EventM, Widget)
 import Brick.Util (on)
 import Brick.Widgets.Core
-import Control.Monad (forever)
+import Control.Monad (forM, forM_, forever)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Class (lift)
 import Data.Aeson (fromJSON)
@@ -49,6 +49,7 @@ import Effectful.Concurrent.MVar.Strict (MVar', newEmptyMVar', putMVar', takeMVa
 import Effectful.Dispatch.Dynamic
 import Effectful.FileSystem.IO (FileSystem, hFlush)
 import Effectful.Monad.Logger (Logger, logDebugN)
+import Graphics.Vty.Attributes (defAttr)
 import Graphics.Vty.Attributes qualified as V
 import Graphics.Vty.Attributes.Color
 import Graphics.Vty.Config qualified
@@ -79,7 +80,8 @@ data CliMessage
 data CliHandle = CliHandle {chan :: Chan CliMessage, threadId :: ThreadId}
 
 data BuildState
-  = BuildState'Running
+  = BuildState'None
+  | BuildState'Running
   | BuildState'Finished
   deriving (Show)
 
@@ -137,6 +139,8 @@ myEvent
 myEvent unlift (AppEvent CliMessage'NixInternalLog{internalLog}) = liftIO . unlift $ logDebugN (T.show internalLog)
 myEvent _ (AppEvent (CliMessage'BuildStarted name)) = _knownBuilds . at name .= Just BuildState'Running
 myEvent _ (AppEvent (CliMessage'BuildFinished name)) = _knownBuilds . at name .= Just BuildState'Finished
+myEvent _ (AppEvent (CliMessage'FoundConfigurations configurations)) = forM_ configurations \configuration ->
+  _knownBuilds . at configuration .= Just BuildState'None
 myEvent _ (AppEvent (CliMessage'Readline{prompt, response})) = _askpass .= Just (prompt, response, "")
 myEvent _ (VtyEvent (EvKey (KChar 'c') [MCtrl])) = halt
 myEvent _ (VtyEvent (EvKey KBS [])) = do
@@ -167,7 +171,7 @@ headingAttr = attrName "heading"
 theMap :: AttrMap
 theMap =
   attrMap
-    (white `on` black)
+    defAttr
     [ (headingAttr, V.defAttr `V.withStyle` V.bold)
     ]
 
