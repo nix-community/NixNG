@@ -32,7 +32,7 @@ import Effectful.Dispatch.Static (evalStaticRep, unsafeEff_)
 import Effectful.Environment (Environment, getProgName)
 import Effectful.Exception (Exception, throwIO)
 import Effectful.Fail (Fail)
-import Effectful.Monad.Logger (Logger, Logging (Logging), StaticRep (Logger), logDebugN, logErrorN)
+import Effectful.Monad.Logger (Logger, Logging (Logging), StaticRep (Logger), logDebugN, logErrorN, logInfoN)
 import Effectful.Prim (Prim)
 import Effectful.Prim.IORef (newIORef, readIORef)
 import Effectful.Prim.IORef.Strict (newIORef', readIORef', writeIORef')
@@ -143,7 +143,7 @@ nixEnvSetProfile
   => Maybe (ProcessRunner () () () es (ExitCode, LazyByteString) -> ProcessRunner () () () es (ExitCode, LazyByteString))
   -> Profile
   -> SomePath Abs
-  -> Eff es ()
+  -> Eff es (ExitCode, Text)
 nixEnvSetProfile run (Profile profile) (SomePath path) = do
   (exitCode, output) <-
     maybe readProcessInterleaved ($ readProcessInterleaved) run $
@@ -152,7 +152,7 @@ nixEnvSetProfile run (Profile profile) (SomePath path) = do
   case exitCode of
     ExitFailure _ -> do
       throwIO $ SetProfileException{exitCode, output}
-    ExitSuccess -> pure ()
+    ExitSuccess -> pure (exitCode, T.decodeUtf8 $ BS.toStrict output)
 
 sudoProcess
   :: (Environment :> es, Fail :> es, IOE :> es, Logger :> es, RequireCallStack, TypedProcess :> es)
@@ -259,17 +259,20 @@ serveFar = do
         (exitCode, output) <-
           case action of
             SwitchAction'Check -> do
+              logInfoN "Performing a check"
               switchToConfiguration "check"
             SwitchAction'Switch -> do
-              setProfile
+              logInfoN "Performing a switch"
+              _ <- setProfile
               switchToConfiguration "switch"
             SwitchAction'Boot -> do
+              logInfoN "Performing a boot"
               setProfile
-              switchToConfiguration "boot"
             SwitchAction'Test -> do
+              logInfoN "Performing a boot"
               switchToConfiguration "test"
             SwitchAction'DryActivate -> do
-              logDebugN $ "dry-activation"
+              logDebugN $ "Performing a dry-activation"
               switchToConfiguration "dry-activate"
 
         pure $ toJSON (exitCode, output)
