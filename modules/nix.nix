@@ -164,7 +164,7 @@ in
 
     system.activation.persistNix = mkIf (cfg.persistNix != null) (
       nglib.dag.dagEntryAfter [ "loadNixDb" ] ''
-        export PATH=${pkgs.busybox}/bin:${cfg.package}/bin:${pkgs.utillinux}/bin
+        export PATH=${pkgs.busybox}/bin:${cfg.package}/bin:${pkgs.util-linux}/bin
 
         mkdir -p ${cfg.persistNix}
         USER=root GROUP=root nix copy --no-check-sigs --all --to local?root=${cfg.persistNix}

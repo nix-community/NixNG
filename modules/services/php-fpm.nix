@@ -24,7 +24,7 @@ let
 
   genPhpIniFile =
     { settings, package }:
-    pkgs.runCommandNoCC "php.ini"
+    pkgs.runCommand "php.ini"
       {
         phpSettings = settings;
         phpGlobalSettings = cfg.phpSettings;
@@ -40,7 +40,7 @@ let
 
   genFpmConfFile =
     { settings }:
-    pkgs.runCommandNoCC "php-fpm.conf"
+    pkgs.runCommand "php-fpm.conf"
       {
         fpmSettings = settings;
         fpmGlobalSettings = cfg.fpmSettings;

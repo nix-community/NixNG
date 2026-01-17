@@ -17,7 +17,7 @@ let
   cfg = config.services.home-assistant;
   format = pkgs.formats.yaml { };
 
-  configDir = pkgs.runCommandNoCC "home-assistant-config-dir" { } ''
+  configDir = pkgs.runCommand "home-assistant-config-dir" { } ''
     mkdir -p $out
     ${pkgs.remarshal}/bin/json2yaml -i ${pkgs.writeText "configuration.json" (builtins.toJSON cfg.config)} -o $out/configuration.yaml
     # Hack to support custom yaml objects,

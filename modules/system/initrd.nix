@@ -13,7 +13,7 @@
   ...
 }:
 let
-  bundleWithInit = pkgs.runCommandNoCC (config.system.name + "-bundle-with-init") { } ''
+  bundleWithInit = pkgs.runCommand (config.system.name + "-bundle-with-init") { } ''
     set -o pipefail
     mkdir -p $out
     ln -s ${config.system.build.toplevel}/init $out/init
@@ -32,7 +32,7 @@ in
   };
 
   config.system.build.initrd =
-    pkgs.runCommandNoCC (config.system.name + "-initrd")
+    pkgs.runCommand (config.system.name + "-initrd")
       {
         nativeBuildInputs = with pkgs; [
           findutils

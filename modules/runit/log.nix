@@ -8,7 +8,7 @@
 
 {
   lib,
-  utillinux,
+  util-linux,
   writeShellScript,
 }:
 { n, s }:
@@ -36,7 +36,7 @@ writeShellScript "${n}-log" ''
         rfc5424 = optional (!time) "notime" ++ optional (!timeQuality) "notq" ++ optional (!host) "nohost";
       in
       ''
-        export PATH=${utillinux}/bin:$PATH
+        export PATH=${util-linux}/bin:$PATH
         logger ${connection} \
           ${if rfc5424 == [ ] then "--rfc5424" else "--rfc5424=${concatStringsSep "," rfc5424}"} \
           ${optionalString (tag != null) "-t ${tag}"} \

@@ -1,9 +1,9 @@
 { ... }:
 {
   projectRootFile = "flake.nix";
-  programs.nixfmt-rfc-style.enable = true;
+  programs.nixfmt.enable = true;
 
-  settings.formatter.nixfmt-rfc-style = {
+  settings.formatter.nixfmt = {
     excludes = [ ];
     includes = [ "*.nix" ];
     options = [ ];

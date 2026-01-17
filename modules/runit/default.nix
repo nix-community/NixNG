@@ -57,7 +57,7 @@ in
               name = "runit-stage-2";
               file = ./stage-2.sh;
               substitutes = {
-                inherit (pkgs) runit busybox utillinux;
+                inherit (pkgs) runit busybox util-linux;
                 inherit (cfg) runtimeServiceDirectory;
               };
             };
@@ -104,7 +104,7 @@ in
     ];
 
     runit = {
-      serviceDirectory = pkgs.runCommandNoCC "service-dir" { } ''
+      serviceDirectory = pkgs.runCommand "service-dir" { } ''
         mkdir $out
         ${lib.concatStringsSep "\n" (
           lib.mapAttrsToList (

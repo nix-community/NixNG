@@ -86,7 +86,7 @@ in
             ) x
           );
         in
-        pkgs.runCommandNoCCLocal "cron.d" { } ''
+        pkgs.runCommand "cron.d" { } ''
           CRONFILES="${lib.concatStringsSep " " cronfiles}"
           mkdir -p $out
           for cronfile in $CRONFILES ; do
