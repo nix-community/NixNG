@@ -23,7 +23,7 @@
   };
 
   config.system.build.toplevel =
-    pkgs.runCommandNoCC "nixng-${config.system.name}"
+    pkgs.runCommand "nixng-${config.system.name}"
       {
         nativeBuildInputs = with pkgs; [
           busybox

@@ -17,7 +17,7 @@ let
   cfg = config.services.zigbee2mqtt;
   format = pkgs.formats.yaml { };
 
-  configDir = pkgs.runCommandNoCC "zigbee2mqtt-config-dir" { } ''
+  configDir = pkgs.runCommand "zigbee2mqtt-config-dir" { } ''
     mkdir -p $out
     ln -s ${format.generate "configuration.yaml" cfg.config} $out/configuration.yaml
   '';

@@ -140,7 +140,7 @@ in
         linkFarm ${cfg.serviceDirectory} /sv
       '';
 
-      dinit.serviceDirectory = pkgs.runCommandNoCC "dinit-service-directory" { } ''
+      dinit.serviceDirectory = pkgs.runCommand "dinit-service-directory" { } ''
         mkdir -p $out
 
         ${lib.concatMapStringsSep "\n" (

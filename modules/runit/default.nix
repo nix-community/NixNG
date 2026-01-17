@@ -104,7 +104,7 @@ in
     ];
 
     runit = {
-      serviceDirectory = pkgs.runCommandNoCC "service-dir" { } ''
+      serviceDirectory = pkgs.runCommand "service-dir" { } ''
         mkdir $out
         ${lib.concatStringsSep "\n" (
           lib.mapAttrsToList (

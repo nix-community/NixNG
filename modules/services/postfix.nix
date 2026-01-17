@@ -417,7 +417,7 @@ in
       let
         mainCnf = pkgs.writeText "main.cf" (toMainCnf cfg.mainConfig);
         masterCnf = pkgs.writeText "master.cf" cfg.masterConfig;
-        configDir = pkgs.runCommandNoCCLocal "postfix-config-dir" { } ''
+        configDir = pkgs.runCommand "postfix-config-dir" { } ''
           mkdir -p $out
           ln -s ${mainCnf} $out/main.cf
           ln -s ${masterCnf} $out/master.cf

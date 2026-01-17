@@ -40,7 +40,7 @@ in
       '';
       apply = lib.mkApply (
         x:
-        pkgs.runCommandNoCC "" { } ''
+        pkgs.runCommand "" { } ''
           mkdir -p $out
           ${lib.concatMapStringsSep "\n\n" (
             { name, value }:
