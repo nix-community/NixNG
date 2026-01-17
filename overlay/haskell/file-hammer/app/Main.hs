@@ -117,10 +117,11 @@ import Path.Posix (
   (</>),
  )
 import Path.Posix qualified as Posix
-import SomePath (SomePath (SomePath))
 import System.Directory (listDirectory)
 import System.FilePath.Glob (Pattern, match)
 import System.IO.Error (ioeGetErrorType, isDoesNotExistErrorType)
+import System.NixNG.SomePath (SomePath (SomePath))
+import System.NixNG.TH (duplicateRules)
 import System.Posix qualified as Posix
 import System.Posix.Files (
   fileExist,
@@ -141,7 +142,6 @@ import System.Posix.User (
   groupName,
   userName,
  )
-import TH (duplicateRules)
 import Text.PrettyPrint (render)
 
 data FilterInfo = FilterInfo

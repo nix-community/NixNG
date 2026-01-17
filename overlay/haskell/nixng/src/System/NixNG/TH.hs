@@ -1,4 +1,4 @@
-module TH (duplicateRules) where
+module System.NixNG.TH (duplicateRules) where
 
 import Data.Char (toUpper)
 import Data.Function ((&))

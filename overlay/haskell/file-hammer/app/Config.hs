@@ -51,10 +51,10 @@ import Lens.Micro ((^.))
 import Lens.Micro.TH (makeLensesWith)
 import Orphans ()
 import Path (Abs, Dir, File, Path, Rel, (</>))
-import SomePath (SomePath (SomePath))
 import System.FilePath.Glob (Pattern)
+import System.NixNG.SomePath (SomePath (SomePath))
+import System.NixNG.TH (duplicateRules)
 import System.Posix.Types (CMode, GroupID, UserID)
-import TH (duplicateRules)
 
 customOptions :: A.Options
 customOptions =

@@ -1,0 +1,72 @@
+cabal-version:      3.4
+name:               mrsk
+version:            0.1.0.0
+synopsis:           Nix* Deployments
+-- description:
+homepage:
+    https://github.com/MagicRB/NixNG/tree/feat/environment/overlay/haskell/mrsk
+
+license:            GPL-3.0-or-later
+license-file:       LICENSE
+author:             magic_rb
+maintainer:         magic_rb@redalder.org
+-- copyright:
+category:           System
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+-- extra-source-files:
+
+common warnings
+    ghc-options: -Wall
+
+executable mrsk
+    import:           warnings
+    main-is:          Main.hs
+    other-modules:
+        Cli,
+        Nix,
+        NixMessage,
+        NixMessage.Parser,
+        Remote,
+        Remote.Far,
+        Remote.Common,
+        Options,
+        Orphans,
+        Effectful.Monad.Logger
+    build-depends:
+        base ^>=4.20.2.0,
+        microlens-platform,
+        text,
+        bytestring,
+        megaparsec,
+        nixng,
+        path,
+        aeson,
+        unordered-containers,
+        async,
+        effectful,
+        typed-process-effectful,
+        conduit,
+        require-callstack,
+        optparse-applicative,
+        transformers,
+        mtl,
+        monad-logger,
+        time,
+        brick,
+        vty-crossplatform,
+        vty,
+        unix,
+        bytestring-aeson-orphans,
+        extra,
+        typed-process,
+    hs-source-dirs:   app
+    ghc-options: -threaded
+    default-language: GHC2021
+    default-extensions:
+        OverloadedStrings,
+        TemplateHaskell,
+        QuasiQuotes,
+        NoFieldSelectors,
+        DuplicateRecordFields,
+        BlockArguments,
