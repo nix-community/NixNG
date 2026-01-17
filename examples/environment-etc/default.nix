@@ -16,8 +16,18 @@ nglib.makeSystem {
     { pkgs, ... }:
     {
       dinit.enable = true;
-      environment.etc."test".text = "test content";
-      environment.etc."test2".text = "test content";
+      environment.etc."textual-content".text = "test content";
+      environment.etc."source-link".source = pkgs.writeText "test-target" ''
+        Some meaningless content.
+      '';
+      environment.etc."source-copy" = {
+        mode = "0700";
+        user = "nobody";
+        group = "nogroup";
+        text = ''
+          some other test content
+        '';
+      };
     }
   );
 }

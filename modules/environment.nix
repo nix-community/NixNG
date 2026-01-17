@@ -16,6 +16,14 @@
 let
   cfg = config.environment;
 
+  toIntBase8 =
+    str:
+    lib.pipe str [
+      lib.stringToCharacters
+      (map lib.toInt)
+      (lib.foldl (acc: digit: acc * 8 + digit) 0)
+    ];
+
   configFile = lib.mkMerge (
     lib.mapAttrsToList (
       name: value:
@@ -53,7 +61,8 @@ let
           else
             {
               files.${final} = {
-                mode = lib.toInt value.mode;
+                content."ContentFile" = value.source;
+                mode = toIntBase8 value.mode;
                 owner = {
                   user = {
                     ${if value.user != null then "UserName" else null} = value.user;
@@ -122,8 +131,6 @@ let
             User name of file owner.
 
             Only takes effect when the file is copied (that is, the mode is not symlink).
-
-            When services.userborn.enable, this option has no effect. You have to assign a uid instead. Otherwise this option takes precedence over uid.
           '';
           default = "root";
         };
@@ -134,8 +141,6 @@ let
             Group name of file owner.
 
             Only takes effect when the file is copied (that is, the mode is not symlink).
-
-            When services.userborn.enable, this option has no effect. You have to assign a gid instead. Otherwise this option takes precedence over gid.
           '';
           default = "root";
         };
