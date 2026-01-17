@@ -99,7 +99,7 @@ in
         ${lib.optionalString (cfg.customComponents != { }) "mkdir -p /var/home-assistant/custom_components"}
         ${lib.concatStringsSep "\n" (
           lib.mapAttrsToList (
-            n: v: "ln -sf ${v} /var/home-assistant/custom_components/${n}"
+            n: v: "ln --symbolic --force --no-dereference ${v} /var/home-assistant/custom_components/${n}"
           ) cfg.customComponents
         )}
 
