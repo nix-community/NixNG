@@ -23,7 +23,7 @@ in
 
     package = lib.mkOption {
       description = "Pantalaimon package to use";
-      default = pkgs.pantalaimon.override { enableDbusUi = false; };
+      default = pkgs.pantalaimon-headless.overrideAttrs { pytestCheckPhase = "true"; };
       type = lib.types.package;
     };
 
@@ -54,7 +54,7 @@ in
         with lib.types;
         attrsOf (
           attrsOf (oneOf [
-            string
+            str
             int
           ])
         );

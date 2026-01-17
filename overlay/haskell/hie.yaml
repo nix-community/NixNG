@@ -1,0 +1,4 @@
+cradle:
+  cabal:
+dependencies:
+  - file-hammer/file-hammer.cabal
