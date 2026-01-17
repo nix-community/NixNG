@@ -57,7 +57,7 @@ in
               name = "runit-stage-2";
               file = ./stage-2.sh;
               substitutes = {
-                inherit (pkgs) runit busybox utillinux;
+                inherit (pkgs) runit busybox util-linux;
                 inherit (cfg) runtimeServiceDirectory;
               };
             };
