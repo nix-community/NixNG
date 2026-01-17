@@ -1,63 +1,69 @@
 {
   mkDerivation,
   aeson,
+  async,
   base,
+  brick,
   bytestring,
   bytestring-aeson-orphans,
-  directory,
-  exceptions,
+  conduit,
+  effectful,
   extra,
-  filepath,
-  Glob,
-  hashable,
   lib,
-  microlens,
-  microlens-mtl,
-  microlens-th,
+  megaparsec,
+  microlens-platform,
   monad-logger,
   mtl,
   nixng,
   optparse-applicative,
   path,
-  pretty,
+  require-callstack,
   text,
+  time,
   transformers,
-  tree-diff,
+  typed-process,
+  typed-process-effectful,
   unix,
   unordered-containers,
+  vty,
+  vty-crossplatform,
 }:
 mkDerivation {
-  pname = "file-hammer";
+  pname = "mrsk";
   version = "0.1.0.0";
   src = ./.;
   isLibrary = false;
   isExecutable = true;
   executableHaskellDepends = [
     aeson
+    async
     base
+    brick
     bytestring
     bytestring-aeson-orphans
-    directory
-    exceptions
+    conduit
+    effectful
     extra
-    filepath
-    Glob
-    hashable
-    microlens
-    microlens-mtl
-    microlens-th
+    megaparsec
+    microlens-platform
     monad-logger
     mtl
     nixng
     optparse-applicative
     path
-    pretty
+    require-callstack
     text
+    time
     transformers
-    tree-diff
+    typed-process
+    typed-process-effectful
     unix
     unordered-containers
+    vty
+    vty-crossplatform
   ];
+  homepage = "https://github.com/MagicRB/NixNG/tree/feat/environment/overlay/haskell/mrsk";
+  description = "Nix* Deployments";
   license = lib.licenses.gpl3Plus;
-  mainProgram = "file-hammer";
+  mainProgram = "mrsk";
 }
