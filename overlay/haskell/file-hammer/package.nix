@@ -11,9 +11,9 @@
   Glob,
   hashable,
   lib,
-  microlens,
-  microlens-mtl,
-  microlens-th,
+  microlens_0_5_0_0,
+  microlens-mtl_0_2_1_1,
+  microlens-th_0_4_3_18,
   monad-logger,
   mtl,
   nixng,
@@ -43,9 +43,9 @@ mkDerivation {
     filepath
     Glob
     hashable
-    microlens
-    microlens-mtl
-    microlens-th
+    microlens_0_5_0_0
+    (microlens-mtl_0_2_1_1.override { microlens = microlens_0_5_0_0; })
+    (microlens-th_0_4_3_18.override { microlens = microlens_0_5_0_0; })
     monad-logger
     mtl
     nixng
@@ -58,6 +58,7 @@ mkDerivation {
     unix
     unordered-containers
   ];
+
   license = lib.licenses.gpl3Plus;
   mainProgram = "file-hammer";
 }
