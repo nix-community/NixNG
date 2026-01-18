@@ -71,11 +71,11 @@ let
 
     maybeChangeUserAndGroup =
       user: group: supp: script:
-      if user != null then
+      if supp != [] then
         let
           group' = if group != null then "${group}" else ":";
         in
-        "setgroups ${user} ${group'} :${lib.concatStringsSep ":" supp} ${script}"
+        "setgroups ${if user == null then "root" else user} ${group'} :${lib.concatStringsSep ":" supp} ${script}"
       else
         script;
 
