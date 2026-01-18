@@ -24,7 +24,7 @@
         "i686-linux"
         "aarch64-linux"
       ];
-      forAllSystems' = nixpkgs.lib.genAttrs;
+      forAllSystems' = lib.genAttrs;
       forAllSystems = forAllSystems' supportedSystems;
       pkgsForSystem =
         system:
@@ -37,7 +37,7 @@
         system: treefmt-nix.lib.evalModule (pkgsForSystem system) ./treefmt.nix
       );
 
-      inherit (nixpkgs.lib) recurseIntoAttrs;
+      inherit (nixpkgs) lib;
     in
     {
       nglib = import ./lib nixpkgs.lib;
@@ -61,12 +61,12 @@
       );
 
       packages = forAllSystems (
-        system:
-        let
-          lib = nixpkgs.lib;
-        in
-        lib.filterAttrs (_: v: lib.isDerivation v) self.legacyPackages.${system}
+        system: lib.filterAttrs (_: v: lib.isDerivation v) self.legacyPackages.${system}
       );
+
+      nixosModules = {
+        nixngContainers = lib.modules.importApply ./modules/nixos/containers.nix { inherit (self) nglib; };
+      };
 
       devShells = forAllSystems (
         system:
@@ -92,9 +92,7 @@
 
       checks = {
         formatting = forAllSystems (system: treefmtEval.${system}.config.build.check self);
-        examples = recurseIntoAttrs (
-          nixpkgs.lib.mapAttrs (n: v: v.config.system.build.toplevel) self.examples
-        );
+        examples = lib.recurseIntoAttrs (lib.mapAttrs (n: v: v.config.system.build.toplevel) self.examples);
       }
       // forAllSystems (
         system:
