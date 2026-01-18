@@ -42,22 +42,9 @@ import Path (
   parseRelDir,
   parseRelFile,
  )
-import SomePath (SomePath (SomePath))
 import System.FilePath.Glob (Pattern, compile)
-import TH (duplicateRules)
-
-pathAbsFile :: ReadM (Path Abs File)
-pathAbsFile = eitherReader (first Prelude.show . parseAbsFile)
-
-pathAbsDir :: ReadM (Path Abs Dir)
-pathAbsDir = eitherReader (first Prelude.show . parseAbsDir)
-
-somePathRelM :: ReadM (SomePath Rel)
-somePathRelM = eitherReader \arg -> go parseRelFile arg <> go parseRelDir arg
- where
-  go fn path = case fn path of
-    Left err -> Left (Prelude.show err)
-    Right res -> Right (SomePath res)
+import System.NixNG.SomePath (SomePath (SomePath), pathAbsDir, pathAbsFile, somePathRelM)
+import System.NixNG.TH (duplicateRules)
 
 logLevelM :: ReadM LogLevel
 logLevelM = eitherReader \arg ->
