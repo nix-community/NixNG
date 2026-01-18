@@ -432,67 +432,40 @@ in
       };
     };
 
-    init.services.postfix =
-      let
-        mainCnf = pkgs.writeText "main.cf" (toMainCnf cfg.mainConfig);
-        masterCnf = pkgs.writeText "master.cf" cfg.masterConfig;
-        configDir = pkgs.runCommand "postfix-config-dir" { } ''
-          mkdir -p $out
-          ln -s ${mainCnf} $out/main.cf
-          ln -s ${masterCnf} $out/master.cf
-        '';
-      in
-      {
-        ensureSomething.create."data" = lib.mkDefault {
-          type = "directory";
-          mode = "750";
-          owner = "${cfg.user}:${cfg.group}";
-          dst = cfg.mainConfig.data_directory;
-          persistent = true;
-        };
+    environment.etc."postfix/main.cf".source = pkgs.writeText "main.cf" (toMainCnf cfg.mainConfig);
+    environment.etc."postfix/master.cf".source = pkgs.writeText "master.cf" cfg.masterConfig;
+    environment.etc."postfix/postfix-files".source = "${pkgs.postfix}/etc/postfix/postfix-files";
 
-        ensureSomething.create."queue" = lib.mkDefault {
-          type = "directory";
-          mode = "750";
-          owner = "${cfg.user}:root";
-          dst = cfg.mainConfig.queue_directory;
-          persistent = false;
-        };
+    init.services.postfix = {
+      tmpfiles = with nglib.nottmpfiles.dsl; [
+        (d cfg.stateDirectory "0755" "root" "root" _ _)
+        (d cfg.mainConfig.data_directory "0750" cfg.user cfg.group _ _)
+        (d cfg.mainConfig.queue_directory "0750" cfg.user cfg.group _ _)
+        (d "${cfg.stateDirectory}/conf/hash_maps" "0755" "root" "root" _ _)
+      ];
 
-        script = pkgs.writeShellScript "postfix-run" ''
-          mkdir -p ${cfg.stateDirectory} ${cfg.mainConfig.queue_directory}/{pid,public,maildrop}
-          chmod 0755 ${cfg.stateDirectory}
-          chown root:root ${cfg.stateDirectory}
+      script = pkgs.writeShellScript "postfix-run" ''
+         ${lib.pipe cfg.hashMaps [
+           (lib.mapAttrsToList (
+             n: v: ''
+               _map="${cfg.stateDirectory}/conf/hash_maps/${n}"
+               cat > "$_map" <<EOF
+               ${lib.pipe v [
+                 (lib.mapAttrsToList (n': v': "${n'} ${v'}"))
+                 (lib.concatStringsSep "\n")
+               ]}
+               EOF
+               ${lib.getExe' cfg.package "postmap"} -c ${cfg.stateDirectory}/conf "$_map"
+             ''
+           ))
+           (lib.concatStringsSep "\n")
+         ]}
 
-          rm -rf ${cfg.stateDirectory}/conf
-          mkdir -p ${cfg.stateDirectory}/conf
-          chmod 0755 ${cfg.stateDirectory}/conf
-          ln -sf ${pkgs.postfix}/etc/postfix/postfix-files ${cfg.stateDirectory}/conf/postfix-files
-          ln -sf ${mainCnf} ${cfg.stateDirectory}/conf/main.cf
-          ln -sf ${masterCnf} ${cfg.stateDirectory}/conf/master.cf
-
-          mkdir -p ${cfg.stateDirectory}/conf/hash_maps
-          ${lib.pipe cfg.hashMaps [
-            (lib.mapAttrsToList (n: v:
-              ''
-                _map="${cfg.stateDirectory}/conf/hash_maps/${n}"
-                cat > "$_map" <<EOF
-                ${lib.pipe v [
-                  (lib.mapAttrsToList (n': v': "${n'} ${v'}"))
-                  (lib.concatStringsSep "\n")
-                ]}
-                EOF
-                ${lib.getExe' cfg.package "postmap"} -c ${cfg.stateDirectory}/conf "$_map"
-              ''
-            ))
-            (lib.concatStringsSep "\n")
-          ]}
-
-         ${cfg.package}/bin/postfix -c ${cfg.stateDirectory}/conf set-permissions
-          exec ${cfg.package}/libexec/postfix/master -c ${cfg.stateDirectory}/conf
-        '';
-        enabled = true;
-      };
+        ${cfg.package}/bin/postfix -c /etc/postfix set-permissions
+         exec ${cfg.package}/libexec/postfix/master -c /etc/postfix
+      '';
+      enabled = true;
+    };
     assertions = [
       {
         assertion = createDefaultUsersGroups;
