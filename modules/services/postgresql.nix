@@ -145,7 +145,6 @@ in
         default = "";
       };
 
-
       ensureExtensions = lib.mkOption {
         type = with lib.types; attrsOf (listOf str);
         default = { };
@@ -395,7 +394,7 @@ in
       # BEGIN Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
       script = pkgs.writeShellScript "postgresql" ''
         function _sigterm() {
-          if ! [ -z "$postgresql" ] && kill -0 "$postgresql" ; then
+          if ! [[ -z $postgresql ]] && kill -0 "$postgresql" ; then
             kill -TERM "$postgresql"
             wait "$postgresql"
           fi
@@ -422,7 +421,7 @@ in
         chpst -u postgres:postgres ${cfg.package}/bin/postgres &
         postgresql=$!
 
-        PSQL="chpst -u postgres:postgres ${cfg.package}/bin/psql --port=${cfg.port} -X"
+        PSQL="chpst -u postgres:postgres ${cfg.package}/bin/psql --port=${cfg.port} --no-psqlrc"
         while ! $PSQL -d postgres -c "" 2> /dev/null ; do
           if ! kill -0 "$postgresql"; then exit 1; fi
           sleep 0.1
@@ -434,9 +433,10 @@ in
           (
             { database, options }:
             ''
-              $PSQL -tAc "SELECT 1 FROM pg_database WHERE datname = '${database}'" | grep -q 1 || $PSQL -tAc 'CREATE DATABASE "${database}" ${
-                if options != "" then "WITH " + options else ""
-              }'
+              $PSQL --tuples-only --no-align --command="SELECT 1 FROM pg_database WHERE datname = '${database}'" | grep -q 1 \
+                || $PSQL --tuples-only --no-align --command='CREATE DATABASE "${database}" ${
+                  lib.optionalString (options != "") "WITH " + options
+                }'
             ''
           )
           (
@@ -459,32 +459,32 @@ in
         }
 
         ${lib.concatMapStrings (user: ''
-          $PSQL -tAc "SELECT 1 FROM pg_roles WHERE rolname='${user.name}'" | grep -q 1 || $PSQL -tAc 'CREATE USER "${user.name}"'
+          $PSQL --tuples-only --no-align --command="SELECT 1 FROM pg_roles WHERE rolname='${user.name}'" | grep -q 1 || $PSQL -tAc 'CREATE USER "${user.name}"'
           ${lib.concatStringsSep "\n" (
             lib.mapAttrsToList (database: permission: ''
-              $PSQL -tAc 'GRANT ${permission} ON ${database} TO "${user.name}"'
+              $PSQL --tuples-only --no-align --command='GRANT ${permission} ON ${database} TO "${user.name}"'
             '') user.ensurePermissions
           )}
-          ${lib.optionalString user.ensureDBOwnership ''$PSQL -tAc 'ALTER DATABASE "${user.name}" OWNER TO "${user.name}";' ''}
+          ${lib.optionalString user.ensureDBOwnership ''$PSQL --tuples-only --no-align --command='ALTER DATABASE "${user.name}" OWNER TO "${user.name}";' ''}
         '') cfg.ensureUsers}
 
         ${lib.concatStrings (
           lib.mapAttrsToList (
             extension: schemas:
             lib.concatMapStrings (schema: ''
-              $PSQL -tAc "create extension if not exists ${extension}" ${schema}
+              $PSQL --tuples-only --no-align --command="create extension if not exists ${extension}" ${schema}
             '') schemas
           ) cfg.ensureExtensions
         )}
 
-        if test -e "${cfg.dataDir}/.first_startup"; then
+        if [[ -e "${cfg.dataDir}/.first_startup" ]]; then
           ${lib.optionalString (cfg.initialScript != null) ''
-            $PSQL -f "${cfg.initialScript}" -d postgres
+            $PSQL --file="${cfg.initialScript}" -d postgres
           ''}
           rm -f "${cfg.dataDir}/.first_startup"
         fi
 
-        $PSQL -f "${pkgs.writeText "postgres-start.sql" cfg.startScript}"
+        $PSQL --file="${pkgs.writeText "postgres-start.sql" cfg.startScript}"
 
         wait $postgresql
       '';
