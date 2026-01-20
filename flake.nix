@@ -71,7 +71,9 @@
           pkgs = pkgsForSystem system;
         in
         {
-          default = pkgs.mkShell { nativeBuildInputs = with pkgs; [ ]; };
+          default = pkgs.mkShell { nativeBuildInputs = with pkgs; [
+            reuse
+          ]; };
           haskell = pkgs.mkShell {
             nativeBuildInputs = with pkgs; [
               ghc
@@ -103,6 +105,7 @@
               "/checks"
             ];
           };
+          reuse = pkgs.callPackage ./checks/reuse.nix { };
         }
       );
 
