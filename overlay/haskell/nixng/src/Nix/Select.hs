@@ -9,6 +9,7 @@ import Control.Exception (Exception)
 import Control.Monad (forM)
 import Control.Monad.Catch (MonadThrow (..))
 import Control.Monad.IO.Class (MonadIO, liftIO)
+import Data.Aeson qualified as A
 import Data.Aeson.Decoding qualified as A
 import Data.Aeson.Text qualified as A
 import Data.Aeson.Types (FromJSON)
@@ -154,7 +155,7 @@ nixBuild nixTarget logFn =
           parseAbsDir (TL.unpack path) <&> Left
  where
   args =
-    ["build", "--no-link", "--print-out-paths"] <> case nixTarget of
+    ["build", "--show-trace", "--no-link", "--print-out-paths"] <> case nixTarget of
       NixExpr expression -> ["--expr", expression]
       NixFlake flake -> [flake]
       NixDerivation derivation -> [T.pack $ toFilePath derivation <> "^*"]
@@ -167,7 +168,7 @@ nixEval nixTarget logFn =
   nixProc args logFn <&> fromJust . A.decode
  where
   args =
-    ["eval", "--json"] <> case nixTarget of
+    ["eval", "--show-trace", "--json"] <> case nixTarget of
       NixExpr expression -> ["--expr", expression]
       NixFlake flake -> [flake]
 
@@ -179,8 +180,8 @@ nixDerivationShow derivation logFn =
   args = ["derivation", "show", T.pack $ toFilePath derivation]
 
 select
-  :: (A.FromJSON a, MonadIO m, MonadThrow m, MonadUnliftIO m)
-  => [([Selector], Either Text a -> m b)] -> Text -> (Handle -> m ()) -> m [b]
+  :: (A.FromJSON b, MonadIO m, MonadThrow m, MonadUnliftIO m)
+  => [([Selector], A.Value -> A.Value)] -> Text -> (Handle -> m ()) -> m [b]
 select selectors flakeRef logFn = do
   selectLib <- nixFlakeInfo "https://git.clan.lol/clan/nix-select/archive/main.tar.gz" logFn
   flake <- nixFlakeInfo flakeRef logFn
@@ -220,19 +221,20 @@ select selectors flakeRef logFn = do
 
   paths <- nixBuild (NixExpr expression) logFn
 
-  results :: [Either Text a] <- case paths of
-    [Right file] -> do
-      contents <- liftIO (BSL.readFile (toFilePath file))
-      case A.decode contents of
-        Just json ->
-          pure $
-            map A.fromJSON json & map \case
-              A.Success a -> Right a
-              A.Error e -> Left (T.pack e)
-        Nothing -> pure []
+  results :: [A.Value] <- case paths of
+    [Right file] ->
+      liftIO $
+        A.eitherDecodeFileStrict (toFilePath file) >>= \case
+          Left err -> throwM $ A.AesonException err
+          Right res -> pure res
     _ -> throwM $ NixErrorOther "expected single file output"
 
-  mapM (\(v, fn) -> fn v) $ zip results (map snd selectors)
+  mapM
+    ( \(v, fn) -> case A.fromJSON (fn v) of
+        A.Success a -> pure a
+        A.Error err -> throwM $ A.AesonException err
+    )
+    $ zip results (map snd selectors)
  where
   system = "x86_64-linux"
   selectors' =

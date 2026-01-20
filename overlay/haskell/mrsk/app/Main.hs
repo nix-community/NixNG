@@ -7,29 +7,34 @@
 
 module Main (main) where
 
-import Cli (CliEffect, runCliEffect, tellBuildFinished, tellBuildStarted, tellFoundConfigurations)
+import Cli (CliEffect, askConfirmExit, runCliEffect, tellBuildFinished, tellBuildStarted, tellFoundConfigurations)
 import Control.Exception (Exception, throw)
 import Control.Monad (forM, forM_, void)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson.Key qualified as A
+import Data.Aeson.Key qualified as AK
 import Data.Aeson.KeyMap qualified as A
+import Data.Aeson.KeyMap qualified as KM
 import Data.Aeson.Text qualified as A
 import Data.Aeson.Types qualified as A
 import Data.Either (fromLeft, fromRight)
+import Data.Function ((&))
 import Data.Functor ((<&>))
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HM
 import Data.List.NonEmpty qualified as NE
+import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.IO qualified as T
 import Data.Text.Lazy.IO qualified as TL
+import Data.Vector qualified as V
 import Effectful (Eff, IOE, runEff, (:>))
 import Effectful.Concurrent (Concurrent, runConcurrent, threadDelay)
 import Effectful.Concurrent.Async (Concurrently (..))
 import Effectful.Concurrent.QSem (newQSem, signalQSem, waitQSem)
 import Effectful.Environment (Environment, runEnvironment)
-import Effectful.Exception (bracket_, throwIO)
+import Effectful.Exception (bracket_, catch, finally, throwIO)
 import Effectful.Fail (Fail, runFailIO)
 import Effectful.FileSystem (FileSystem, runFileSystem)
 import Effectful.FileSystem.IO (stdout)
@@ -71,25 +76,40 @@ data NixOSConfiguration
   deriving stock (Generic)
   deriving anyclass (A.FromJSON)
 
-data NixSelectException
-  = NixSelectException Text
-  deriving (Show)
-instance Exception NixSelectException
+getNixOSConfigurationMetadata :: (Nix :> es) => [Text] -> Text -> Eff es (HashMap Text (Maybe NixOSConfiguration))
+getNixOSConfigurationMetadata hosts flake =
+  nixSelect
+    [
+      (
+        [ SelectorStr "nixosConfigurations"
+        , SelectorSet (map SelectorStr hosts)
+        , SelectorStr "config"
+        , SelectorMaybe "mrsk"
+        , SelectorAll
+        ]
+      , \case
+          A.Object km -> A.Object $ (`KM.map` km) \case
+            A.Object (KM.toList -> []) -> A.Null
+            A.Object (KM.toList -> [("mrsk", inner)]) -> inner
+            other -> other
+          other -> other
+      )
+    ]
+    flake
+    <&> head
 
-getNixOSConfigurations :: (Nix :> es) => Maybe [Text] -> Text -> Eff es (HashMap Text NixOSConfiguration)
+getNixOSConfigurations :: (Nix :> es) => Maybe [Text] -> Text -> Eff es [Text]
 getNixOSConfigurations hosts flake =
   nixSelect
     [
       (
         [ SelectorStr "nixosConfigurations"
         , maybe SelectorAll (SelectorSet . map SelectorStr) hosts
-        , SelectorStr "config"
-        , SelectorStr "mrsk"
-        , SelectorAll
+        , SelectorMaybe ""
         ]
       , \case
-          Right a -> pure a
-          Left e -> throwIO (NixSelectException e)
+          A.Object km -> A.Array . V.fromList . map (A.String . AK.toText) $ KM.keys km
+          other -> other
       )
     ]
     flake
@@ -118,11 +138,14 @@ type TopLevelEffects =
 mrsk :: (RequireCallStack) => Options -> Eff TopLevelEffects ()
 mrsk Options{command = Far} = serveFar
 mrsk Options{command = Deploy{hosts, flake, sudo, action}} = do
-  configurations <- case hosts of
+  configurations :: [Text] <- case hosts of
     Just hosts' -> getNixOSConfigurations (Just (NE.toList hosts')) flake
     Nothing -> getNixOSConfigurations Nothing flake
 
-  tellFoundConfigurations (HM.keys configurations)
+  configurationMetadatas :: HashMap Text NixOSConfiguration <-
+    getNixOSConfigurationMetadata configurations flake <&> HM.mapMaybe id
+
+  tellFoundConfigurations (HM.keys configurationMetadatas)
 
   derivations :: HashMap Text (Path Abs File) <-
     HM.fromList
@@ -134,7 +157,7 @@ mrsk Options{command = Deploy{hosts, flake, sudo, action}} = do
               >>= parseAbsFile . T.unpack
               <&> (name,)
         )
-        (HM.keys configurations)
+        configurations
 
   builtPaths :: HashMap Text (Path Abs Dir) <-
     HM.fromList
@@ -149,7 +172,7 @@ mrsk Options{command = Deploy{hosts, flake, sudo, action}} = do
         )
         (HM.toList derivations)
 
-  forM_ (HM.toList configurations) \(name, NixOSConfiguration{remoteUser, targetHost}) -> do
+  forM_ (HM.toList configurationMetadatas) \(name, NixOSConfiguration{remoteUser, targetHost}) -> do
     handle <- openConnection remoteUser targetHost
 
     output <-
@@ -169,13 +192,7 @@ main :: IO ()
 main =
   provideCallStack $
     liftIO (execParser options) >>= \opts@Options{logging} ->
-      effectStack logging $ do
-        mrsk opts
-        case logging of
-          Logging'OtherTerminal -> do
-            logInfoN "Press any key to continue"
-            void $ liftIO getLine
-          _ -> pure ()
+      effectStack logging $ (mrsk opts >> askConfirmExit Nothing) `catch` (askConfirmExit . Just)
  where
   effectStack
     :: (RequireCallStack)

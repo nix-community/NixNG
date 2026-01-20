@@ -52,11 +52,13 @@ import Effectful.Process.Typed (
   TypedProcess,
   createPipe,
   getExitCode,
+  getStderr,
   getStdin,
   getStdout,
   proc,
   readProcessInterleaved,
   runProcess,
+  setStderr,
   setStdin,
   setStdout,
   startProcess,
@@ -70,7 +72,7 @@ import Remote.Common (
   Local (..),
   Message (..),
   Message',
-  RemoteException (ConnectionFailed, address, user),
+  RemoteException (ConnectionFailed, CouldNotLocateMrskBinary, address, output, user),
   SomeMessage (..),
   SomeResponse (..),
   acquireId,
@@ -180,7 +182,7 @@ newtype Handle = Handle Int
 
 data RemoteConnection
   = RemoteConnection
-  { process :: Process IO.Handle IO.Handle ()
+  { process :: Process IO.Handle IO.Handle IO.Handle
   , channel :: Chan (Local Near)
   , a :: Async ()
   }
@@ -318,7 +320,7 @@ locateMrskBinary user address = runMaybeT do
 
       parseAbsFile $ T.unpack remoteSelf
 
-  tryPath <|> copyLocal
+  copyLocal <|> tryPath
 
 runRemote
   :: ( CliEffect :> es
@@ -341,17 +343,20 @@ runRemote eff = evalStateLocal initialState do
         mrskBinary <-
           locateMrskBinary user address >>= \case
             Just mrskBinary -> pure mrskBinary
-            Nothing -> throwIO ConnectionFailed{user, address}
+            Nothing -> throwIO CouldNotLocateMrskBinary{user, address}
 
         process <-
-          startProcess . setStdin createPipe . setStdout createPipe $ -- . setStderr createPipe
+          startProcess . setStdin createPipe . setStdout createPipe . setStderr createPipe $
             remoteProc user address (T.pack . toFilePath $ mrskBinary) ["far", "--logging", "blackhole"]
 
         -- wait a 100 miliseconds for the command to catch on or exit
         threadDelay (1_000_00)
 
         getExitCode process >>= \case
-          Just _ -> throwIO ConnectionFailed{user, address}
+          Just _ -> do
+            stdout <- liftIO $ BSL.hGetContents (getStdout process)
+            stderr <- liftIO $ BSL.hGetContents (getStderr process)
+            throwIO ConnectionFailed{user, address, output = stdout <> stderr}
           Nothing -> pure ()
 
         mapM_

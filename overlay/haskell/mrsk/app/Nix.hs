@@ -33,7 +33,7 @@ data Nix :: Effect where
   NixBuild :: NixTarget Select.Build -> Nix m [Either (Path Abs Dir) (Path Abs File)]
   NixEval :: (FromJSON a) => NixTarget Select.Eval -> Nix m a
   NixDerivationShow :: Path Abs File -> Nix m Derivation
-  NixSelect :: (FromJSON a) => [([Selector], Either Text a -> Eff es b)] -> Text -> Nix (Eff es) [b]
+  NixSelect :: (FromJSON a) => [([Selector], A.Value -> A.Value)] -> Text -> Nix (Eff es) [a]
 type instance DispatchOf Nix = Dynamic
 
 nixBuild :: (HasCallStack, Nix :> es) => NixTarget Select.Build -> Eff es [Either (Path Abs Dir) (Path Abs File)]
@@ -45,15 +45,15 @@ nixEval target = send (NixEval target)
 nixDerivationShow :: (HasCallStack, Nix :> es) => Path Abs File -> Eff es Derivation
 nixDerivationShow derivation = send (NixDerivationShow derivation)
 
-nixSelect :: (FromJSON a, HasCallStack, Nix :> es) => [([Selector], Either Text a -> Eff es b)] -> Text -> Eff es [b]
+nixSelect :: (FromJSON a, HasCallStack, Nix :> es) => [([Selector], A.Value -> A.Value)] -> Text -> Eff es [a]
 nixSelect selectors flakeRef = send (NixSelect selectors flakeRef)
 
 runNixEffect :: (CliEffect :> es, Concurrent :> es, HasCallStack, IOE :> es) => Eff (Nix : es) a -> Eff es a
 runNixEffect eff = do
   let logFn = \stderr -> void . forkIO $ do
         liftIO (BSL.hGetContents stderr) >>= mapM_ tellNixInternalLog . BSL.lines
-  eff & interpret \env val -> localUnlift env SeqForkUnlift \unlift -> case val of
+  eff & interpret \_ val -> case val of
     NixBuild target -> Select.nixBuild target logFn
     NixEval target -> Select.nixEval target logFn
     NixDerivationShow derivation -> Select.nixDerivationShow derivation logFn
-    NixSelect selectors flakeRef -> Select.select (traverse . _2 %~ (unlift .: ($)) $ selectors) flakeRef logFn
+    NixSelect selectors flakeRef -> Select.select selectors flakeRef logFn

@@ -1,4 +1,4 @@
-{ lib, ... }:
+{ lib, pkgs, ... }:
 {
   options.mrsk = {
     targetHost = lib.mkOption {
@@ -15,4 +15,8 @@
       '';
     };
   };
+
+  config.environment.systemPackages = [
+    pkgs.mrsk
+  ];
 }

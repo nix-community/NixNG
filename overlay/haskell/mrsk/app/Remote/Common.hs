@@ -80,7 +80,8 @@ instance ToJSON (SomeMessage m) where
   toJSON (SomeMessage msg) = toJSON msg
 
 data RemoteException
-  = ConnectionFailed {user :: Text, address :: Text}
+  = ConnectionFailed {user :: Text, address :: Text, output :: BSL.ByteString}
+  | CouldNotLocateMrskBinary {user :: Text, address :: Text}
   deriving (Show)
 instance Exception RemoteException
 

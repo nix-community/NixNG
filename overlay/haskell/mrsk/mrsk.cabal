@@ -24,6 +24,7 @@ executable mrsk
     main-is:          Main.hs
     other-modules:
         Cli,
+        Cli.ScrollableList,
         Nix,
         NixMessage,
         NixMessage.Parser,
@@ -36,6 +37,7 @@ executable mrsk
     build-depends:
         base ^>=4.20.2.0,
         microlens-platform,
+        vector,
         text,
         bytestring,
         megaparsec,
