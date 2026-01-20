@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Richard Brežák <magic_rb@redalder.org> and NixNG contributors
+#
+# SPDX-License-Identifier: MPL-2.0
+
 { ... }:
 let
   entry = type: path: mode: user: group: age: argument: {

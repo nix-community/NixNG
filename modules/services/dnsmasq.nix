@@ -29,7 +29,11 @@ let
     listsAsDuplicateKeys = true;
   };
 in
-# END Copyright (c) 2003-2024 Eelco Dolstra and the Nixpkgs/NixOS contributors
+
+# Copyright (C) 2003-2024 Eelco Dolstra and the Nixpkgs/NixOS contributors
+# SPDX-FileCopyrightText: 2026 Richard Brežák <magic_rb@redalder.org> and NixNG contributors
+#
+# SPDX-License-Identifier: MPL-2.0
 {
   options.services.dnsmasq = {
     enable = lib.mkEnableOption "dnsmasq";

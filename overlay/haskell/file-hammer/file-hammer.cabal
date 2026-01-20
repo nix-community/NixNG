@@ -1,4 +1,9 @@
 cabal-version:      3.8
+
+-- SPDX-FileCopyrightText: 2026 Richard Brežák <magic_rb@redalder.org> and NixNG contributors
+--
+-- SPDX-License-Identifier: CC0-1.0
+
 name:               file-hammer
 version:            0.1.0.0
 -- synopsis:
