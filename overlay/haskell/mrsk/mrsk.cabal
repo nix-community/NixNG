@@ -33,7 +33,8 @@ executable mrsk
         Remote.Common,
         Options,
         Orphans,
-        Effectful.Monad.Logger
+        Effectful.Monad.Logger,
+        Common,
     build-depends:
         base ^>=4.20.2.0,
         microlens-platform,

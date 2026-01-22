@@ -174,8 +174,8 @@ sudoProcess password run pc = do
 
   runProcess checkPc >>= \case
     ExitSuccess -> pure ()
-    ExitFailure error -> do
-      logDebugN $ "sudo -Sv exited with " <> T.show error
+    ExitFailure err -> do
+      logDebugN $ "sudo -Sv exited with " <> T.show err
       sudoPassword <- password
 
       let

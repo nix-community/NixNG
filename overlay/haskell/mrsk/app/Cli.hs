@@ -12,9 +12,11 @@ import Brick.BChan qualified
 import Brick.Main (App (..), customMain, halt, neverShowCursor)
 import Brick.Types (BrickEvent (..), EventM, Widget, modify, nestEventM, nestEventM')
 import Brick.Util (on)
+import Brick.Widgets.Border (border)
 import Brick.Widgets.Core
 import Cli.ScrollableList (ScrollableList)
 import Cli.ScrollableList qualified as ScrollableList
+import Common (withChildReader)
 import Control.Exception.Base (SomeException)
 import Control.Monad (forM, forM_, forever, void)
 import Control.Monad.IO.Class (liftIO)
@@ -23,6 +25,8 @@ import Data.Aeson (fromJSON)
 import Data.Aeson qualified as A
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy (LazyByteString)
+import Data.ByteString.Lazy qualified as BSL
+import Data.ByteString.Lazy.Char8 qualified as BSL
 import Data.Function ((&))
 import Data.Functor ((<&>))
 import Data.HashMap.Strict (HashMap)
@@ -56,6 +60,7 @@ import Effectful.Dispatch.Dynamic
 import Effectful.Dispatch.Static (SideEffects (WithSideEffects), StaticRep, evalStaticRep)
 import Effectful.FileSystem.IO (FileSystem, hFlush)
 import Effectful.Monad.Logger (Logger, logDebugN, logErrorN)
+import Effectful.Process.Typed (TypedProcess)
 import Graphics.Vty.Attributes (defAttr)
 import Graphics.Vty.Attributes qualified as V
 import Graphics.Vty.Attributes.Color
@@ -107,10 +112,17 @@ data Cli'ConfirmExit = Cli'ConfirmExit
 
 data CliState = CliState
   { knownBuilds :: HashMap Text BuildState
-  , askpass :: Maybe Cli'AskPass
+  , askpass :: [Cli'AskPass]
   , confirmExit :: Maybe Cli'ConfirmExit
   , nixMessages :: ScrollableList Text
   }
+
+data Config
+  = Config
+  { nom :: Bool
+  }
+
+makeLensesWith duplicateRules ''Config
 makeLensesWith duplicateRules ''CliState
 makeLensesWith duplicateRules ''Cli'AskPass
 makeLensesWith duplicateRules ''Cli'ConfirmExit
@@ -119,7 +131,7 @@ initialCliState :: CliState
 initialCliState =
   CliState
     { knownBuilds = HM.empty
-    , askpass = Nothing
+    , askpass = []
     , confirmExit = Nothing
     , nixMessages = ScrollableList.empty
     }
@@ -142,31 +154,43 @@ askReadLine prompt = send (AskReadLine{prompt})
 askConfirmExit :: (CliEffect :> es, HasCallStack) => Maybe SomeException -> Eff es ()
 askConfirmExit exception = send (AskConfirmExit exception)
 
+withNom :: (FileSystem :> es, IOE :> es, TypedProcess :> es) => ((LazyByteString -> Eff es ()) -> Eff es a) -> Eff es a
+withNom act = withChildReader "alacritty" "nom --json" \hIn -> act (liftIO . BSL.hPutStrLn hIn)
+
 runCliEffect
-  :: (Concurrent :> es, FileSystem :> es, HasCallStack, IOE :> es, Logger :> es, RequireCallStack)
-  => Eff (CliEffect : es) a
+  :: (Concurrent :> es, FileSystem :> es, HasCallStack, IOE :> es, Logger :> es, RequireCallStack, TypedProcess :> es)
+  => Config
+  -> Eff (CliEffect : es) a
   -> Eff es a
-runCliEffect eff = do
+runCliEffect Config{nom} eff = do
+  let maybeWithNom =
+        if nom
+          then withNom
+          else \act -> act (const $ pure ())
+
   chan <- newChan
   mainThread <- myThreadId
   withAsync (mainLoop chan >> throwTo mainThread AsyncCancelled) \_threadId ->
-    eff & interpret \_ -> \case
-      TellBuildStarted{attr} -> writeChan chan CliMessage'BuildStarted{attr}
-      TellBuildFinished{attr} -> writeChan chan CliMessage'BuildFinished{attr}
-      TellFoundConfigurations{configurations} -> writeChan chan CliMessage'FoundConfigurations{configurations}
-      TellNixInternalLog{internalLog} -> writeChan chan CliMessage'NixInternalLog{internalLog}
-      AskReadLine{prompt} -> do
-        response <- newEmptyMVar'
+    maybeWithNom \sendToNom ->
+      eff & interpret \_ -> \case
+        TellBuildStarted{attr} -> writeChan chan CliMessage'BuildStarted{attr}
+        TellBuildFinished{attr} -> writeChan chan CliMessage'BuildFinished{attr}
+        TellFoundConfigurations{configurations} -> writeChan chan CliMessage'FoundConfigurations{configurations}
+        TellNixInternalLog{internalLog} -> do
+          sendToNom internalLog
+          writeChan chan CliMessage'NixInternalLog{internalLog}
+        AskReadLine{prompt} -> do
+          response <- newEmptyMVar'
 
-        writeChan chan CliMessage'Readline{prompt, response}
+          writeChan chan CliMessage'Readline{prompt, response}
 
-        takeMVar' response
-      AskConfirmExit{exception} -> do
-        confirmed <- newEmptyMVar'
+          takeMVar' response
+        AskConfirmExit{exception} -> do
+          confirmed <- newEmptyMVar'
 
-        writeChan chan CliMessage'ConfirmExit{exception, confirmed}
+          writeChan chan CliMessage'ConfirmExit{exception, confirmed}
 
-        takeMVar' confirmed
+          takeMVar' confirmed
 
 eventConfirmExit
   :: (Concurrent :> es, Logger :> es, RequireCallStack)
@@ -194,29 +218,29 @@ eventAskSudoPass _ _ = pure True
 
 myEvent
   :: (Concurrent :> es, Logger :> es, RequireCallStack)
-  => (forall a. Eff es a -> IO a) -> BrickEvent n CliMessage -> EventM n CliState ()
+  => (forall a. Eff es a -> IO a) -> BrickEvent Name CliMessage -> EventM Name CliState ()
 myEvent unlift (AppEvent CliMessage'NixInternalLog{internalLog = internalLog'}) = case parseJSONLine internalLog' of
-  Left _ -> liftIO . unlift . logErrorN $ "Could not deserialize: " <> T.show (TL.decodeUtf8' internalLog')
+  Left err -> liftIO . unlift . logErrorN $ "Could not deserialize: " <> T.show (TL.decodeUtf8' internalLog') <> T.pack err
   Right (Message MkMessageAction{level, message}) ->
     _nixMessages %= \i -> foldr ScrollableList.addItem i (map ((("[" <> T.show level <> "] ") <>)) $ T.lines message)
-  Right internalLog ->
-    liftIO . unlift . logDebugN $ T.show internalLog
+  Right _internalLog -> pure ()
+-- liftIO . unlift . logDebugN $ T.show internalLog
 myEvent _ (AppEvent CliMessage'BuildStarted{attr}) = _knownBuilds . at attr .= Just BuildState'Running
 myEvent _ (AppEvent CliMessage'BuildFinished{attr}) = _knownBuilds . at attr .= Just BuildState'Finished
 myEvent _ (AppEvent CliMessage'FoundConfigurations{configurations}) = forM_ configurations \configuration ->
   _knownBuilds . at configuration .= Just BuildState'None
-myEvent _ (AppEvent CliMessage'Readline{prompt, response}) = _askpass .= Just Cli'AskPass{prompt, response, accumulator = ""}
+myEvent _ (AppEvent CliMessage'Readline{prompt, response}) = _askpass %= (++ [Cli'AskPass{prompt, response, accumulator = ""}])
 myEvent _ (AppEvent CliMessage'ConfirmExit{exception, confirmed}) = _confirmExit .= Just Cli'ConfirmExit{exception, confirmed}
 myEvent _ (VtyEvent (EvKey (KChar 'c') [MCtrl])) = halt
 myEvent unlift event = do
   use _askpass >>= \case
-    Just askpass -> do
+    askpass : rest -> do
       (s, a) <- nestEventM askpass $ eventAskSudoPass unlift event
 
       if a
-        then _askpass . mapped .= s
-        else _askpass .= Nothing
-    Nothing -> pure ()
+        then _askpass .= s : rest
+        else _askpass .= rest
+    _ -> pure ()
 
   use _confirmExit >>= \case
     Just confirmExit -> do
@@ -227,7 +251,7 @@ myEvent unlift event = do
         else _confirmExit .= Nothing
     Nothing -> pure ()
 
-  use _nixMessages >>= (`nestEventM'` (ScrollableList.handleEvent unlift event)) >>= (_nixMessages .=)
+  use _nixMessages >>= (`nestEventM'` (ScrollableList.handleEvent LogScroll unlift event)) >>= (_nixMessages .=)
 
   pure ()
 
@@ -244,13 +268,20 @@ theMap =
 makePrompt :: Cli'AskPass -> Widget n
 makePrompt Cli'AskPass{prompt, accumulator} = txt $ prompt <> (T.replicate (T.length accumulator) "*")
 
+headMay :: [a] -> Maybe a
+headMay (x : _) = Just x
+headMay _ = Nothing
+
+data Name = LogScroll
+  deriving (Eq, Ord)
+
 mainLoop
   :: (Concurrent :> es, FileSystem :> es, HasCallStack, IOE :> es, Logger :> es, RequireCallStack)
   => Chan CliMessage -> Eff es ()
 mainLoop chan =
   withEffToIO SeqUnlift \unlift -> do
     let
-      app :: App CliState CliMessage ()
+      app :: App CliState CliMessage Name
       app =
         App
           { appDraw = \CliState{knownBuilds, askpass, confirmExit, nixMessages} ->
@@ -260,14 +291,14 @@ mainLoop chan =
                     ++ ( HM.toList knownBuilds & map \(name, state) ->
                            hBox [txt name, txt "\t", txt (T.show state)]
                        )
-                    ++ [ vLimit 30 $ (`ScrollableList.render` nixMessages) txt
+                    ++ [ border . vLimit 15 $ (\how -> ScrollableList.render LogScroll how nixMessages) txt
                        ]
-                    ++ maybe [] (singleton . padTop Max . makePrompt) askpass
+                    ++ maybe [] (singleton . padTop Max . makePrompt) (headMay askpass)
                     ++ maybe
                       []
                       ( \c -> case c ^. _exception of
                           Just exception -> [padTop Max $ txt ("confirm exit: " <> T.show exception)]
-                          Nothing -> [txt "confirm exit"]
+                          Nothing -> [padTop Max $ txt "confirm exit"]
                       )
                       confirmExit
               ]

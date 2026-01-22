@@ -30,6 +30,7 @@ data Logging
 data Options = Options
   { command :: Command
   , logging :: Logging
+  , nom :: Bool
   }
 
 readLoggingM :: ReadM Logging
@@ -80,6 +81,7 @@ parseOptions =
   Options
     <$> parseCommand
     <*> parseLogging
+    <*> switch (long "nom" <> short 'n')
 
 options :: ParserInfo Options
 options =

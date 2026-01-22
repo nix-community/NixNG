@@ -5,7 +5,7 @@
 
 module Effectful.Monad.Logger where
 
-import Control.Monad.Logger (LoggingT (..))
+import Control.Monad.Logger (LoggingT (..), monadLoggerLog, toLogStr)
 import Control.Monad.Logger qualified as LM
 import Data.Text (Text)
 import Data.Text.IO qualified as T
@@ -52,6 +52,20 @@ runOtherTerminalLogging eff = do
     let logger = Logging (`LM.runLoggingT` LM.defaultOutput inHandle)
 
     evalStaticRep (Logger logger) eff
+
+runConfigurationLogging
+  :: (IOE :> es, Logger :> es) => Text -> Eff (Logger : es) a -> Eff es a
+runConfigurationLogging configuration eff = do
+  Logger (Logging log) <- getStaticRep
+
+  evalStaticRep
+    ( Logger $
+        Logging @IO $
+          ( `runLoggingT`
+              \loc logSource logLevel logStr -> log (monadLoggerLog loc logSource logLevel ("[" <> toLogStr configuration <> "] " <> logStr))
+          )
+    )
+    eff
 
 logInfoN :: (Logger :> es, RequireCallStack) => Text -> Eff es ()
 logInfoN msg = do

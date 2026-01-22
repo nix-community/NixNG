@@ -43,7 +43,7 @@ import Effectful.Concurrent.MVar.Strict (MVar', newEmptyMVar', putMVar', takeMVa
 import Effectful.Dispatch.Dynamic (interpret, reinterpret, send)
 import Effectful.Environment (Environment, lookupEnv)
 import Effectful.Exception (throwIO)
-import Effectful.Monad.Logger (Logger, logDebugN, logErrorN)
+import Effectful.Monad.Logger (Logger, logDebugN, logErrorN, runConfigurationLogging)
 import Effectful.Prim.IORef.Strict (Prim, newIORef', readIORef', writeIORef')
 import Effectful.Process.Typed (
   ExitCode (..),
@@ -205,12 +205,12 @@ makeLensesWith duplicateRules ''RemoteEffectState
 makeLensesWith duplicateRules ''RemoteConnection
 
 data RemoteEffect m a where
-  OpenConnection :: {user :: Text, address :: Text} -> RemoteEffect m Handle
+  OpenConnection :: {configuration :: Text, user :: Text, address :: Text} -> RemoteEffect m Handle
   Near :: (FromJSON a, ToJSON (Near a)) => {connection :: Handle, message :: Near a} -> RemoteEffect m a
 type instance DispatchOf RemoteEffect = Dynamic
 
-openConnection :: (RemoteEffect :> es, RequireCallStack) => Text -> Text -> Eff es Handle
-openConnection user address = send (OpenConnection{user, address})
+openConnection :: (RemoteEffect :> es, RequireCallStack) => Text -> Text -> Text -> Eff es Handle
+openConnection configuration user address = send (OpenConnection{configuration, user, address})
 
 near
   :: forall es a. (FromJSON a, RemoteEffect :> es, RequireCallStack, ToJSON (Near a)) => Handle -> Near a -> Eff es a
@@ -336,7 +336,9 @@ runRemote
 runRemote eff = evalStateLocal initialState do
   result <-
     (inject eff) & interpret \_ -> \case
-      OpenConnection{user, address} -> do
+      OpenConnection{configuration, user, address} -> runConfigurationLogging configuration do
+        logDebugN ("opening connection to " <> user <> "@" <> address)
+
         handle <- use _counter'
         _counter' += 1
 
@@ -367,12 +369,14 @@ runRemote eff = evalStateLocal initialState do
 
         (channel, a) <- background (getStdin process) (getStdout process) \_channel -> \case
           Far'AskSudoPassword -> do
-            askReadLine "sudo password: " <&> A.toJSON
+            askReadLine ("sudo password for " <> configuration <> ": ") <&> A.toJSON
           Far'Log loc logSource logLevel logStr -> do
             monadLoggerLog loc logSource logLevel logStr
             pure $ A.toJSON ()
 
         _connections' %= HM.insert handle RemoteConnection{process, channel, a}
+
+        logDebugN ("connection to " <> user <> "@" <> address <> " opened")
 
         pure $ Handle handle
       Near{connection = Handle connection, message} ->
