@@ -25,6 +25,7 @@ executable mrsk
     other-modules:
         Cli,
         Cli.ScrollableList,
+        Cli.EscapeCode,
         Nix,
         NixMessage,
         NixMessage.Parser,
@@ -41,7 +42,6 @@ executable mrsk
         vector,
         text,
         bytestring,
-        megaparsec,
         nixng,
         path,
         aeson,
@@ -63,6 +63,7 @@ executable mrsk
         bytestring-aeson-orphans,
         extra,
         typed-process,
+        attoparsec,
     hs-source-dirs:   app
     ghc-options: -threaded
     default-language: GHC2021

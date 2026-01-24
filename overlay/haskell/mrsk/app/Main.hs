@@ -11,42 +11,35 @@ import Cli (
   CliEffect,
   askConfirmExit,
   runCliEffect,
-  tellBuildFinished,
   tellBuildStarted,
-  tellFoundConfigurations,
+  tellDeploymentFinished,
+  tellDeploymentStarted,
+  tellEvaluationStarted,
+  tellException,
  )
 import Cli qualified
-import Control.Exception (Exception, SomeException, throw)
-import Control.Monad (foldM, forM, forM_, void)
+import Control.Exception (SomeException)
+import Control.Monad (foldM, forM_)
 import Control.Monad.IO.Class (liftIO)
-import Data.Aeson.Key qualified as A
 import Data.Aeson.Key qualified as AK
-import Data.Aeson.KeyMap qualified as A
 import Data.Aeson.KeyMap qualified as KM
-import Data.Aeson.Text qualified as A
 import Data.Aeson.Types qualified as A
-import Data.Either (fromLeft, fromRight, rights)
-import Data.Function ((&))
+import Data.Either (fromLeft)
 import Data.Functor ((<&>))
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HM
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (catMaybes)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Text.IO qualified as T
-import Data.Text.Lazy.IO qualified as TL
 import Data.Vector qualified as V
 import Effectful (Eff, IOE, runEff, (:>))
-import Effectful.Concurrent (Concurrent, runConcurrent, threadDelay)
+import Effectful.Concurrent (Concurrent, runConcurrent)
 import Effectful.Concurrent.Async (Concurrently (..))
 import Effectful.Concurrent.QSem (newQSem, signalQSem, waitQSem)
 import Effectful.Environment (Environment, runEnvironment)
-import Effectful.Exception (ExceptionWithContext, bracket_, catch, finally, throwIO)
+import Effectful.Exception (ExceptionWithContext, bracket_, catch)
 import Effectful.Fail (Fail, runFailIO)
 import Effectful.FileSystem (FileSystem, runFileSystem)
-import Effectful.FileSystem.IO (stdout)
-import Effectful.FileSystem.IO.ByteString (hGetLine, hPutStr)
 import Effectful.Monad.Logger (
   Logger,
   logDebugN,
@@ -61,16 +54,14 @@ import Effectful.Monad.Logger (
 import Effectful.Prim (Prim, runPrim)
 import Effectful.Process.Typed (ExitCode, TypedProcess, runTypedProcess)
 import GHC.Generics (Generic)
-import GHC.Stack.Types (HasCallStack)
 import Nix (Nix, nixBuild, nixEval, nixSelect, runNixEffect)
-import Nix.Select (NixTarget (NixDerivation, NixFlake), Selector (..), nixFlakeInfo, select)
+import Nix.Select (NixTarget (NixDerivation, NixFlake), Selector (..))
 import Options (Command (..), Logging (..), Options (Options, command, logging, nom), options)
 import Options.Applicative (execParser)
-import Path.Posix (Abs, Dir, File, Path, absdir, parseAbsDir, parseAbsFile, toFilePath)
+import Path.Posix (Abs, Dir, File, Path, parseAbsFile)
 import Remote (
   Near (..),
   RemoteEffect,
-  SwitchAction (SwitchAction'DryActivate, SwitchAction'Switch),
   near,
   openConnection,
   runRemote,
@@ -126,14 +117,17 @@ getNixOSConfigurations hosts flake =
     <&> head
 
 traverseThrottled
-  :: (Concurrent :> es, Traversable t)
-  => Int -> (a -> Eff es b) -> t a -> Eff es (t (Either (ExceptionWithContext SomeException) b))
+  :: (Concurrent :> es)
+  => Int
+  -> (Text -> a -> Eff es b)
+  -> HashMap Text a
+  -> Eff es (HashMap Text (Either (ExceptionWithContext SomeException) b))
 traverseThrottled concLevel action taskContainer = do
   sem <- newQSem concLevel
   let
-    throttledAction = bracket_ (waitQSem sem) (signalQSem sem) . action
+    throttledAction = bracket_ (waitQSem sem) (signalQSem sem) . uncurry action
     caughtAction task = catch (throttledAction task <&> Right) (pure . Left)
-  runConcurrently (traverse (Concurrently . caughtAction) taskContainer)
+  runConcurrently (HM.traverseWithKey (\key value -> Concurrently $ caughtAction (key, value)) taskContainer)
 
 type TopLevelEffects =
   [ RemoteEffect
@@ -149,14 +143,20 @@ type TopLevelEffects =
   , IOE
   ]
 
-logExceptions :: (Logger :> es, RequireCallStack) => [Either (ExceptionWithContext SomeException) a] -> Eff es [a]
-logExceptions results = foldM logException [] results
+logExceptions
+  :: (CliEffect :> es, Logger :> es, RequireCallStack)
+  => HashMap Text (Either (ExceptionWithContext SomeException) a) -> Eff es (HashMap Text a)
+logExceptions results = HM.foldlWithKey' logException (pure HM.empty) results
  where
-  logException :: (Logger :> es, RequireCallStack) => [a] -> Either (ExceptionWithContext SomeException) a -> Eff es [a]
-  logException accumulator (Left exception) = do
-    logErrorN ("operation failed with exception " <> T.show exception)
-    pure accumulator
-  logException accumulator (Right value) = pure (value : accumulator)
+  logException
+    :: (CliEffect :> es, Logger :> es, RequireCallStack)
+    => Eff es (HashMap Text a) -> Text -> Either (ExceptionWithContext SomeException) a -> Eff es (HashMap Text a)
+  logException action machine (Left exception) =
+    action >>= \accumulator -> do
+      logErrorN ("operation failed with exception " <> T.show exception)
+      tellException machine exception
+      pure accumulator
+  logException action machine (Right value) = action >>= \accumulator -> pure $ HM.insert machine value accumulator
 
 mrsk :: (RequireCallStack) => Options -> Eff TopLevelEffects ()
 mrsk Options{command = Far} =
@@ -175,75 +175,67 @@ mrsk Options{command = Deploy{hosts, flake, sudo, action}} = do
   logDebugN
     ("found these configurations with mrsk metadata: [ " <> T.intercalate ", " (HM.keys configurationMetadatas) <> " ]")
 
-  tellFoundConfigurations (HM.keys configurationMetadatas)
-
   derivations :: HashMap Text (Path Abs File) <-
-    HM.fromList
-      <$> ( logExceptions
-              =<< traverseThrottled
-                4
-                ( \name -> runConfigurationLogging name do
-                    logDebugN "starting evaluation"
+    logExceptions
+      =<< traverseThrottled
+        4
+        ( \name _ -> runConfigurationLogging name do
+            tellEvaluationStarted name
+            logDebugN "starting evaluation"
 
-                    let attr = "nixosConfigurations.\"" <> name <> "\".config.system.build.toplevel.drvPath"
-                    result <-
-                      (nixEval @Text . NixFlake $ flake <> "#" <> attr)
-                        >>= parseAbsFile . T.unpack
-                        <&> (name,)
+            let attr = "nixosConfigurations.\"" <> name <> "\".config.system.build.toplevel.drvPath"
+            result <-
+              (nixEval @Text . NixFlake $ flake <> "#" <> attr)
+                >>= parseAbsFile . T.unpack
 
-                    logDebugN "finished evaluation" *> pure result
-                )
-                (HM.keys configurationMetadatas)
-          )
+            logDebugN "finished evaluation" *> pure result
+        )
+        configurationMetadatas
 
   builtPaths :: HashMap Text (Path Abs Dir) <-
-    HM.fromList
-      <$> ( logExceptions
-              =<< traverseThrottled
-                4
-                ( \(name, derivation) ->
-                    runConfigurationLogging name do
-                      logDebugN "starting build"
-                      tellBuildStarted name
+    logExceptions
+      =<< traverseThrottled
+        4
+        ( \name derivation ->
+            runConfigurationLogging name do
+              logDebugN "starting build"
+              tellBuildStarted name
 
-                      result <-
-                        ( nixBuild (NixDerivation derivation)
-                            <&> (name,) . fromLeft undefined . head
-                        )
-
-                      tellBuildFinished name
-                      logDebugN "finished build" *> pure result
+              result <-
+                ( nixBuild (NixDerivation derivation)
+                    <&> fromLeft undefined . head
                 )
-                (HM.toList derivations)
-          )
 
-  deployedConfigurations :: HashMap Text (ExitCode, Text) <-
-    HM.fromList
-      <$> ( logExceptions
-              =<< traverseThrottled
-                4
-                ( \(name, NixOSConfiguration{remoteUser, targetHost}) -> runConfigurationLogging name do
-                    logDebugN "starting deploy"
+              logDebugN "finished build" *> pure result
+        )
+        derivations
 
-                    handle <- openConnection name remoteUser targetHost
+  _ :: HashMap Text (ExitCode, Text) <-
+    logExceptions
+      =<< traverseThrottled
+        4
+        ( \name NixOSConfiguration{remoteUser, targetHost} -> runConfigurationLogging name do
+            tellDeploymentStarted name
+            logDebugN "starting deploy"
 
-                    logDebugN "Remote connection opened"
+            handle <- openConnection name remoteUser targetHost
 
-                    output <-
-                      near handle $
-                        Near'SwitchNixos
-                          { configuration = (builtPaths HM.! name)
-                          , action
-                          , sudo
-                          }
+            logDebugN "Remote connection opened"
 
-                    logDebugN "finished deploy" *> pure (name, output)
-                )
-                (HM.toList configurationMetadatas)
-          )
+            (exitCode, output) <-
+              near handle $
+                Near'SwitchNixos
+                  { configuration = (builtPaths HM.! name)
+                  , action
+                  , sudo
+                  }
 
-  forM_ (HM.toList deployedConfigurations) \(name, (exitCode, output)) ->
-    logInfoN (name <> " deployed with " <> T.show exitCode <> " and " <> output)
+            tellDeploymentFinished name exitCode output
+            logInfoN (name <> " deployed with " <> T.show exitCode <> " and " <> output)
+
+            pure (exitCode, output)
+        )
+        configurationMetadatas
 
   pure ()
 
