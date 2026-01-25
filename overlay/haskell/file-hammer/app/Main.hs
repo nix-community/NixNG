@@ -229,6 +229,9 @@ getGroupFromStatus (fileGroup -> groupId) = handleIf predicate fallback action
   fallback = const . pure . GroupId $ groupId
   action = io $ getGroupEntryForID groupId <&> GroupName . T.pack . groupName
 
+permissionMask :: Posix.CMode
+permissionMask = 0b111111111
+
 readFileNode
   :: ( MonadCatch m
      , MonadIO m
@@ -262,7 +265,7 @@ readFileNode path = do
             { user
             , group
             }
-      , mode = fileMode status .&. 0b11111111
+      , mode = fileMode status .&. permissionMask
       , content = fileContent
       }
 
@@ -307,7 +310,7 @@ readDir path = do
             { user = user
             , group = group
             }
-      , mode = fileMode status .&. 0b111111111
+      , mode = fileMode status .&. permissionMask
       , content
       }
 
