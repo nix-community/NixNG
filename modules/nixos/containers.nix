@@ -7,6 +7,7 @@
 }:
 let
   hostHostName = config.networking.hostName;
+  hostDomain = config.networking.domain;
   specialArgs = config._module.specialArgs;
 in
 {
@@ -38,8 +39,7 @@ in
 
                   name = lib.mkOption {
                     type = lib.types.str;
-                    default = "${name}.${hostHostName}";
-                    defaultText = "\${name}.\${hostHostName}";
+                    default = name;
                     description = ''
                       The name of this NixNG configuration.
                     '';
@@ -65,7 +65,7 @@ in
                   defaultModules = lib.mkOption {
                     type = lib.types.listOf lib.types.deferredModule;
                     default = import ../list.nix;
-                    defaultText = "\${name}.\${hostHostName}";
+                    defaultText = "import ../list.nix";
                     description = ''
                       Set of default modules for this NixNG configuration, generally shouldn't be
                       changed.
@@ -102,7 +102,10 @@ in
                   // {
                     config = {
                       _file = "${__curPos.file}:${toString __curPos.line}";
-                      config.nixpkgs.pkgs = lib.mkForce (x.nixpkgs == null) pkgs;
+                      config = {
+                        nixpkgs.pkgs = lib.mkIf (x.nixpkgs != null) (lib.mkForce pkgs);
+                        networking.domain = "${hostHostName}.${hostDomain}";
+                      };
                       imports = [
                         x.config
                       ];
