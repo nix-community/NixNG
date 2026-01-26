@@ -102,7 +102,7 @@ in
                   // {
                     config = {
                       _file = "${__curPos.file}:${toString __curPos.line}";
-                      config.nixpkgs.pkgs = lib.mkForce (x.nixpkgs == null) lib.mkForce pkgs;
+                      config.nixpkgs.pkgs = lib.mkForce (x.nixpkgs == null) pkgs;
                       imports = [
                         x.config
                       ];
