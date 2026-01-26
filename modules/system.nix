@@ -26,6 +26,10 @@ let
   cfg = config.system;
 in
 {
+  imports = [
+    (lib.mkRenamedOptionModule [ "system" "name" ] [ "networking" "hostName" ])
+  ];
+
   options.system = {
     createNixRegistration = mkEnableOption ''
       Create $out/registration, which allows one to create and populate
@@ -60,11 +64,6 @@ in
       '';
       type = types.path;
       readOnly = true;
-    };
-
-    name = mkOption {
-      description = "System name, used when generating container images";
-      type = types.str;
     };
   };
 
