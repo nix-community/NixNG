@@ -24,6 +24,7 @@
   ./environment.nix
   ./users.nix
   ./ids.nix
+  ./networking
 
   ./services/apache2-nixos.nix
   ./services/nginx.nix

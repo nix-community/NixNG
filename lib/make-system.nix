@@ -33,7 +33,7 @@ let
         (
           { ... }:
           {
-            system.name = name;
+            networking.hostName = name;
           }
         )
         config

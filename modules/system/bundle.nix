@@ -25,7 +25,7 @@ in
     };
   };
 
-  config.system.build.bundle = pkgs.runCommand (config.system.name + "-bundle") { } ''
+  config.system.build.bundle = pkgs.runCommand (config.networking.hostName + "-bundle") { } ''
     set -o pipefail
     mkdir -p $out
     xargs tar c < ${pkgs.writeReferencesToFile config.system.build.toplevel} | tar -xC $out/

@@ -247,14 +247,6 @@ in
                   user."UserName" = "root";
                 };
               };
-              "hosts" = {
-                content."ContentAny" = [ ];
-                mode = 420;
-                owner = {
-                  group."GroupName" = "root";
-                  user."UserName" = "root";
-                };
-              };
               "resolv.conf" = {
                 content."ContentAny" = [ ];
                 mode = 420;
