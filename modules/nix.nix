@@ -196,7 +196,7 @@ in
 
     environment.systemPackages = [ cfg.package ];
 
-    nix.config = mkDefault {
+    nix.config = {
       build-users-group = "nixbld";
       max-jobs = "auto";
       cores = 0;
@@ -210,7 +210,7 @@ in
       allowed-users = "*";
       builders = [ ];
 
-      system-features = mkDefault (
+      system-features = (
         [
           "nixos-test"
           "benchmark"
