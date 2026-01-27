@@ -229,21 +229,15 @@ in
       sandbox-fallback = mkIf isNix23 false;
     };
 
-    system.activation.nix = nglib.dag.dagEntryAnywhere ''
-      export PATH=${pkgs.busybox}/bin
-
-      install -m 0755 -d /nix/var/nix/{gcroots,profiles}/per-user
-
-      # NixOS canonical location + Debian/Ubuntu/Arch/Gentoo compatibility.
-      mkdir -m 0755 -p /etc/nix
-      ln -sfn ${cfg.config} /etc/nix/.nix.conf.tmp
-      mv /etc/nix/.nix.conf.tmp /etc/nix/nix.conf # atomically replace /etc/nix/nix.conf
-    '';
+    environment.etc."nix/nix.conf".source = cfg.config;
 
     init.services.nix-daemon = mkIf cfg.daemon {
-      script = pkgs.writeShellScript "nix-daemon" ''
-        chpst ${cfg.package}/bin/nix-daemon --daemon
-      '';
+      tmpfiles = with nglib.nottmpfiles.dsl; [
+        (d "/nix/var/nix/gcroots/per-user" "0755" "root" "root" _ _)
+        (d "/nix/var/nix/profiles/per-user" "0755" "root" "root" _ _)
+      ];
+
+      script = "${cfg.package}/bin/nix-daemon --daemon";
       enabled = true;
     };
   };
