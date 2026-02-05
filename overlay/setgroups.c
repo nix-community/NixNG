@@ -27,6 +27,16 @@ void set_user(char* username, bool set_group) {
     fprintf(stderr, "failed to switch user\n");
     exit(1);
   }
+
+  if (setenv("USER", user->pw_name, 1) != 0) {
+    fprintf(stderr, "failed to set USER environment variable");
+    exit(1);
+  }
+
+  if (setenv("HOME", user->pw_dir, 1) != 0) {
+    fprintf(stderr, "failed to set USER environment variable");
+    exit(1);
+  }
 }
 
 void set_group(char* groupname) {
