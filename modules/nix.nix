@@ -196,38 +196,42 @@ in
 
     environment.systemPackages = [ cfg.package ];
 
-    nix.config = {
-      build-users-group = "nixbld";
-      max-jobs = "auto";
-      cores = 0;
-      sandbox = true;
-      extra-sandbox-paths = [ ];
-      substituters = [ "https://cache.nixos.org/" ];
-      trusted-substituters = [ ];
-      trusted-public-keys = [ "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" ];
-      auto-optimise-store = false;
-      require-sigs = true;
-      allowed-users = "*";
-      builders = [ ];
+    nix.config = lib.mkMerge [
+      (nglib.mkDefaultRec {
+        build-users-group = "nixbld";
+        max-jobs = "auto";
+        cores = 0;
+        sandbox = true;
+        auto-optimise-store = false;
+        require-sigs = true;
+        allowed-users = "*";
+      })
+      {
+        extra-sandbox-paths = [ ];
+        substituters = [ "https://cache.nixos.org/" ];
+        trusted-substituters = [ ];
+        trusted-public-keys = [ "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" ];
+        builders = [ ];
 
-      system-features = (
-        [
-          "nixos-test"
-          "benchmark"
-          "big-parallel"
-          "kvm"
-        ]
-        ++ optionals (pkgs.stdenv.hostPlatform ? gcc.arch) (
-          # a builder can run code for `gcc.arch` and inferior architectures
-          [ "gccarch-${pkgs.stdenv.hostPlatform.gcc.arch}" ]
-          ++ map (x: "gccarch-${x}") (
-            lib.systems.architectures.inferiors.${pkgs.stdenv.hostPlatform.gcc.arch} or [ ]
+        system-features = (
+          [
+            "nixos-test"
+            "benchmark"
+            "big-parallel"
+            "kvm"
+          ]
+          ++ optionals (pkgs.stdenv.hostPlatform ? gcc.arch) (
+            # a builder can run code for `gcc.arch` and inferior architectures
+            [ "gccarch-${pkgs.stdenv.hostPlatform.gcc.arch}" ]
+            ++ map (x: "gccarch-${x}") (
+              lib.systems.architectures.inferiors.${pkgs.stdenv.hostPlatform.gcc.arch} or [ ]
+            )
           )
-        )
-      );
+        );
 
-      sandbox-fallback = mkIf isNix23 false;
-    };
+        sandbox-fallback = mkIf isNix23 false;
+      }
+    ];
 
     environment.etc."nix/nix.conf".source = cfg.config;
 
