@@ -1,10 +1,7 @@
-# SPDX-FileCopyrightText:  2021 Richard Brežák and NixNG contributors
+# SPDX-FileCopyrightText: 2021 Richard Brežák and NixNG contributors
+# SPDX-FileCopyrightText: 2026 Richard Brežák <magic_rb@redalder.org> and NixNG contributors
 #
 # SPDX-License-Identifier: MPL-2.0
-#
-#   This Source Code Form is subject to the terms of the Mozilla Public
-#   License, v. 2.0. If a copy of the MPL was not distributed with this
-#   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 {
   inputs = {
@@ -74,7 +71,9 @@
           pkgs = pkgsForSystem system;
         in
         {
-          default = pkgs.mkShell { nativeBuildInputs = with pkgs; [ ]; };
+          default = pkgs.mkShell { nativeBuildInputs = with pkgs; [
+            reuse
+          ]; };
           haskell = pkgs.mkShell {
             nativeBuildInputs = with pkgs; [
               ghc
@@ -106,6 +105,7 @@
               "/checks"
             ];
           };
+          reuse = pkgs.callPackage ./checks/reuse.nix { };
         }
       );
 

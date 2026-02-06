@@ -1,14 +1,8 @@
-# SPDX-FileCopyrightText:  2021 Richard Brežák and NixNG contributors
+# Copyright (C) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
+# SPDX-FileCopyrightText: 2021 Richard Brežák and NixNG contributors
+# SPDX-FileCopyrightText: 2026 Richard Brežák <magic_rb@redalder.org> and NixNG contributors
 #
 # SPDX-License-Identifier: MPL-2.0
-#
-#   This Source Code Form is subject to the terms of the Mozilla Public
-#   License, v. 2.0. If a copy of the MPL was not distributed with this
-#   file, You can obtain one at http://mozilla.org/MPL/2.0/.
-#
-# This file incorporates work sublicensed from the MIT License to
-# Mozilla Public License, v. 2.0, for which the following copyright applies:
-#   Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
 
 {
   pkgs,

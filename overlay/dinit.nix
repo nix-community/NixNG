@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Richard Brežák <magic_rb@redalder.org> and NixNG contributors
+#
+# SPDX-License-Identifier: MPL-2.0
+
 {
   stdenv,
   fetchFromGitHub,
@@ -6,19 +10,14 @@
 }:
 stdenv.mkDerivation (self: {
   pname = "dinit";
-  version = "0.19.0";
+  version = "0.20.0";
 
   src = fetchFromGitHub {
     owner = "davmac314";
     repo = "dinit";
     rev = "v" + self.version;
-    hash = "sha256-ApB0pEFSyawNASF/rqRmhT4FLofZzYmNdNmG2FGpnnk=";
+    hash = "sha256-/slWdU2p1iOmE2KFsrZKpgApadAzofDXvJVah0AMRq8=";
   };
-
-  patches = [
-    ./dinit-dont-shutdown-system.patch
-    ./dinit-allow-multiple-env-files.patch
-  ];
 
   nativeBuildInputs = [
     gnumake
