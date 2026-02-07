@@ -12,11 +12,36 @@
   nixng,
 }:
 let
+  modifiedMakeSystem =
+    {
+      config ? { },
+      specialArgs ? { },
+      ...
+    }@args:
+    nglib.makeSystem (
+      args
+      // {
+        config = {
+          nixos.acceptRisks = "I accept the risks";
+
+          imports = [ config ];
+        };
+        specialArgs = specialArgs // {
+          __enableExperimentalNixOSCompatibility = true;
+        };
+      }
+    );
+
+  modifiedNglib = nglib // {
+    makeSystem = modifiedMakeSystem;
+  };
+
   examples = {
     "gitea" = ./gitea;
     "gitea-sane" = ./gitea/sane.nix;
     "apache" = ./apache;
     "nginx" = ./nginx;
+    "nginx-nixos" = ./nginx-nixos;
     "crond" = ./crond;
     "nix" = ./nix;
     "hydra" = ./hydra;
@@ -35,4 +60,10 @@ let
     "file-hammer" = ./file-hammer;
   };
 in
-nixpkgs.lib.mapAttrs (_: v: import v { inherit nixpkgs nglib nixng; }) examples
+nixpkgs.lib.mapAttrs (
+  _: v:
+  import v {
+    inherit nixpkgs nixng;
+    nglib = modifiedNglib;
+  }
+) examples
