@@ -298,7 +298,7 @@ locateMrskBinary user address = runMaybeT do
           lift $ logDebugN $ "Found mrsk binary in path"
           parseAbsFile (T.unpack $ bsToText stdout) >>= hoistMaybe . Just
         (ExitFailure _, _) -> do
-          lift $ logDebugN $ "No remote mrsk binary"
+          lift $ logDebugN $ "No remote mrsk binary in path"
           hoistMaybe Nothing
 
     localFromCabal :: MaybeT (Eff es) Text
@@ -343,7 +343,7 @@ locateMrskBinary user address = runMaybeT do
 
       parseAbsFile $ T.unpack remoteSelf
 
-  copyLocal <|> tryPath
+  tryPath <|> copyLocal
 
 runRemote
   :: ( CliEffect :> es
