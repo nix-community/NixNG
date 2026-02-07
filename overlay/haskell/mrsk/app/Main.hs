@@ -35,10 +35,10 @@ import Data.Text qualified as T
 import Data.Vector qualified as V
 import Effectful (Eff, IOE, runEff, (:>))
 import Effectful.Concurrent (Concurrent, runConcurrent)
-import Effectful.Concurrent.Async (Concurrently (..))
+import Effectful.Concurrent.Async (Concurrently (..), forConcurrently)
 import Effectful.Concurrent.QSem (newQSem, signalQSem, waitQSem)
 import Effectful.Environment (Environment, runEnvironment)
-import Effectful.Exception (ExceptionWithContext, bracket_, catch, throwIO)
+import Effectful.Exception (ExceptionWithContext, bracket_, catch, handle, throwIO)
 import Effectful.Fail (Fail, runFailIO)
 import Effectful.FileSystem (FileSystem, runFileSystem)
 import Effectful.Monad.Logger (
@@ -169,85 +169,49 @@ mrsk Options{command = Deploy{hosts, flake, sudo, action}} = do
 
   logDebugN ("found these configurations: [ " <> T.intercalate ", " configurations <> " ]")
 
-  configurationMetadatas :: HashMap Text NixOSConfiguration <-
-    getNixOSConfigurationMetadata configurations flake <&> HM.mapMaybe id
+  _ <- forConcurrently configurations \configuration ->
+    runConfigurationLogging configuration $
+      tellException configuration
+        `handle` ( getNixOSConfigurationMetadata [configuration] flake <&> (HM.! configuration) >>= \case
+                     Just NixOSConfiguration{remoteUser, targetHost} -> do
+                       logDebugN "found metadata"
 
-  logDebugN
-    ("found these configurations with mrsk metadata: [ " <> T.intercalate ", " (HM.keys configurationMetadatas) <> " ]")
+                       tellEvaluationStarted configuration
+                       logDebugN "starting evaluation"
 
-  derivations :: HashMap Text (Path Abs File) <-
-    logExceptions
-      =<< traverseThrottled
-        4
-        ( \name _ -> runConfigurationLogging name do
-            tellEvaluationStarted name
-            logDebugN "starting evaluation"
+                       derivation <-
+                         let attr = "nixosConfigurations.\"" <> configuration <> "\".config.system.build.toplevel.drvPath"
+                          in (nixEval @Text . NixFlake $ flake <> "#" <> attr) >>= parseAbsFile . T.unpack
 
-            let attr = "nixosConfigurations.\"" <> name <> "\".config.system.build.toplevel.drvPath"
-            result <-
-              (nixEval @Text . NixFlake $ flake <> "#" <> attr)
-                >>= parseAbsFile . T.unpack
+                       logDebugN "finished evaluation"
 
-            logDebugN "finished evaluation" *> pure result
-        )
-        configurationMetadatas
+                       logDebugN "starting build"
+                       tellBuildStarted configuration
 
-  builtPaths :: HashMap Text (Path Abs Dir) <-
-    logExceptions
-      =<< traverseThrottled
-        4
-        ( \name derivation ->
-            runConfigurationLogging name do
-              logDebugN "starting build"
-              tellBuildStarted name
+                       storePath <- nixBuild (NixDerivation derivation) <&> fromLeft undefined . head
+                       logDebugN "finished build"
 
-              result <-
-                ( nixBuild (NixDerivation derivation)
-                    <&> fromLeft undefined . head
-                )
+                       tellCopyStarted configuration <* nixCopy (SomePath storePath) remoteUser targetHost
 
-              logDebugN "finished build" *> pure result
-        )
-        derivations
+                       tellDeploymentStarted configuration
+                       logDebugN "starting deploy"
 
-  _ <-
-    logExceptions
-      =<< traverseThrottled
-        4
-        ( \name storePath -> case configurationMetadatas HM.!? name of
-            Just NixOSConfiguration{remoteUser, targetHost} ->
-              tellCopyStarted name <* nixCopy (SomePath storePath) remoteUser targetHost
-            Nothing -> undefined
-        )
-        builtPaths
+                       remoteConnection <- openConnection configuration remoteUser targetHost
 
-  _ :: HashMap Text (ExitCode, Text) <-
-    logExceptions
-      =<< traverseThrottled
-        4
-        ( \name NixOSConfiguration{remoteUser, targetHost} -> runConfigurationLogging name do
-            tellDeploymentStarted name
-            logDebugN "starting deploy"
+                       logDebugN "Remote connection opened"
 
-            handle <- openConnection name remoteUser targetHost
+                       (exitCode, output) <-
+                         near remoteConnection $
+                           Near'SwitchNixos
+                             { configuration = storePath
+                             , action
+                             , sudo
+                             }
 
-            logDebugN "Remote connection opened"
-
-            (exitCode, output) <-
-              near handle $
-                Near'SwitchNixos
-                  { configuration = (builtPaths HM.! name)
-                  , action
-                  , sudo
-                  }
-
-            tellDeploymentFinished name exitCode output
-            logInfoN (name <> " deployed with " <> T.show exitCode <> " and " <> output)
-
-            pure (exitCode, output)
-        )
-        configurationMetadatas
-
+                       tellDeploymentFinished configuration exitCode output
+                       logInfoN (configuration <> " deployed with " <> T.show exitCode <> " and " <> output)
+                     Nothing -> pure ()
+                 )
   pure ()
 
 runSomeLogging
