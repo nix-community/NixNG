@@ -2,3 +2,5 @@ cradle:
   cabal:
 dependencies:
   - file-hammer/file-hammer.cabal
+  - mrsk/mrsk.cabal
+  - nixng/nixng.cabal
