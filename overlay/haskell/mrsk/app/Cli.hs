@@ -5,12 +5,14 @@
 
 module Cli where
 
+import Brick qualified as B
 import Brick.AttrMap
 import Brick.BChan (newBChan, writeBChan)
 import Brick.Main (App (..), customMain, halt, neverShowCursor)
-import Brick.Types (BrickEvent (..), EventM, Widget, nestEventM, nestEventM')
-import Brick.Widgets.Border (border)
+import Brick.Types (BrickEvent (..), EventM, Size (..), Widget (..), nestEventM, nestEventM')
+import Brick.Widgets.Border (border, hBorder, hBorderWithLabel)
 import Brick.Widgets.Core
+import Brick.Widgets.Table qualified as Brick
 import Cli.EscapeCode (escapeCodeToBrick, parseSomething)
 import Cli.ScrollableList (ScrollableList)
 import Cli.ScrollableList qualified as ScrollableList
@@ -29,6 +31,7 @@ import Data.List (singleton)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Lazy.Encoding qualified as TL
+import Debug.Trace (trace)
 import Effectful (
   Dispatch (Dynamic),
   DispatchOf,
@@ -40,19 +43,21 @@ import Effectful (
   (:>),
  )
 import Effectful.Concurrent (Concurrent, ThreadId, myThreadId, throwTo)
-import Effectful.Concurrent.Async (AsyncCancelled (..), withAsync)
+import Effectful.Concurrent.Async (AsyncCancelled (..), link, withAsync)
 import Effectful.Concurrent.Chan (Chan, newChan, readChan, writeChan)
 import Effectful.Concurrent.MVar.Strict (MVar', newEmptyMVar', putMVar', takeMVar')
 import Effectful.Dispatch.Dynamic
 import Effectful.FileSystem.IO (FileSystem)
 import Effectful.Monad.Logger (Logger, logDebugN, logErrorN)
-import Effectful.Process.Typed (ExitCode, TypedProcess)
+import Effectful.Process.Typed (ExitCode (..), TypedProcess)
 import Graphics.Vty.Attributes (defAttr)
 import Graphics.Vty.Attributes qualified as V
+import Graphics.Vty.Attributes qualified as Vty
+import Graphics.Vty.Attributes.Color qualified as Vty
 import Graphics.Vty.Config qualified
 import Graphics.Vty.CrossPlatform qualified
 import Graphics.Vty.Input.Events (Event (..), Key (..), Modifier (..))
-import Lens.Micro.Platform (at, makeLensesWith, mapped, use, (%=), (.=), (^.))
+import Lens.Micro.Platform (at, makeLensesWith, mapped, use, view, (%=), (.=), (^.))
 import NixMessage (MessageAction (..), NixJSONMessage (..))
 import NixMessage.Parser
 import RequireCallStack (RequireCallStack)
@@ -91,6 +96,18 @@ data Machine
   | Machine'Deployed {exitCode :: ExitCode, output :: Text}
   | Machine'Exception {exception :: ExceptionWithContext SomeException}
   deriving (Show)
+
+renderMachine :: Machine -> Widget n
+renderMachine Machine'Evaluating = txt "...evaluating"
+renderMachine Machine'Building = txt "...building"
+renderMachine Machine'Copying = txt "...copying"
+renderMachine Machine'Deploying = txt "...deploying"
+renderMachine Machine'Deployed{exitCode, output} = vBox [txt $ " deployed " <> T.show exitCode', hLimitPercent 95 $ txtWrap output]
+ where
+  exitCode' = case exitCode of
+    ExitSuccess -> "0"
+    ExitFailure code -> T.show code
+renderMachine Machine'Exception{exception} = txt $ T.show exception
 
 data Cli'AskPass = Cli'AskPass
   { prompt :: Text
@@ -175,7 +192,8 @@ runCliEffect Config{nom} eff = do
 
   chan <- newChan
   mainThread <- myThreadId
-  withAsync (mainLoop chan >> throwTo mainThread AsyncCancelled) \_threadId ->
+  withAsync (mainLoop chan >> throwTo mainThread AsyncCancelled) \a -> do
+    link a
     maybeWithNom \sendToNom ->
       eff & interpret \_ -> \case
         TellBuildStarted{machine} -> writeChan chan CliMessage'BuildStarted{machine}
@@ -276,11 +294,15 @@ myEvent unlift event = do
 headingAttr :: AttrName
 headingAttr = attrName "heading"
 
+altListAttr :: AttrName
+altListAttr = attrName "alt_list"
+
 theMap :: AttrMap
 theMap =
   attrMap
     defAttr
     [ (headingAttr, V.defAttr `V.withStyle` V.bold)
+    , (altListAttr, V.defAttr `Vty.withBackColor` (Vty.Color240 0))
     ]
 
 makePrompt :: Cli'AskPass -> Widget n
@@ -301,13 +323,25 @@ mainLoop chan =
         App
           { appDraw = \CliState{knownBuilds, askpass, confirmExit, nixMessages} ->
               [ vBox $
-                  [ withAttr headingAttr $ str "machines"
+                  [ hBox
+                      [ hLimitPercent 20 . padRight (Pad 1) $ hBorderWithLabel $ txt "machines"
+                      , padLeft (Pad 1) . hBorderWithLabel $ txt "state"
+                      ]
+                  , vBox $
+                      ( zip (HM.toList knownBuilds) [0 :: Int ..] & map \((name, state), i) ->
+                          ( if i `mod` 2 == 0
+                              then withAttr altListAttr
+                              else
+                                id
+                          )
+                            $ hBox
+                              [ hLimitPercent 20 . padRight Max $ txt name
+                              , padLeft (Pad 1) . padRight Max $ renderMachine state
+                              ]
+                      )
+                  , hBorder
+                  , vLimit 15 $ (\how -> padRight Max $ ScrollableList.render LogScroll how nixMessages) id
                   ]
-                    ++ ( HM.toList knownBuilds & map \(name, state) ->
-                           hBox [txt name, txt "\t", txt (T.show state)]
-                       )
-                    ++ [ border . vLimit 15 $ (\how -> ScrollableList.render LogScroll how nixMessages) id
-                       ]
                     ++ maybe [] (singleton . padTop Max . makePrompt) (headMay askpass)
                     ++ maybe
                       []
