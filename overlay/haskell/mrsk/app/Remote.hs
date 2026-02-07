@@ -13,7 +13,7 @@ module Remote where
 import Cli (CliEffect, askReadLine)
 import Control.Applicative ((<|>))
 import Control.Exception (Exception)
-import Control.Monad (forever)
+import Control.Monad (forever, when)
 import Control.Monad.Extra (whileM)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Logger (Loc, LogLevel, LogSource, LogStr, monadLoggerLog)
@@ -122,6 +122,12 @@ instance A.ToJSON (Far ()) where
 instance FromJSON (SomeMessage Far) where
   parseJSON val = (parseJSON @(Far Text) val <&> SomeMessage) <|> (parseJSON @(Far ()) val <&> SomeMessage)
 
+data MrskProtocolVersion = MrskProtocolVersion {protocolVersion :: Int}
+  deriving stock (Eq, Generic, Show)
+  deriving anyclass (A.FromJSON, A.ToJSON)
+mrskProtocolVersion :: MrskProtocolVersion
+mrskProtocolVersion = MrskProtocolVersion{protocolVersion = 1}
+
 data SwitchAction
   = SwitchAction'Check
   | SwitchAction'Switch
@@ -132,6 +138,7 @@ data SwitchAction
   deriving anyclass (A.FromJSON, A.ToJSON)
 
 data Near :: Message' where
+  Near'Ping :: Near MrskProtocolVersion
   Near'ExecuteCommand
     :: { program :: Text
        , sudo :: Bool
@@ -145,6 +152,11 @@ data Near :: Message' where
        }
     -> Near (ExitCode, Text)
 
+instance A.FromJSON (Near MrskProtocolVersion) where
+  parseJSON = A.withObject "Near" \obj ->
+    obj .: "type" <?> Key "type" >>= \case
+      ("Near'Ping" :: Text) -> pure Near'Ping
+      _ -> fail "unknown type"
 instance A.FromJSON (Near (ExitCode, Text)) where
   parseJSON = A.withObject "Near" \obj ->
     obj .: "type" <?> Key "type" >>= \case
@@ -159,6 +171,11 @@ instance A.FromJSON (Near (ExitCode, Text)) where
           <*> obj .: "action" <?> Key "action"
           <*> obj .: "sudo" <?> Key "sudo"
       _ -> fail "unknown type"
+instance A.ToJSON (Near MrskProtocolVersion) where
+  toJSON Near'Ping =
+    A.object
+      [ "type" .= ("Near'Ping" :: Text)
+      ]
 instance A.ToJSON (Near (ExitCode, Text)) where
   toJSON (Near'ExecuteCommand{program, sudo, arguments}) =
     A.object
@@ -176,7 +193,9 @@ instance A.ToJSON (Near (ExitCode, Text)) where
       ]
 
 instance FromJSON (SomeMessage Near) where
-  parseJSON val = parseJSON @(Near (ExitCode, Text)) val <&> SomeMessage
+  parseJSON val =
+    (parseJSON @(Near (ExitCode, Text)) val <&> SomeMessage)
+      <|> (parseJSON @(Near MrskProtocolVersion) val <&> SomeMessage)
 
 newtype Handle = Handle Int
 
@@ -199,6 +218,10 @@ instance Exception ConnectionException
 data InvalidIdException = InvalidIdException {id :: Int}
   deriving (Show)
 instance Exception InvalidIdException
+
+data ProtocolMismatchException = ProtocolMismatchException {near :: MrskProtocolVersion, far :: MrskProtocolVersion}
+  deriving (Show)
+instance Exception ProtocolMismatchException
 
 makeLensesWith duplicateRules ''Message
 makeLensesWith duplicateRules ''RemoteEffectState
@@ -351,9 +374,6 @@ runRemote eff = evalStateLocal initialState do
           startProcess . setStdin createPipe . setStdout createPipe . setStderr createPipe $
             remoteProc user address (T.pack . toFilePath $ mrskBinary) ["far", "--logging", "blackhole"]
 
-        -- wait a 100 miliseconds for the command to catch on or exit
-        threadDelay (1_000_00)
-
         getExitCode process >>= \case
           Just _ -> do
             stdout <- liftIO $ BSL.hGetContents (getStdout process)
@@ -374,7 +394,20 @@ runRemote eff = evalStateLocal initialState do
             monadLoggerLog loc logSource logLevel logStr
             pure $ A.toJSON ()
 
-        _connections' %= HM.insert handle RemoteConnection{process, channel, a}
+        do
+          logDebugN "pinging remote mrsk"
+
+          version' <- newEmptyMVar'
+          writeChan channel $ Local'Message{result = version', message = Near'Ping}
+          version <- takeMVar' version'
+
+          when
+            (version /= mrskProtocolVersion)
+            (throwIO ProtocolMismatchException{far = version, near = mrskProtocolVersion})
+
+          _connections' %= HM.insert handle RemoteConnection{process, channel, a}
+
+          logDebugN ("protocol verified at version " <> T.show mrskProtocolVersion)
 
         logDebugN ("connection to " <> user <> "@" <> address <> " opened")
 

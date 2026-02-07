@@ -37,7 +37,7 @@ import Effectful.Concurrent (Concurrent, runConcurrent)
 import Effectful.Concurrent.Async (Concurrently (..))
 import Effectful.Concurrent.QSem (newQSem, signalQSem, waitQSem)
 import Effectful.Environment (Environment, runEnvironment)
-import Effectful.Exception (ExceptionWithContext, bracket_, catch)
+import Effectful.Exception (ExceptionWithContext, bracket_, catch, throwIO)
 import Effectful.Fail (Fail, runFailIO)
 import Effectful.FileSystem (FileSystem, runFileSystem)
 import Effectful.Monad.Logger (
@@ -159,9 +159,7 @@ logExceptions results = HM.foldlWithKey' logException (pure HM.empty) results
   logException action machine (Right value) = action >>= \accumulator -> pure $ HM.insert machine value accumulator
 
 mrsk :: (RequireCallStack) => Options -> Eff TopLevelEffects ()
-mrsk Options{command = Far} =
-  serveFar `catch` \(exception :: SomeException) ->
-    logErrorN ("Far side caught exception: " <> T.show exception)
+mrsk Options{command = Far} = undefined
 mrsk Options{command = Deploy{hosts, flake, sudo, action}} = do
   configurations :: [Text] <- case hosts of
     Just hosts' -> getNixOSConfigurations (Just (NE.toList hosts')) flake
@@ -239,11 +237,35 @@ mrsk Options{command = Deploy{hosts, flake, sudo, action}} = do
 
   pure ()
 
+runSomeLogging
+  :: ( FileSystem :> es
+     , IOE :> es
+     , RequireCallStack
+     , TypedProcess :> es
+     )
+  => Logging -> Eff (Logger : es) a -> Eff es a
+runSomeLogging Logging'OtherTerminal = runOtherTerminalLogging
+runSomeLogging (Logging'File path) = runFileLogging path
+runSomeLogging Logging'Blackhole = runVoidLogging
+runSomeLogging Logging'Stderr = runStderrLogging
+
 main :: IO ()
 main =
   provideCallStack $
-    liftIO (execParser options) >>= \opts@Options{logging, nom} ->
-      effectStack logging nom $ (mrsk opts >> askConfirmExit Nothing) `catch` (askConfirmExit . Just)
+    liftIO (execParser options) >>= \opts@Options{logging, nom, command} ->
+      case command of
+        Far ->
+          runEff
+            . runFailIO
+            . runPrim
+            . runFileSystem
+            . runTypedProcess
+            . runSomeLogging logging
+            . runEnvironment
+            . runConcurrent
+            $ serveFar `catch` \(exception :: SomeException) ->
+              logErrorN ("Far side caught exception: " <> T.show exception)
+        _ -> effectStack logging nom $ (mrsk opts >> askConfirmExit Nothing) `catch` (askConfirmExit . Just)
  where
   effectStack
     :: (RequireCallStack)
@@ -258,12 +280,7 @@ main =
       . runConcurrent
       . runFileSystem
       . runTypedProcess
-      . ( case logging of
-            Logging'OtherTerminal -> runOtherTerminalLogging
-            Logging'File path -> runFileLogging path
-            Logging'Blackhole -> runVoidLogging
-            Logging'Stderr -> runStderrLogging
-        )
+      . runSomeLogging logging
       . runCliEffect Cli.Config{nom}
       . runNixEffect
       . runEnvironment

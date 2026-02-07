@@ -60,8 +60,9 @@ import Orphans ()
 import Path.Posix (Abs, Dir, Path, absdir, relfile, toFilePath, (</>))
 import Remote (
   Far (Far'AskSudoPassword, Far'Log),
-  Near (Near'ExecuteCommand, Near'SwitchNixos, action, arguments, configuration, program, sudo),
+  Near (Near'ExecuteCommand, Near'Ping, Near'SwitchNixos, action, arguments, configuration, program, sudo),
   SwitchAction (..),
+  mrskProtocolVersion,
  )
 import Remote.Common (
   Local (..),
@@ -189,8 +190,7 @@ sudoProcess password run pc = do
   run pc'
 
 serveFar
-  :: ( CliEffect :> es
-     , Concurrent :> es
+  :: ( Concurrent :> es
      , Environment :> es
      , Fail :> es
      , IOE :> es
@@ -201,26 +201,17 @@ serveFar
      )
   => Eff es ()
 serveFar = do
-  (channel :: Chan (Local Far), a) <- background stdout stdin \channel ->
+  (_, a) <- background stdout stdin \channel ->
     runFarLogging channel . \case
+      Near'Ping -> do
+        pure $ toJSON mrskProtocolVersion
       Near'ExecuteCommand{program, sudo, arguments} -> do
-        method <-
-          if sudo
-            then do
-              pure $
-                sudoProcess
-                  ( do
-                      logDebugN $ "[Far] asking for sudo password"
-
-                      result <- newEmptyMVar'
-
-                      writeChan channel $ Local'Message{result, message = Far'AskSudoPassword}
-
-                      takeMVar' result
-                  )
+        let method =
+              if sudo
+                then do
+                  sudoProcess (askSudoPass channel) runProcess
+                else
                   runProcess
-            else
-              pure runProcess
 
         exitCode <- method $ proc (T.unpack program) (map T.unpack arguments)
 

@@ -24,7 +24,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Effectful (Eff, IOE, inject, (:>))
 import Effectful.Concurrent (Concurrent, forkIO)
-import Effectful.Concurrent.Async (Async, async, race)
+import Effectful.Concurrent.Async (Async, async, link, race)
 import Effectful.Concurrent.Chan (Chan, newChan, readChan)
 import Effectful.Concurrent.MVar.Strict (MVar', putMVar')
 import Effectful.Monad.Logger (Logger, logDebugN, logErrorN)
@@ -154,7 +154,6 @@ data RequestMap = forall a. RequestMap
 background
   :: forall (inMessage :: Type -> Type) (outMessage :: Type -> Type) es
    . ( A.FromJSON (SomeMessage inMessage)
-     , CliEffect :> es
      , Concurrent :> es
      , IOE :> es
      , Logger :> es
@@ -197,5 +196,6 @@ background hIn hOut callback =
                      Nothing ->
                        logErrorN $ "response with invalid id " <> T.show id'
              )
+    link a
 
     pure (localChannel, a)
