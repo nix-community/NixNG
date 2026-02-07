@@ -140,6 +140,13 @@ nixFlakeInfo flakePath logFn =
     Right flakeInfo -> pure flakeInfo
     Left err -> throwM . NixErrorParse $ T.pack err
 
+nixCopy
+  :: (MonadIO m, MonadThrow m, MonadUnliftIO m) => SomePath Abs -> Text -> Text -> (Handle -> m ()) -> m ()
+nixCopy storePath remoteUser targetHost logFn = nixProc args logFn >>= \_ -> pure ()
+ where
+  storePath' = case storePath of SomePath path -> T.pack $ toFilePath path
+  args = ["copy", storePath', "--to", "ssh://" <> remoteUser <> "@" <> targetHost]
+
 nixBuild
   :: (MonadIO m, MonadThrow m, MonadUnliftIO m)
   => NixTarget Build -> (Handle -> m ()) -> m [Either (Path Abs Dir) (Path Abs File)]

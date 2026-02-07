@@ -12,6 +12,7 @@ import Cli (
   askConfirmExit,
   runCliEffect,
   tellBuildStarted,
+  tellCopyStarted,
   tellDeploymentFinished,
   tellDeploymentStarted,
   tellEvaluationStarted,
@@ -54,7 +55,7 @@ import Effectful.Monad.Logger (
 import Effectful.Prim (Prim, runPrim)
 import Effectful.Process.Typed (ExitCode, TypedProcess, runTypedProcess)
 import GHC.Generics (Generic)
-import Nix (Nix, nixBuild, nixEval, nixSelect, runNixEffect)
+import Nix (Nix, nixBuild, nixCopy, nixEval, nixSelect, runNixEffect)
 import Nix.Select (NixTarget (NixDerivation, NixFlake), Selector (..))
 import Options (Command (..), Logging (..), Options (Options, command, logging, nom), options)
 import Options.Applicative (execParser)
@@ -68,6 +69,7 @@ import Remote (
  )
 import Remote.Far (serveFar)
 import RequireCallStack (RequireCallStack, provideCallStack)
+import System.NixNG.SomePath (SomePath (SomePath))
 
 data NixOSConfiguration
   = NixOSConfiguration
@@ -207,6 +209,17 @@ mrsk Options{command = Deploy{hosts, flake, sudo, action}} = do
               logDebugN "finished build" *> pure result
         )
         derivations
+
+  _ <-
+    logExceptions
+      =<< traverseThrottled
+        4
+        ( \name storePath -> case configurationMetadatas HM.!? name of
+            Just NixOSConfiguration{remoteUser, targetHost} ->
+              tellCopyStarted name <* nixCopy (SomePath storePath) remoteUser targetHost
+            Nothing -> undefined
+        )
+        builtPaths
 
   _ :: HashMap Text (ExitCode, Text) <-
     logExceptions

@@ -24,6 +24,7 @@ import Lens.Micro.Platform ((%~), _2)
 import Nix.Select (Derivation, NixTarget, Selector)
 import Nix.Select qualified as Select
 import Path.Posix (Abs, Dir, File, Path)
+import System.NixNG.SomePath (SomePath)
 
 (.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
 (f .: g) x y = f (g x y)
@@ -32,6 +33,7 @@ infixr 8 .:
 data Nix :: Effect where
   NixBuild :: NixTarget Select.Build -> Nix m [Either (Path Abs Dir) (Path Abs File)]
   NixEval :: (FromJSON a) => NixTarget Select.Eval -> Nix m a
+  NixCopy :: SomePath Abs -> Text -> Text -> Nix m ()
   NixDerivationShow :: Path Abs File -> Nix m Derivation
   NixSelect :: (FromJSON a) => [([Selector], A.Value -> A.Value)] -> Text -> Nix (Eff es) [a]
 type instance DispatchOf Nix = Dynamic
@@ -41,6 +43,9 @@ nixBuild target = send (NixBuild target)
 
 nixEval :: forall a es. (FromJSON a, HasCallStack, Nix :> es) => NixTarget Select.Eval -> Eff es a
 nixEval target = send (NixEval target)
+
+nixCopy :: forall es. (HasCallStack, Nix :> es) => SomePath Abs -> Text -> Text -> Eff es ()
+nixCopy storePath remoteUser targetHost = send (NixCopy storePath remoteUser targetHost)
 
 nixDerivationShow :: (HasCallStack, Nix :> es) => Path Abs File -> Eff es Derivation
 nixDerivationShow derivation = send (NixDerivationShow derivation)
@@ -55,5 +60,6 @@ runNixEffect eff = do
   eff & interpret \_ val -> case val of
     NixBuild target -> Select.nixBuild target logFn
     NixEval target -> Select.nixEval target logFn
+    NixCopy storePath remoteUser targetHost -> Select.nixCopy storePath remoteUser targetHost logFn
     NixDerivationShow derivation -> Select.nixDerivationShow derivation logFn
     NixSelect selectors flakeRef -> Select.select selectors flakeRef logFn
