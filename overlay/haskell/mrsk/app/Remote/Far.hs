@@ -27,6 +27,7 @@ import Data.Time.Format (defaultTimeLocale, parseTimeM)
 import Effectful (Eff, IOE, UnliftStrategy (SeqForkUnlift), withEffToIO, (:>))
 import Effectful.Concurrent.Async (wait)
 import Effectful.Concurrent.Chan (Chan, Concurrent, writeChan)
+import Effectful.Concurrent.MVar (MVar)
 import Effectful.Concurrent.MVar.Strict (newEmptyMVar', takeMVar')
 import Effectful.Dispatch.Static (evalStaticRep, unsafeEff_)
 import Effectful.Environment (Environment, getProgName)
@@ -173,21 +174,32 @@ sudoProcess password run pc = do
         ShellCommand command ->
           pc{pcCmdSpec = ShellCommand ("sudo --non-interactive -- " <> command)}
 
-  runProcess checkPc >>= \case
-    ExitSuccess -> pure ()
-    ExitFailure err -> do
-      logDebugN $ "sudo -Sv exited with " <> T.show err
-      sudoPassword <- password
+  whileM $
+    runProcess checkPc >>= \case
+      ExitSuccess -> pure False
+      ExitFailure err -> do
+        logDebugN $ "sudo -Sv exited with " <> T.show err
+        sudoPassword <- password
 
-      let
-        truePc =
-          proc "sudo" ["-Si", "true"]
-            & setStdin (byteStringInput . BS.fromStrict $ T.encodeUtf8 (sudoPassword <> "\n"))
-            & setStdout byteStringOutput
-            & setStderr byteStringOutput
-      runProcess_ truePc
+        let
+          truePc =
+            proc "sudo" ["-Si", "true"]
+              & setStdin (byteStringInput . BS.fromStrict $ T.encodeUtf8 (sudoPassword <> "\n"))
+              & setStdout byteStringOutput
+              & setStderr byteStringOutput
+        runProcess truePc <&> (/= ExitSuccess)
 
   run pc'
+
+askSudoPass :: (Concurrent :> es, Logger :> es, RequireCallStack) => Chan (Local Far) -> Eff es Text
+askSudoPass channel = do
+  logDebugN $ "asking for sudo password"
+
+  result <- newEmptyMVar'
+
+  writeChan channel $ Local'Message{result, message = Far'AskSudoPassword}
+
+  takeMVar' result <* logDebugN "got sudo password"
 
 serveFar
   :: ( Concurrent :> es
@@ -227,13 +239,12 @@ serveFar = do
 
             takeMVar' result
 
-        method <-
-          if sudo
-            then
-              pure $
-                sudoProcess sudoPassword readProcessInterleaved
-            else
-              pure readProcessInterleaved
+        let method =
+              if sudo
+                then do
+                  sudoProcess (askSudoPass channel) readProcessInterleaved
+                else
+                  readProcessInterleaved
 
         let
           setProfile =
