@@ -157,7 +157,7 @@ parseStartAction = A.withObject "StartAction11" \obj -> do
       fields >>= \(path, from, to) -> do
         path' <- parseStorePath path
         pure $ CopyPath path' (parseHost from) (parseHost to)
-    FileTransferType -> FileTransfer <$> fields
+    FileTransferType -> FileTransfer <$> one fields
     RealiseType -> pure Realise
     CopyPathsType -> pure CopyPaths
     BuildsType -> pure Builds
