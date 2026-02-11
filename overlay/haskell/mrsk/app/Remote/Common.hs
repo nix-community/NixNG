@@ -184,7 +184,11 @@ background hIn hOut callback =
 
                    protoWrite protocol Message{id', message = SomeMessage message}
                  Right (Left (Message{id', message = SomeMessage message})) ->
-                   void . forkIO $ inject (callback localChannel message) >>= protoRespond protocol id'
+                   let
+                     handler :: Eff es ()
+                     handler = void $ inject (callback localChannel message) >>= protoRespond protocol id'
+                    in
+                     async (inject handler) >>= link
                  Right (Right (SomeResponse{id', response = netResponse})) -> do
                    use @(HashMap Int RequestMap) (at id') >>= \case
                      Just (RequestMap{response, parseJSON'}) ->

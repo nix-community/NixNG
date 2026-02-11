@@ -42,7 +42,7 @@ import Effectful.Concurrent.Chan (Chan, newChan, readChan, writeChan)
 import Effectful.Concurrent.MVar.Strict (MVar', newEmptyMVar', putMVar', takeMVar')
 import Effectful.Dispatch.Dynamic (interpret, reinterpret, send)
 import Effectful.Environment (Environment, lookupEnv)
-import Effectful.Exception (throwIO)
+import Effectful.Exception (finally, mask_, throwIO)
 import Effectful.Monad.Logger (Logger, logDebugN, logErrorN, runConfigurationLogging)
 import Effectful.Prim.IORef.Strict (Prim, newIORef', readIORef', writeIORef')
 import Effectful.Process.Typed (
@@ -65,7 +65,7 @@ import Effectful.Process.Typed (
  )
 import Effectful.State.Dynamic (evalStateLocal, evalStateShared, gets, modify, state)
 import GHC.Generics (Generic)
-import Lens.Micro.Platform (Lens', at, each, makeLensesWith, mapped, use, (%=), (+=), (^..))
+import Lens.Micro.Platform (Lens', at, each, makeLensesWith, mapped, use, (%=), (+=), (^.), (^..))
 import Orphans ()
 import Path.Posix (Abs, Dir, File, Path, parseAbsFile, toFilePath)
 import Remote.Common (
@@ -203,7 +203,8 @@ data RemoteConnection
   = RemoteConnection
   { process :: Process IO.Handle IO.Handle IO.Handle
   , channel :: Chan (Local Near)
-  , a :: Async ()
+  , asyncProto :: Async ()
+  , asyncStderr :: Async ()
   }
 
 data RemoteEffectState = RemoteEffectState
@@ -290,7 +291,7 @@ locateMrskBinary user address = runMaybeT do
       (ExitFailure _, _) -> hoistMaybe Nothing
 
   let
-    bsToText = T.decodeUtf8 . BS.toStrict
+    bsToText = T.strip . T.decodeUtf8 . BS.toStrict
 
     tryPath =
       lift (readProcessInterleaved $ remoteProc user address "command" ["-v", "mrsk"]) >>= \case
@@ -356,8 +357,15 @@ runRemote
      , TypedProcess :> es
      )
   => Eff (RemoteEffect : es) a -> Eff es a
-runRemote eff = evalStateLocal initialState do
-  result <-
+runRemote eff = evalStateLocal initialState (go `finally` cleanup)
+ where
+  cleanup =
+    mask_ $
+      gets (^.. _connections' . each) >>= mapM_ \remoteConnection -> do
+        cancel (remoteConnection ^. _asyncProto)
+        cancel (remoteConnection ^. _asyncStderr)
+
+  go =
     (inject eff) & interpret \_ -> \case
       OpenConnection{configuration, user, address} -> runConfigurationLogging configuration do
         logDebugN ("opening connection to " <> user <> "@" <> address)
@@ -369,6 +377,7 @@ runRemote eff = evalStateLocal initialState do
           locateMrskBinary user address >>= \case
             Just mrskBinary -> pure mrskBinary
             Nothing -> throwIO CouldNotLocateMrskBinary{user, address}
+        logDebugN ("using mrsk at " <> T.show mrskBinary)
 
         process <-
           startProcess . setStdin createPipe . setStdout createPipe . setStderr createPipe $
@@ -383,11 +392,16 @@ runRemote eff = evalStateLocal initialState do
 
         mapM_
           (liftIO . (`hSetBuffering` LineBuffering))
-          [ getStdout process -- getStderr process,
+          [ getStdout process
+          , getStderr process
           , getStdin process
           ]
 
-        (channel, a) <- background (getStdin process) (getStdout process) \_channel -> \case
+        let stderr = getStderr process
+        asyncStderr <-
+          async . forever $ liftIO (BS.hGetLine stderr) >>= logErrorN . T.show
+
+        (channel, asyncProto) <- background (getStdin process) (getStdout process) \_channel -> \case
           Far'AskSudoPassword -> do
             askReadLine ("sudo password for " <> configuration <> ": ") <&> A.toJSON
           Far'Log loc logSource logLevel logStr -> do
@@ -405,7 +419,15 @@ runRemote eff = evalStateLocal initialState do
             (version /= mrskProtocolVersion)
             (throwIO ProtocolMismatchException{far = version, near = mrskProtocolVersion})
 
-          _connections' %= HM.insert handle RemoteConnection{process, channel, a}
+          _connections'
+            %= HM.insert
+              handle
+              RemoteConnection
+                { process
+                , channel
+                , asyncProto
+                , asyncStderr
+                }
 
           logDebugN ("protocol verified at version " <> T.show mrskProtocolVersion)
 
@@ -421,11 +443,6 @@ runRemote eff = evalStateLocal initialState do
             takeMVar' result
           Nothing -> throwIO ConnectionException
 
-  gets (^.. _connections' . each . _a) >>= mapM_ \a -> do
-    cancel a
-
-  pure result
- where
   initialState = RemoteEffectState{counter = 0, connections = HM.empty}
 
   _counter' :: Lens' RemoteEffectState Int

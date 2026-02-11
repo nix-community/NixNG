@@ -5,25 +5,39 @@
 module Nix where
 
 import Cli (CliEffect, tellNixInternalLog)
-import Control.Monad (forM, forM_)
+import Control.Monad (forM, forM_, forever)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson.Types (FromJSON)
 import Data.Aeson.Types qualified as A
 import Data.ByteString.Lazy (LazyByteString)
-import Data.ByteString.Lazy.Char8 qualified as BSL
+import Data.ByteString.Lazy.Char8 qualified as BSL hiding (hGetContents)
 import Data.Function ((&))
 import Data.Functor (void)
+import Data.HashSet qualified as HS
+import Data.Maybe (fromJust)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Text.Lazy.Encoding qualified as TL
 import Effectful (Dispatch (Dynamic), DispatchOf, Eff, Effect, IOE, UnliftStrategy (..), (:>))
 import Effectful.Concurrent
+import Effectful.Concurrent.Async (Async, async, asyncThreadId, cancelMany, cancelWith, mapConcurrently, withAsync)
+import Effectful.Concurrent.MVar (readMVar)
+import Effectful.Concurrent.MVar.Strict (modifyMVar', modifyMVar'_, newMVar', readMVar', takeMVar')
 import Effectful.Dispatch.Dynamic (interpret, localUnlift, send)
+import Effectful.Exception (Exception, IOException, catch, catchIf, finally, handle, mask, mask_)
+import Effectful.FileSystem.IO (FileSystem, Handle)
+import Effectful.FileSystem.IO.ByteString qualified as BS
+import Effectful.FileSystem.IO.ByteString.Lazy qualified as BSL
+import Effectful.Monad.Logger (Logger, logDebugN)
+import GHC.IO.Exception (ioe_handle)
 import GHC.Stack.Types (HasCallStack)
 import Lens.Micro.Platform ((%~), _2)
 import Nix.Select (Derivation, NixTarget, Selector)
 import Nix.Select qualified as Select
 import Path.Posix (Abs, Dir, File, Path)
+import RequireCallStack (RequireCallStack)
+import System.IO.Error (isEOFError)
 import System.NixNG.SomePath (SomePath)
 
 (.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
@@ -53,13 +67,37 @@ nixDerivationShow derivation = send (NixDerivationShow derivation)
 nixSelect :: (FromJSON a, HasCallStack, Nix :> es) => [([Selector], A.Value -> A.Value)] -> Text -> Eff es [a]
 nixSelect selectors flakeRef = send (NixSelect selectors flakeRef)
 
-runNixEffect :: (CliEffect :> es, Concurrent :> es, HasCallStack, IOE :> es) => Eff (Nix : es) a -> Eff es a
+data HandlesUpdated = HandlesUpdated
+  deriving (Show)
+instance Exception HandlesUpdated
+
+runNixEffect
+  :: (CliEffect :> es, Concurrent :> es, FileSystem :> es, IOE :> es, Logger :> es, RequireCallStack)
+  => Eff (Nix : es) a -> Eff es a
 runNixEffect eff = do
-  let logFn = \stderr -> void . forkIO $ do
-        liftIO (BSL.hGetContents stderr) >>= mapM_ tellNixInternalLog . BSL.lines
-  eff & interpret \_ val -> case val of
-    NixBuild target -> Select.nixBuild target logFn
-    NixEval target -> Select.nixEval target logFn
-    NixCopy storePath remoteUser targetHost -> Select.nixCopy storePath remoteUser targetHost logFn
-    NixDerivationShow derivation -> Select.nixDerivationShow derivation logFn
-    NixSelect selectors flakeRef -> Select.select selectors flakeRef logFn
+  readers <- newMVar' HS.empty
+
+  let
+    tail
+      :: (CliEffect :> es, Concurrent :> es, FileSystem :> es, IOE :> es, Logger :> es, RequireCallStack) => Handle -> Eff es ()
+    tail handle = do
+      BSL.hGetContents handle >>= mapM_ (tellNixInternalLog . BSL.toStrict) . BSL.lines
+
+    catchEOF :: Eff es a -> (IOException -> Eff es a) -> Eff es a
+    catchEOF = catchIf isEOFError
+
+    addHandle :: (CliEffect :> es, Concurrent :> es, FileSystem :> es, IOE :> es, Logger :> es) => Handle -> Eff es ()
+    addHandle stderr = mask_ do
+      a <- async (tail stderr `catchEOF` const (pure ()))
+      modifyMVar'_ readers (pure . HS.insert a)
+
+  ( eff & interpret \_ val -> case val of
+      NixBuild target -> Select.nixBuild target addHandle
+      NixEval target -> Select.nixEval target addHandle
+      NixCopy storePath remoteUser targetHost -> Select.nixCopy storePath remoteUser targetHost addHandle
+      NixDerivationShow derivation -> Select.nixDerivationShow derivation addHandle
+      NixSelect selectors flakeRef -> Select.select selectors flakeRef addHandle
+    )
+    `finally` do
+      readers' <- takeMVar' readers
+      (cancelMany (HS.toList readers'))

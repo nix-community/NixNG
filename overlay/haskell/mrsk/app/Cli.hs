@@ -22,6 +22,7 @@ import Control.Exception.Base (SomeException)
 import Control.Monad (forever)
 import Control.Monad.IO.Class (liftIO)
 import Data.Attoparsec.Text qualified as Atto
+import Data.ByteString (ByteString)
 import Data.ByteString.Lazy (LazyByteString)
 import Data.ByteString.Lazy.Char8 qualified as BSL
 import Data.Function ((&))
@@ -30,6 +31,7 @@ import Data.HashMap.Strict qualified as HM
 import Data.List (singleton)
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as T
 import Data.Text.Lazy.Encoding qualified as TL
 import Debug.Trace (trace)
 import Effectful (
@@ -48,6 +50,7 @@ import Effectful.Concurrent.Chan (Chan, newChan, readChan, writeChan)
 import Effectful.Concurrent.MVar.Strict (MVar', newEmptyMVar', putMVar', takeMVar')
 import Effectful.Dispatch.Dynamic
 import Effectful.FileSystem.IO (FileSystem)
+import Effectful.FileSystem.IO.ByteString qualified as BS
 import Effectful.Monad.Logger (Logger, logDebugN, logErrorN)
 import Effectful.Process.Typed (ExitCode (..), TypedProcess)
 import Graphics.Vty.Attributes (defAttr)
@@ -70,7 +73,7 @@ data CliEffect :: Effect where
   TellDeploymentStarted :: {machine :: Text} -> CliEffect m ()
   TellDeploymentFinished :: {machine :: Text, exitCode :: ExitCode, output :: Text} -> CliEffect m ()
   TellException :: {machine :: Text, exception :: (ExceptionWithContext SomeException)} -> CliEffect m ()
-  TellNixInternalLog :: {internalLog :: LazyByteString} -> CliEffect m ()
+  TellNixInternalLog :: {internalLog :: ByteString} -> CliEffect m ()
   AskReadLine :: {prompt :: Text} -> CliEffect m Text
   AskConfirmExit :: {mException :: Maybe SomeException} -> CliEffect m ()
 type instance DispatchOf CliEffect = Dynamic
@@ -82,7 +85,7 @@ data CliMessage
   | CliMessage'DeploymentStarted {machine :: Text}
   | CliMessage'DeploymentFinished {machine :: Text, exitCode :: ExitCode, output :: Text}
   | CliMessage'Exception {machine :: Text, exception :: ExceptionWithContext SomeException}
-  | CliMessage'NixInternalLog {internalLog :: LazyByteString}
+  | CliMessage'NixInternalLog {internalLog :: ByteString}
   | CliMessage'Readline {prompt :: Text, response :: MVar' Text}
   | CliMessage'ConfirmExit {mException :: Maybe SomeException, confirmed :: MVar' ()}
 
@@ -167,7 +170,7 @@ tellDeploymentFinished machine exitCode output = send (TellDeploymentFinished{ma
 tellException :: (CliEffect :> es, HasCallStack) => Text -> ExceptionWithContext SomeException -> Eff es ()
 tellException machine exception = send (TellException{machine, exception})
 
-tellNixInternalLog :: (CliEffect :> es, HasCallStack) => LazyByteString -> Eff es ()
+tellNixInternalLog :: (CliEffect :> es, HasCallStack) => ByteString -> Eff es ()
 tellNixInternalLog internalLog = send (TellNixInternalLog{internalLog})
 
 askReadLine :: (CliEffect :> es, HasCallStack) => Text -> Eff es Text
@@ -176,8 +179,8 @@ askReadLine prompt = send (AskReadLine{prompt})
 askConfirmExit :: (CliEffect :> es, HasCallStack) => Maybe SomeException -> Eff es ()
 askConfirmExit exception = send (AskConfirmExit exception)
 
-withNom :: (FileSystem :> es, IOE :> es, TypedProcess :> es) => ((LazyByteString -> Eff es ()) -> Eff es a) -> Eff es a
-withNom act = withChildReader "alacritty" "nom --json" \hIn -> act (liftIO . BSL.hPutStrLn hIn)
+withNom :: (FileSystem :> es, IOE :> es, TypedProcess :> es) => ((ByteString -> Eff es ()) -> Eff es a) -> Eff es a
+withNom act = withChildReader "alacritty" "nom --json" \hIn -> act (BS.hPutStrLn hIn)
 
 runCliEffect
   :: (Concurrent :> es, FileSystem :> es, HasCallStack, IOE :> es, Logger :> es, RequireCallStack, TypedProcess :> es)
@@ -246,7 +249,7 @@ myEvent
   :: (Concurrent :> es, Logger :> es, RequireCallStack)
   => (forall a. Eff es a -> IO a) -> BrickEvent Name CliMessage -> EventM Name CliState ()
 myEvent unlift (AppEvent CliMessage'NixInternalLog{internalLog = internalLog'}) = case parseJSONLine internalLog' of
-  Left err -> liftIO . unlift . logErrorN $ "Could not deserialize: " <> T.show (TL.decodeUtf8' internalLog') <> T.pack err
+  Left err -> liftIO . unlift . logErrorN $ "Could not deserialize: " <> T.show (T.decodeUtf8' internalLog') <> T.pack err
   Right (Message MkMessageAction{message = message'}) -> do
     case Atto.parseOnly parseSomething message' of
       Right message ->
@@ -358,7 +361,8 @@ mainLoop chan =
           }
 
     eventChan <- liftIO $ newBChan 10
-    unlift $ withAsync (forever $ readChan chan >>= liftIO . writeBChan eventChan) \_ -> do
+    mainThread <- unlift $ myThreadId
+    unlift $ withAsync (forever (readChan chan >>= liftIO . writeBChan eventChan) >> throwTo mainThread AsyncCancelled) \_ -> do
       let buildVty = Graphics.Vty.CrossPlatform.mkVty Graphics.Vty.Config.defaultConfig
       initialVty <- liftIO $ buildVty
       _ <- liftIO $ customMain initialVty buildVty (Just eventChan) app initialCliState

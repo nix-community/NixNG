@@ -29,8 +29,8 @@ import NixMessage (
   parseStorePath,
  )
 
-parseJSONLine :: LazyByteString -> Either String NixJSONMessage
-parseJSONLine input = maybe undefined Right (BSL.stripPrefix "@nix " input) >>= A.eitherDecode
+parseJSONLine :: ByteString -> Either String NixJSONMessage
+parseJSONLine input = maybe undefined Right (BS.stripPrefix "@nix " input) >>= A.eitherDecode . BSL.fromStrict
 
 instance A.FromJSON NixJSONMessage where
   parseJSON :: A.Value -> A.Parser NixJSONMessage
