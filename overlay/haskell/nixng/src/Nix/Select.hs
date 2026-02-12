@@ -5,8 +5,8 @@
 module Nix.Select where
 
 import Control.Applicative ((<|>))
-import Control.Exception (Exception)
-import Control.Monad (forM)
+import Control.Exception (Deadlock (Deadlock), Exception)
+import Control.Monad (forM, void)
 import Control.Monad.Catch (MonadThrow (..))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson qualified as A
@@ -35,7 +35,7 @@ import Lens.Micro ((^.))
 import Lens.Micro.TH (makeLensesWith)
 import Path.Posix (Abs, Dir, File, Path, parseAbsDir, parseAbsFile, toFilePath)
 import System.Exit (ExitCode (..))
-import System.IO (Handle)
+import System.IO (Handle, stdin)
 import System.NixNG.SomePath (SomePath (..))
 import System.NixNG.TH (duplicateRules)
 import System.Posix.Files (getFileStatus, isRegularFile, isSymbolicLink)
@@ -49,11 +49,14 @@ import System.Process.Typed (
   readProcessStdout,
   setStderr,
   setStdout,
+  startProcess,
+  stopProcess,
   waitExitCodeSTM,
   withProcess,
+  withProcessTerm,
   withProcessWait,
  )
-import UnliftIO (MonadUnliftIO)
+import UnliftIO (MonadUnliftIO, bracket, throwIO)
 import UnliftIO.STM (atomically)
 
 data NixError
@@ -118,9 +121,8 @@ nixProc
   :: (MonadIO m, MonadThrow m, MonadUnliftIO m)
   => [Text] -> (Handle -> m ()) -> m LazyByteString
 nixProc args logFn = do
-  (exitCode, stdout) <- withProcessWait config \p -> do
+  (exitCode, stdout) <- withProcessTerm config \p -> do
     logFn . getStderr $ p
-
     atomically $
       (,)
         <$> waitExitCodeSTM p
@@ -142,7 +144,7 @@ nixFlakeInfo flakePath logFn =
 
 nixCopy
   :: (MonadIO m, MonadThrow m, MonadUnliftIO m) => SomePath Abs -> Text -> Text -> (Handle -> m ()) -> m ()
-nixCopy storePath remoteUser targetHost logFn = nixProc args logFn >>= \_ -> pure ()
+nixCopy storePath remoteUser targetHost logFn = void $ nixProc args logFn
  where
   storePath' = case storePath of SomePath path -> T.pack $ toFilePath path
   args = ["copy", storePath', "--to", "ssh://" <> remoteUser <> "@" <> targetHost]
