@@ -26,6 +26,8 @@ executable mrsk
         Cli,
         Cli.ScrollableList,
         Cli.EscapeCode,
+        Cli.Machine,
+        Cli.Prompt,
         Nix,
         NixMessage,
         NixMessage.Parser,
@@ -38,6 +40,8 @@ executable mrsk
         Common,
     build-depends:
         base ^>=4.20.2.0,
+        microlens,
+        hashable,
         microlens-platform,
         vector,
         text,

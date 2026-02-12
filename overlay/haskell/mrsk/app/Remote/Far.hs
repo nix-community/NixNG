@@ -265,7 +265,7 @@ serveFar = do
               switchToConfiguration "check"
             SwitchAction'Switch -> do
               logInfoN "Performing a switch"
-              _ <- setProfile
+              setProfile >>= logDebugN . T.show
               switchToConfiguration "switch"
             SwitchAction'Boot -> do
               logInfoN "Performing a boot"

@@ -14,6 +14,26 @@ import Brick.Widgets.Border (border, hBorder, hBorderWithLabel)
 import Brick.Widgets.Core
 import Brick.Widgets.Table qualified as Brick
 import Cli.EscapeCode (escapeCodeToBrick, parseSomething)
+import Cli.Machine (
+  MachineState (..),
+  Machines,
+  emptyMachines,
+  machineExpand,
+  machinesNext,
+  machinesPrev,
+  renderMachine,
+  renderMachines,
+  _state,
+ )
+import Cli.Prompt (
+  Prompt,
+  PromptItem (PromptItem'Freeform, confidential, prompt, response'text),
+  emptyPrompt,
+  eventPrompt,
+  promptActive,
+  promptAddItem,
+  renderPrompt,
+ )
 import Cli.ScrollableList (ScrollableList)
 import Cli.ScrollableList qualified as ScrollableList
 import Common (withChildReader)
@@ -60,7 +80,7 @@ import Graphics.Vty.Attributes.Color qualified as Vty
 import Graphics.Vty.Config qualified
 import Graphics.Vty.CrossPlatform qualified
 import Graphics.Vty.Input.Events (Event (..), Key (..), Modifier (..))
-import Lens.Micro.Platform (at, makeLensesWith, mapped, use, view, (%=), (.=), (^.))
+import Lens.Micro.Platform (at, makeLensesWith, mapped, use, view, (%=), (%~), (.=), (^.))
 import NixMessage (MessageAction (..), NixJSONMessage (..))
 import NixMessage.Parser
 import RequireCallStack (RequireCallStack)
@@ -91,27 +111,6 @@ data CliMessage
 
 data CliHandle = CliHandle {chan :: Chan CliMessage, threadId :: ThreadId}
 
-data Machine
-  = Machine'Evaluating
-  | Machine'Building
-  | Machine'Copying
-  | Machine'Deploying
-  | Machine'Deployed {exitCode :: ExitCode, output :: Text}
-  | Machine'Exception {exception :: ExceptionWithContext SomeException}
-  deriving (Show)
-
-renderMachine :: Machine -> Widget n
-renderMachine Machine'Evaluating = txt "...evaluating"
-renderMachine Machine'Building = txt "...building"
-renderMachine Machine'Copying = txt "...copying"
-renderMachine Machine'Deploying = txt "...deploying"
-renderMachine Machine'Deployed{exitCode, output} = vBox [txt $ " deployed " <> T.show exitCode', hLimitPercent 95 $ txtWrap output]
- where
-  exitCode' = case exitCode of
-    ExitSuccess -> "0"
-    ExitFailure code -> T.show code
-renderMachine Machine'Exception{exception} = txt $ T.show exception
-
 data Cli'AskPass = Cli'AskPass
   { prompt :: Text
   , response :: MVar' Text
@@ -124,8 +123,8 @@ data Cli'ConfirmExit = Cli'ConfirmExit
   }
 
 data CliState = CliState
-  { knownBuilds :: HashMap Text Machine
-  , askpass :: [Cli'AskPass]
+  { machines :: Machines Name
+  , prompt :: Prompt
   , confirmExit :: Maybe Cli'ConfirmExit
   , nixMessages :: ScrollableList (Widget Name)
   }
@@ -146,8 +145,8 @@ makeLensesWith duplicateRules ''Cli'ConfirmExit
 initialCliState :: CliState
 initialCliState =
   CliState
-    { knownBuilds = HM.empty
-    , askpass = []
+    { machines = emptyMachines
+    , prompt = emptyPrompt
     , confirmExit = Nothing
     , nixMessages = ScrollableList.empty
     }
@@ -231,20 +230,6 @@ eventConfirmExit unlift (VtyEvent (EvKey KEnter [])) = do
   pure False
 eventConfirmExit _ _ = pure True
 
-eventAskSudoPass
-  :: (Concurrent :> es, Logger :> es, RequireCallStack)
-  => (forall a. Eff es a -> IO a) -> BrickEvent n CliMessage -> EventM n Cli'AskPass Bool
-eventAskSudoPass _ (VtyEvent (EvKey KBS [])) = pure True <* (_accumulator %= \acc -> T.take (T.length acc - 1) acc)
-eventAskSudoPass unlift (VtyEvent (EvKey KEnter [])) = do
-  response <- use _response
-  accumulator <- use _accumulator
-
-  liftIO . unlift $ putMVar' response accumulator
-
-  pure False
-eventAskSudoPass _ (VtyEvent (EvKey (KChar c) [])) = pure True <* (_accumulator %= (`T.snoc` c))
-eventAskSudoPass _ _ = pure True
-
 myEvent
   :: (Concurrent :> es, Logger :> es, RequireCallStack)
   => (forall a. Eff es a -> IO a) -> BrickEvent Name CliMessage -> EventM Name CliState ()
@@ -262,24 +247,26 @@ myEvent unlift (AppEvent CliMessage'NixInternalLog{internalLog = internalLog'}) 
       Left err -> liftIO . unlift $ logDebugN ("could not parse Nix message" <> T.show err)
   Right _internalLog -> pure ()
 -- liftIO . unlift . logDebugN $ T.show internalLog
-myEvent _ (AppEvent CliMessage'BuildStarted{machine}) = _knownBuilds . at machine .= Just Machine'Building
-myEvent _ (AppEvent CliMessage'CopyStarted{machine}) = _knownBuilds . at machine .= Just Machine'Copying
-myEvent _ (AppEvent CliMessage'EvaluationStarted{machine}) = _knownBuilds . at machine .= Just Machine'Evaluating
-myEvent _ (AppEvent CliMessage'DeploymentStarted{machine}) = _knownBuilds . at machine .= Just Machine'Deploying
-myEvent _ (AppEvent CliMessage'DeploymentFinished{machine, exitCode, output}) = _knownBuilds . at machine .= Just Machine'Deployed{exitCode, output}
-myEvent _ (AppEvent CliMessage'Exception{machine, exception}) = _knownBuilds . at machine .= Just Machine'Exception{exception}
-myEvent _ (AppEvent CliMessage'Readline{prompt, response}) = _askpass %= (++ [Cli'AskPass{prompt, response, accumulator = ""}])
+myEvent _ (AppEvent CliMessage'BuildStarted{machine}) = _machines . at machine .= Just MachineState'Building
+myEvent _ (AppEvent CliMessage'CopyStarted{machine}) = _machines . at machine .= Just MachineState'Copying
+myEvent _ (AppEvent CliMessage'EvaluationStarted{machine}) = _machines . at machine .= Just MachineState'Evaluating
+myEvent _ (AppEvent CliMessage'DeploymentStarted{machine}) = _machines . at machine .= Just MachineState'Deploying
+myEvent _ (AppEvent CliMessage'DeploymentFinished{machine, exitCode, output}) = _machines . at machine .= Just MachineState'Deployed{exitCode, output}
+myEvent _ (AppEvent CliMessage'Exception{machine, exception}) = _machines . at machine .= Just MachineState'Exception{exception}
+myEvent unlift (AppEvent CliMessage'Readline{prompt, response}) = do
+  liftIO . unlift . logDebugN $ "asking user for input with prompt\"" <> prompt <> "\""
+  _prompt %= (`promptAddItem` PromptItem'Freeform{prompt, response'text = response, confidential = True})
 myEvent _ (AppEvent CliMessage'ConfirmExit{mException, confirmed}) = _confirmExit .= Just Cli'ConfirmExit{mException, confirmed}
 myEvent _ (VtyEvent (EvKey (KChar 'c') [MCtrl])) = halt
 myEvent unlift event = do
-  use _askpass >>= \case
-    askpass : rest -> do
-      (s, a) <- nestEventM askpass $ eventAskSudoPass unlift event
-
-      if a
-        then _askpass .= s : rest
-        else _askpass .= rest
-    _ -> pure ()
+  prompt <- use _prompt
+  if promptActive prompt
+    then do nestEventM' prompt (eventPrompt unlift event) >>= (_prompt .=)
+    else case event of
+      (VtyEvent (EvKey (KChar 'l') [])) -> _machines %= machinesPrev
+      (VtyEvent (EvKey (KChar 'n') [])) -> _machines %= machinesNext
+      (VtyEvent (EvKey (KChar 'ß') [])) -> _machines %= machineExpand
+      _ -> pure ()
 
   use _confirmExit >>= \case
     Just confirmExit -> do
@@ -308,13 +295,6 @@ theMap =
     , (altListAttr, V.defAttr `Vty.withBackColor` (Vty.Color240 0))
     ]
 
-makePrompt :: Cli'AskPass -> Widget n
-makePrompt Cli'AskPass{prompt, accumulator} = txt $ prompt <> (T.replicate (T.length accumulator) "*")
-
-headMay :: [a] -> Maybe a
-headMay (x : _) = Just x
-headMay _ = Nothing
-
 mainLoop
   :: (Concurrent :> es, FileSystem :> es, HasCallStack, IOE :> es, Logger :> es, RequireCallStack)
   => Chan CliMessage -> Eff es ()
@@ -324,28 +304,13 @@ mainLoop chan =
       app :: App CliState CliMessage Name
       app =
         App
-          { appDraw = \CliState{knownBuilds, askpass, confirmExit, nixMessages} ->
+          { appDraw = \CliState{machines, prompt, confirmExit, nixMessages} ->
               [ vBox $
-                  [ hBox
-                      [ hLimitPercent 20 . padRight (Pad 1) $ hBorderWithLabel $ txt "machines"
-                      , padLeft (Pad 1) . hBorderWithLabel $ txt "state"
-                      ]
-                  , vBox $
-                      ( zip (HM.toList knownBuilds) [0 :: Int ..] & map \((name, state), i) ->
-                          ( if i `mod` 2 == 0
-                              then withAttr altListAttr
-                              else
-                                id
-                          )
-                            $ hBox
-                              [ hLimitPercent 20 . padRight Max $ txt name
-                              , padLeft (Pad 1) . padRight Max $ renderMachine state
-                              ]
-                      )
+                  [ renderMachines altListAttr machines
                   , hBorder
                   , vLimit 15 $ (\how -> padRight Max $ ScrollableList.render LogScroll how nixMessages) id
+                  , renderPrompt prompt
                   ]
-                    ++ maybe [] (singleton . padTop Max . makePrompt) (headMay askpass)
                     ++ maybe
                       []
                       ( \c -> case c ^. _mException of

@@ -138,7 +138,7 @@ nixProc args logFn = do
 
 nixFlakeInfo :: (Monad m, MonadThrow m, MonadThrow m, MonadUnliftIO m) => Text -> (Handle -> m ()) -> m FlakeInfo
 nixFlakeInfo flakePath logFn =
-  nixProc ["flake", "info", "--json", flakePath] logFn >>= \bs -> case A.eitherDecode bs of
+  nixProc ["flake", "metadata", "--json", flakePath] logFn >>= \bs -> case A.eitherDecode bs of
     Right flakeInfo -> pure flakeInfo
     Left err -> throwM . NixErrorParse $ T.pack err
 
