@@ -14,10 +14,14 @@
   pkgs,
   lib,
   config,
+  nglib,
   ...
 }:
 let
   cfg = config.services.postgresql;
+
+  chpst =
+    nglib.maybeChangeUserAndGroup "postgres" "postgres" config.init.services."postgresql".supplementaryGroups;
 
   # BEGIN Copyright (c) 2003-2021 Eelco Dolstra and the Nixpkgs/NixOS contributors
   toStr =
@@ -407,7 +411,7 @@ in
            rm -f ${cfg.dataDir}/*.conf
 
            # Initialize the database
-           chpst -u postgres:postgres ${cfg.package}/bin/initdb -U ${cfg.superUser} ${lib.concatStringsSep " " cfg.initdbArgs}
+           ${chpst "${cfg.package}/bin/initdb -U ${cfg.superUser} ${lib.concatStringsSep " " cfg.initdbArgs}"}
 
            touch ${cfg.dataDir}/.first_startup
         fi
@@ -418,10 +422,10 @@ in
           "${cfg.dataDir}/recovery.conf"
         ''}
 
-        chpst -u postgres:postgres ${cfg.package}/bin/postgres &
+        ${chpst "${cfg.package}/bin/postgres &"}
         postgresql=$!
 
-        PSQL="chpst -u postgres:postgres ${cfg.package}/bin/psql --port=${cfg.port} --no-psqlrc"
+        PSQL="${chpst "${cfg.package}/bin/psql --port=${cfg.port} --no-psqlrc"}"
         while ! $PSQL -d postgres -c "" 2> /dev/null ; do
           if ! kill -0 "$postgresql"; then exit 1; fi
           sleep 0.1
