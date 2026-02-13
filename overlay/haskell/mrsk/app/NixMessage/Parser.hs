@@ -24,7 +24,7 @@ import NixMessage (
   StartAction (..),
   StopAction (..),
   Verbosity (..),
-  parseDerivation,
+  parseDerivationPath,
   parseHost,
   parseStorePath,
  )
@@ -124,8 +124,8 @@ parseResultAction = A.withObject "ResultAction" \obj -> do
     fields = obj A..: "fields"
 
   result <- case type' :: Int of
-    100 -> uncurry FileLinked <$> fields
-    101 -> BuildLogLine <$> fields
+    100 -> uncurry FileLinked <$> one fields
+    101 -> BuildLogLine <$> one fields
     102 -> UntrustedPath <$> (fields >>= parseStorePath)
     103 -> CorruptedPath <$> (fields >>= parseStorePath)
     104 -> SetPhase <$> fields
@@ -165,7 +165,7 @@ parseStartAction = A.withObject "StartAction11" \obj -> do
     BuildsType -> pure Builds
     BuildType ->
       fields >>= \(path, host, _ :: A.Value, _ :: A.Value) -> do
-        path' <- parseDerivation path
+        path' <- parseDerivationPath path
         pure $ Build path' (parseHost host)
     OptimiseStoreType -> pure OptimiseStore
     VerifyPathsType -> pure VerifyPaths
@@ -177,7 +177,7 @@ parseStartAction = A.withObject "StartAction11" \obj -> do
       fields >>= \(path, host) -> do
         path' <- parseStorePath path
         pure $ QueryPathInfo path' (parseHost host)
-    PostBuildHookType -> PostBuildHook <$> (fields >>= parseDerivation)
+    PostBuildHookType -> PostBuildHook <$> (fields >>= parseDerivationPath)
     BuildWaitingType -> pure BuildWaiting
     FetchTreeType -> pure FetchTree
   pure MkStartAction{id = MkId idField, text, activity, level}

@@ -39,6 +39,8 @@ library
         mtl,
         unliftio,
         optparse-applicative,
+        nix-derivation,
+        attoparsec,
     hs-source-dirs:   src
     default-language: GHC2021
     default-extensions:

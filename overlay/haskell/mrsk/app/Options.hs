@@ -10,7 +10,7 @@ import Options.Applicative
 import Options.Applicative.Types (readerAsk)
 import Path.Posix (Abs, Dir, File, Path, parseAbsFile)
 import Remote (SwitchAction (..))
-import System.NixNG.SomePath (pathAbsDir)
+import System.NixNG.SomePath (pathAbsDir, pathAbsFile)
 
 data Command
   = Deploy
@@ -20,6 +20,7 @@ data Command
       , action :: SwitchAction
       }
   | Far
+  | Replay {nixInternalLog :: Maybe (Path Abs File), rate :: Maybe Int}
 
 data Logging
   = Logging'OtherTerminal
@@ -67,11 +68,18 @@ parseDeploy =
 parseFar :: Parser Command
 parseFar = pure Far
 
+parseReplay :: Parser Command
+parseReplay =
+  Replay
+    <$> optional (option pathAbsFile (metavar "NIX_INTERNAL_LOG" <> long "nix-internal-log"))
+    <*> optional (option auto (metavar "RATE" <> long "rate"))
+
 parseCommand :: Parser Command
 parseCommand =
   subparser
     (command "deploy" (info parseDeploy (progDesc "Deploy to hosts")))
     <|> subparser (command "far" (info parseFar (progDesc "Serve the far end of a SSH connection")) <> internal)
+    <|> subparser (command "replay" (info parseReplay (progDesc "Replay a Nix internal log file")) <> internal)
 
 parseLogging :: Parser Logging
 parseLogging = option readLoggingM (metavar "LOGGING" <> short 'l' <> long "logging") <|> pure Logging'Blackhole

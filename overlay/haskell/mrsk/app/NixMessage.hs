@@ -28,19 +28,24 @@ module NixMessage (
   _expected,
   _failed,
   ActivityType (..),
-  parseDerivation,
+  parseDerivationPath,
   parseStorePath,
   parseHost,
+  DerivationPath (..),
 ) where
 
-import Control.Exception (SomeException)
+import Control.Exception.Safe (MonadThrow)
+import Control.Monad ((>=>))
 import Data.ByteString (ByteString)
-import Data.Function ((&))
+import Data.Hashable (Hashable)
 import Data.Text (Text)
-import Lens.Micro.Platform (Lens, lens, makeLensesWith, (%~), (.~), (^.))
+import Data.Text qualified as T
+import Effectful.Exception (SomeException)
+import Lens.Micro.Platform (makeLensesWith, (^.))
+import Path.Posix (Abs, File, Path, parseAbsFile)
 import System.NixNG.TH (duplicateRules)
 
-newtype Derivation = Derivation Text
+newtype DerivationPath = DerivationPath (Path Abs File)
   deriving stock (Eq, Ord, Show)
 
 newtype StorePath = StorePath Text
@@ -50,7 +55,7 @@ newtype Host = Host Text
   deriving stock (Eq, Ord, Show)
 
 newtype ActivityId = MkId {value :: Int}
-  deriving newtype (Eq, Ord, Show)
+  deriving newtype (Eq, Hashable, Ord, Show)
 
 newtype StopAction = MkStopAction {id :: ActivityId}
   deriving stock (Show)
@@ -92,12 +97,12 @@ data Activity where
   Realise :: Activity
   CopyPaths :: Activity
   Builds :: Activity
-  Build :: Derivation -> Host {- WithContext -} -> Activity
+  Build :: DerivationPath -> Host {- WithContext -} -> Activity
   OptimiseStore :: Activity
   VerifyPaths :: Activity
   Substitute :: StorePath -> Host {- WithContext -} -> Activity
   QueryPathInfo :: StorePath -> Host {- WithContext -} -> Activity
-  PostBuildHook :: Derivation -> Activity
+  PostBuildHook :: DerivationPath -> Activity
   BuildWaiting :: Activity
   FetchTree :: Activity
   deriving stock (Eq, Ord, Show)
@@ -166,6 +171,7 @@ makeLensesWith duplicateRules ''ResultAction
 makeLensesWith duplicateRules ''MessageAction
 makeLensesWith duplicateRules ''NixJSONMessage
 
+maybeLevel :: NixJSONMessage -> Maybe Verbosity
 maybeLevel (Stop _) = Nothing
 maybeLevel (Start startAction) = Just $ startAction ^. _level
 maybeLevel (Result _) = Nothing
@@ -173,8 +179,10 @@ maybeLevel (Message messageAction) = Just $ messageAction ^. _level
 maybeLevel (Plain _) = Nothing
 maybeLevel (ParseError _) = Nothing
 
-parseDerivation :: (MonadFail m) => Text -> m Derivation
-parseDerivation = pure . Derivation
+parseDerivationPath :: (MonadFail m) => Text -> m DerivationPath
+parseDerivationPath text = case parseAbsFile (T.unpack text) of
+  Left err -> fail (show err)
+  Right path -> pure (DerivationPath path)
 
 parseStorePath :: (MonadFail m) => Text -> m StorePath
 parseStorePath = pure . StorePath

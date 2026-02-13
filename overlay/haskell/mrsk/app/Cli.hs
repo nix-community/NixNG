@@ -25,6 +25,7 @@ import Cli.Machine (
   renderMachines,
   _state,
  )
+import Cli.Monitor (Monitor, emptyMonitor, monitorCompletedBuild, monitorLogLine, monitorStartedBuild, renderMonitor)
 import Cli.Prompt (
   Prompt,
   PromptItem (PromptItem'Freeform, confidential, prompt, response'text),
@@ -81,7 +82,16 @@ import Graphics.Vty.Config qualified
 import Graphics.Vty.CrossPlatform qualified
 import Graphics.Vty.Input.Events (Event (..), Key (..), Modifier (..))
 import Lens.Micro.Platform (at, makeLensesWith, mapped, use, view, (%=), (%~), (.=), (^.))
-import NixMessage (MessageAction (..), NixJSONMessage (..))
+import Nix (Nix)
+import NixMessage (
+  Activity (Build),
+  ActivityResult (..),
+  MessageAction (..),
+  NixJSONMessage (..),
+  ResultAction (..),
+  StartAction (..),
+  StopAction (..),
+ )
 import NixMessage.Parser
 import RequireCallStack (RequireCallStack)
 import System.NixNG.TH (duplicateRules)
@@ -111,12 +121,6 @@ data CliMessage
 
 data CliHandle = CliHandle {chan :: Chan CliMessage, threadId :: ThreadId}
 
-data Cli'AskPass = Cli'AskPass
-  { prompt :: Text
-  , response :: MVar' Text
-  , accumulator :: Text
-  }
-
 data Cli'ConfirmExit = Cli'ConfirmExit
   { confirmed :: MVar' ()
   , mException :: Maybe SomeException
@@ -125,6 +129,7 @@ data Cli'ConfirmExit = Cli'ConfirmExit
 data CliState = CliState
   { machines :: Machines Name
   , prompt :: Prompt
+  , monitor :: Monitor
   , confirmExit :: Maybe Cli'ConfirmExit
   , nixMessages :: ScrollableList (Widget Name)
   }
@@ -139,7 +144,6 @@ data Config
 
 makeLensesWith duplicateRules ''Config
 makeLensesWith duplicateRules ''CliState
-makeLensesWith duplicateRules ''Cli'AskPass
 makeLensesWith duplicateRules ''Cli'ConfirmExit
 
 initialCliState :: CliState
@@ -147,6 +151,7 @@ initialCliState =
   CliState
     { machines = emptyMachines
     , prompt = emptyPrompt
+    , monitor = emptyMonitor
     , confirmExit = Nothing
     , nixMessages = ScrollableList.empty
     }
@@ -182,7 +187,15 @@ withNom :: (FileSystem :> es, IOE :> es, TypedProcess :> es) => ((ByteString -> 
 withNom act = withChildReader "alacritty" "nom --json" \hIn -> act (BS.hPutStrLn hIn)
 
 runCliEffect
-  :: (Concurrent :> es, FileSystem :> es, HasCallStack, IOE :> es, Logger :> es, RequireCallStack, TypedProcess :> es)
+  :: ( Concurrent :> es
+     , FileSystem :> es
+     , HasCallStack
+     , IOE :> es
+     , Logger :> es
+     , Nix :> es
+     , RequireCallStack
+     , TypedProcess :> es
+     )
   => Config
   -> Eff (CliEffect : es) a
   -> Eff es a
@@ -231,21 +244,27 @@ eventConfirmExit unlift (VtyEvent (EvKey KEnter [])) = do
 eventConfirmExit _ _ = pure True
 
 myEvent
-  :: (Concurrent :> es, Logger :> es, RequireCallStack)
+  :: (Concurrent :> es, Logger :> es, Nix :> es, RequireCallStack)
   => (forall a. Eff es a -> IO a) -> BrickEvent Name CliMessage -> EventM Name CliState ()
-myEvent unlift (AppEvent CliMessage'NixInternalLog{internalLog = internalLog'}) = case parseJSONLine internalLog' of
-  Left err -> liftIO . unlift . logErrorN $ "Could not deserialize: " <> T.show (T.decodeUtf8' internalLog') <> T.pack err
-  Right (Message MkMessageAction{message = message'}) -> do
-    case Atto.parseOnly parseSomething message' of
-      Right message ->
-        _nixMessages %= \i ->
-          ScrollableList.addItem
-            ( hBox
-                (map (\(attr, text) -> modifyDefAttr (const attr) (txt text)) $ escapeCodeToBrick message defAttr)
-            )
-            i
-      Left err -> liftIO . unlift $ logDebugN ("could not parse Nix message" <> T.show err)
-  Right _internalLog -> pure ()
+myEvent unlift (AppEvent CliMessage'NixInternalLog{internalLog = internalLog'}) =
+  case parseJSONLine internalLog' of
+    Left err -> liftIO . unlift . logErrorN $ "Could not deserialize: " <> T.show (T.decodeUtf8' internalLog') <> T.pack err
+    Right (Start MkStartAction{id = id', activity = Build derivation _host}) ->
+      use _monitor >>= (liftIO . unlift . monitorStartedBuild id' derivation) >>= (_monitor .=)
+    Right (Stop MkStopAction{id = id'}) -> _monitor %= (`monitorCompletedBuild` id')
+    Right (Result MkResultAction{id = id', result = BuildLogLine logLine}) ->
+      _monitor %= monitorLogLine id' logLine
+    Right (Message MkMessageAction{message = message'}) -> do
+      case Atto.parseOnly parseSomething message' of
+        Right message ->
+          _nixMessages %= \i ->
+            ScrollableList.addItem
+              ( hBox
+                  (map (\(attr, text) -> modifyDefAttr (const attr) (txt text)) $ escapeCodeToBrick message defAttr)
+              )
+              i
+        Left err -> liftIO . unlift $ logDebugN ("could not parse Nix message" <> T.show err)
+    Right _internalLog -> pure ()
 -- liftIO . unlift . logDebugN $ T.show internalLog
 myEvent _ (AppEvent CliMessage'BuildStarted{machine}) = _machines . at machine .= Just MachineState'Building
 myEvent _ (AppEvent CliMessage'CopyStarted{machine}) = _machines . at machine .= Just MachineState'Copying
@@ -296,7 +315,7 @@ theMap =
     ]
 
 mainLoop
-  :: (Concurrent :> es, FileSystem :> es, HasCallStack, IOE :> es, Logger :> es, RequireCallStack)
+  :: (Concurrent :> es, FileSystem :> es, HasCallStack, IOE :> es, Logger :> es, Nix :> es, RequireCallStack)
   => Chan CliMessage -> Eff es ()
 mainLoop chan =
   withEffToIO SeqUnlift \unlift -> do
@@ -304,11 +323,12 @@ mainLoop chan =
       app :: App CliState CliMessage Name
       app =
         App
-          { appDraw = \CliState{machines, prompt, confirmExit, nixMessages} ->
+          { appDraw = \CliState{machines, prompt, monitor, confirmExit, nixMessages} ->
               [ vBox $
                   [ renderMachines altListAttr machines
                   , hBorder
                   , vLimit 15 $ (\how -> padRight Max $ ScrollableList.render LogScroll how nixMessages) id
+                  , renderMonitor monitor
                   , renderPrompt prompt
                   ]
                     ++ maybe

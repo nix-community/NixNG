@@ -17,15 +17,22 @@ import Cli (
   tellDeploymentStarted,
   tellEvaluationStarted,
   tellException,
+  tellNixInternalLog,
  )
 import Cli qualified
+import Control.Concurrent qualified as IO
 import Control.Exception (SomeException)
-import Control.Monad (foldM, forM_)
+import Control.Monad (foldM, forM_, forever)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson.Key qualified as AK
 import Data.Aeson.KeyMap qualified as KM
 import Data.Aeson.Types qualified as A
+import Data.ByteString (ByteString)
+import Data.ByteString qualified as BS
+import Data.ByteString.Lazy qualified as BSL
+import Data.ByteString.Lazy.Char8 qualified as BSL
 import Data.Either (fromLeft)
+import Data.Function ((&))
 import Data.Functor ((<&>))
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as HM
@@ -34,13 +41,19 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Effectful (Eff, IOE, runEff, (:>))
-import Effectful.Concurrent (Concurrent, runConcurrent)
-import Effectful.Concurrent.Async (Concurrently (..), forConcurrently)
+import Effectful.Concurrent (Concurrent, runConcurrent, threadDelay)
+import Effectful.Concurrent.Async (Concurrently (..), forConcurrently, link, withAsync)
+import Effectful.Concurrent.Chan (Chan, readChan)
+import Effectful.Concurrent.MVar (putMVar)
+import Effectful.Concurrent.MVar.Strict (MVar')
 import Effectful.Concurrent.QSem (newQSem, signalQSem, waitQSem)
+import Effectful.Dispatch.Dynamic (localUnlift)
+import Effectful.Dispatch.Static (unEff, unsafeEff)
 import Effectful.Environment (Environment, runEnvironment)
 import Effectful.Exception (ExceptionWithContext, bracket_, catch, handle, throwIO)
 import Effectful.Fail (Fail, runFailIO)
 import Effectful.FileSystem (FileSystem, runFileSystem)
+import Effectful.FileSystem.IO (Handle, stdin)
 import Effectful.Monad.Logger (
   Logger,
   logDebugN,
@@ -59,7 +72,7 @@ import Nix (Nix, nixBuild, nixCopy, nixEval, nixSelect, runNixEffect)
 import Nix.Select (NixTarget (NixDerivation, NixFlake), Selector (..))
 import Options (Command (..), Logging (..), Options (Options, command, logging, nom), options)
 import Options.Applicative (execParser)
-import Path.Posix (Abs, Dir, File, Path, parseAbsFile)
+import Path.Posix (Abs, Dir, File, Path, parseAbsFile, toFilePath)
 import Remote (
   Near (..),
   RemoteEffect,
@@ -134,8 +147,8 @@ traverseThrottled concLevel action taskContainer = do
 type TopLevelEffects =
   [ RemoteEffect
   , Environment
-  , Nix
   , CliEffect
+  , Nix
   , Logger
   , TypedProcess
   , FileSystem
@@ -161,7 +174,18 @@ logExceptions results = HM.foldlWithKey' logException (pure HM.empty) results
   logException action machine (Right value) = action >>= \accumulator -> pure $ HM.insert machine value accumulator
 
 mrsk :: (RequireCallStack) => Options -> Eff TopLevelEffects ()
-mrsk Options{command = Far} = undefined
+mrsk Options{command = Far} = error ""
+mrsk Options{command = Replay{nixInternalLog, rate}} = do
+  lines' <- case nixInternalLog of
+    Just nixInternalLog' -> liftIO (BSL.readFile (toFilePath nixInternalLog')) <&> BSL.lines
+    Nothing -> liftIO (BSL.hGetContents stdin) <&> BSL.lines
+
+  forM_ lines' \line -> delay <* tellNixInternalLog (BS.toStrict line)
+ where
+  second :: Float = 1.0
+  delay = case rate of
+    Just rate' -> threadDelay . floor $ second / (fromIntegral rate') * 1_000_000
+    Nothing -> pure ()
 mrsk Options{command = Deploy{hosts, flake, sudo, action}} = do
   configurations :: [Text] <- case hosts of
     Just hosts' -> getNixOSConfigurations (Just (NE.toList hosts')) flake
@@ -227,7 +251,9 @@ runSomeLogging Logging'Blackhole = runVoidLogging
 runSomeLogging Logging'Stderr = runStderrLogging
 
 main :: IO ()
-main =
+main = do
+  queue :: IO.MVar (Chan ByteString) <- IO.newEmptyMVar
+
   provideCallStack $
     liftIO (execParser options) >>= \opts@Options{logging, nom, command} ->
       case command of
@@ -242,15 +268,23 @@ main =
             . runConcurrent
             $ serveFar `catch` \(exception :: SomeException) ->
               logErrorN ("Far side caught exception: " <> T.show exception)
-        _ -> effectStack logging nom $ (mrsk opts >> askConfirmExit Nothing) `catch` (askConfirmExit . Just)
+        _ -> effectStack queue logging nom $ (mrsk opts >> askConfirmExit Nothing) `catch` (askConfirmExit . Just)
  where
+  tailer :: IO.MVar (Chan ByteString) -> Handle -> IO ()
+  tailer queue h = do
+    queue' <- IO.takeMVar queue
+    BSL.hGetContents h >>= mapM_ (IO.writeChan queue' . BSL.toStrict) . BSL.lines
+
   effectStack
     :: (RequireCallStack)
-    => Logging
+    => IO.MVar (Chan ByteString)
+    -> Logging
     -> Bool
     -> Eff TopLevelEffects a
     -> IO a
-  effectStack logging nom =
+  effectStack queue logging nom eff = do
+    queue' <- IO.newChan
+
     runEff
       . runPrim
       . runFailIO
@@ -258,7 +292,8 @@ main =
       . runFileSystem
       . runTypedProcess
       . runSomeLogging logging
+      . runNixEffect (tailer queue)
       . runCliEffect Cli.Config{nom}
-      . runNixEffect
       . runEnvironment
       . runRemote
+      $ withAsync (forever (readChan queue' >>= tellNixInternalLog)) \a -> link a >> eff

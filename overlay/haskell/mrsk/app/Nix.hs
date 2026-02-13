@@ -4,7 +4,6 @@
 
 module Nix where
 
-import Cli (CliEffect, tellNixInternalLog)
 import Control.Monad (forM, forM_, forever)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson.Types (FromJSON)
@@ -19,7 +18,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as T
 import Data.Text.Lazy.Encoding qualified as TL
-import Effectful (Dispatch (Dynamic), DispatchOf, Eff, Effect, IOE, UnliftStrategy (..), (:>))
+import Effectful (Dispatch (Dynamic), DispatchOf, Eff, Effect, IOE, Subset, UnliftStrategy (..), inject, (:>))
 import Effectful.Concurrent
 import Effectful.Concurrent.Async (Async, async, asyncThreadId, cancelMany, cancelWith, mapConcurrently, withAsync)
 import Effectful.Concurrent.MVar (readMVar)
@@ -33,7 +32,8 @@ import Effectful.Monad.Logger (Logger, logDebugN)
 import GHC.IO.Exception (ioe_handle)
 import GHC.Stack.Types (HasCallStack)
 import Lens.Micro.Platform ((%~), _2)
-import Nix.Select (Derivation, NixTarget, Selector)
+import Nix.Derivation (Derivation)
+import Nix.Select (NixTarget, Selector)
 import Nix.Select qualified as Select
 import Path.Posix (Abs, Dir, File, Path)
 import RequireCallStack (RequireCallStack)
@@ -48,7 +48,7 @@ data Nix :: Effect where
   NixBuild :: NixTarget Select.Build -> Nix m [Either (Path Abs Dir) (Path Abs File)]
   NixEval :: (FromJSON a) => NixTarget Select.Eval -> Nix m a
   NixCopy :: SomePath Abs -> Text -> Text -> Nix m ()
-  NixDerivationShow :: Path Abs File -> Nix m Derivation
+  NixDerivationShow :: Path Abs File -> Nix m (Derivation Text Text)
   NixSelect :: (FromJSON a) => [([Selector], A.Value -> A.Value)] -> Text -> Nix (Eff es) [a]
 type instance DispatchOf Nix = Dynamic
 
@@ -61,7 +61,7 @@ nixEval target = send (NixEval target)
 nixCopy :: forall es. (HasCallStack, Nix :> es) => SomePath Abs -> Text -> Text -> Eff es ()
 nixCopy storePath remoteUser targetHost = send (NixCopy storePath remoteUser targetHost)
 
-nixDerivationShow :: (HasCallStack, Nix :> es) => Path Abs File -> Eff es Derivation
+nixDerivationShow :: (HasCallStack, Nix :> es) => Path Abs File -> Eff es (Derivation Text Text)
 nixDerivationShow derivation = send (NixDerivationShow derivation)
 
 nixSelect :: (FromJSON a, HasCallStack, Nix :> es) => [([Selector], A.Value -> A.Value)] -> Text -> Eff es [a]
@@ -72,30 +72,25 @@ data HandlesUpdated = HandlesUpdated
 instance Exception HandlesUpdated
 
 runNixEffect
-  :: (CliEffect :> es, Concurrent :> es, FileSystem :> es, IOE :> es, Logger :> es, RequireCallStack)
-  => Eff (Nix : es) a -> Eff es a
-runNixEffect eff = do
+  :: forall es a
+   . (Concurrent :> es, FileSystem :> es, IOE :> es, Logger :> es, RequireCallStack)
+  => (Handle -> IO ()) -> Eff (Nix : es) a -> Eff es a
+runNixEffect tailer eff = do
   readers <- newMVar' HS.empty
 
   let
-    tail
-      :: (CliEffect :> es, Concurrent :> es, FileSystem :> es, IOE :> es, Logger :> es, RequireCallStack) => Handle -> Eff es ()
-    tail handle = do
-      BSL.hGetContents handle >>= mapM_ (tellNixInternalLog . BSL.toStrict) . BSL.lines
-
-    catchEOF :: Eff es a -> (IOException -> Eff es a) -> Eff es a
+    catchEOF :: Eff es () -> (IOException -> Eff es ()) -> Eff es ()
     catchEOF = catchIf isEOFError
 
-    addHandle :: (CliEffect :> es, Concurrent :> es, FileSystem :> es, IOE :> es, Logger :> es) => Handle -> Eff es ()
     addHandle stderr = mask_ do
-      a <- async (tail stderr `catchEOF` const (pure ()))
+      a <- async (liftIO (tailer stderr) `catchEOF` const (pure ()))
       modifyMVar'_ readers (pure . HS.insert a)
 
   ( eff & interpret \_ val -> case val of
       NixBuild target -> Select.nixBuild target addHandle
       NixEval target -> Select.nixEval target addHandle
       NixCopy storePath remoteUser targetHost -> Select.nixCopy storePath remoteUser targetHost addHandle
-      NixDerivationShow derivation -> Select.nixDerivationShow derivation addHandle
+      NixDerivationShow derivation -> Select.nixDerivationShow derivation
       NixSelect selectors flakeRef -> Select.select selectors flakeRef addHandle
     )
     `finally` do

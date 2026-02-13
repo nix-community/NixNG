@@ -14,6 +14,7 @@ import Data.Aeson.Decoding qualified as A
 import Data.Aeson.Text qualified as A
 import Data.Aeson.Types (FromJSON)
 import Data.Aeson.Types qualified as A
+import Data.Attoparsec.Text.Lazy
 import Data.ByteString.Lazy (ByteString, LazyByteString)
 import Data.ByteString.Lazy qualified as BL
 import Data.ByteString.Lazy qualified as BS
@@ -33,6 +34,7 @@ import Data.Text.Lazy.IO qualified as TL
 import GHC.Generics (Generic)
 import Lens.Micro ((^.))
 import Lens.Micro.TH (makeLensesWith)
+import Nix.Derivation (Derivation, parseDerivation, parseDerivationWith, textParser)
 import Path.Posix (Abs, Dir, File, Path, parseAbsDir, parseAbsFile, toFilePath)
 import System.Exit (ExitCode (..))
 import System.IO (Handle, stdin)
@@ -66,12 +68,6 @@ data NixError
   deriving stock (Show)
 
 instance Exception NixError
-
-data Derivation = Derivation
-  {
-  }
-  deriving stock (Eq, Generic, Ord, Show)
-  deriving anyclass (A.FromJSON)
 
 data FlakeInfoLocked = FlakeInfoLocked
   { narHash :: Text
@@ -182,11 +178,13 @@ nixEval nixTarget logFn =
       NixFlake flake -> [flake]
 
 nixDerivationShow
-  :: (MonadThrow m, MonadThrow m, MonadUnliftIO m) => Path Abs File -> (Handle -> m ()) -> m Derivation
-nixDerivationShow derivation logFn =
-  nixProc args logFn <&> fromJust . A.decode
+  :: (MonadThrow m, MonadUnliftIO m)
+  => Path Abs File -> m (Derivation Text Text)
+nixDerivationShow derivation =
+  liftIO (TL.readFile (toFilePath derivation))
+    >>= \drv -> either (throwIO . NixErrorParse . T.pack) pure (parseOnly parseDerivation' drv)
  where
-  args = ["derivation", "show", T.pack $ toFilePath derivation]
+  parseDerivation' = parseDerivationWith textParser textParser
 
 select
   :: (A.FromJSON b, MonadIO m, MonadThrow m, MonadUnliftIO m)
