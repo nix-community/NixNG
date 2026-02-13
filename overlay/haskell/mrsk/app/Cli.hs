@@ -70,7 +70,7 @@ import Effectful.Concurrent.Async (AsyncCancelled (..), link, withAsync)
 import Effectful.Concurrent.Chan (Chan, newChan, readChan, writeChan)
 import Effectful.Concurrent.MVar.Strict (MVar', newEmptyMVar', putMVar', takeMVar')
 import Effectful.Dispatch.Dynamic
-import Effectful.FileSystem.IO (FileSystem)
+import Effectful.FileSystem.IO (FileSystem, IOMode (WriteMode), withFile)
 import Effectful.FileSystem.IO.ByteString qualified as BS
 import Effectful.Monad.Logger (Logger, logDebugN, logErrorN)
 import Effectful.Process.Typed (ExitCode (..), TypedProcess)
@@ -93,8 +93,10 @@ import NixMessage (
   StopAction (..),
  )
 import NixMessage.Parser
+import Path.Posix (Abs, File, Path, toFilePath)
 import RequireCallStack (RequireCallStack)
 import System.NixNG.TH (duplicateRules)
+import System.Posix (OpenMode (..))
 
 data CliEffect :: Effect where
   TellBuildStarted :: {machine :: Text} -> CliEffect m ()
@@ -140,6 +142,7 @@ data Name = LogScroll
 data Config
   = Config
   { nom :: Bool
+  , dumpLog :: Maybe (Path Abs File)
   }
 
 makeLensesWith duplicateRules ''Config
@@ -199,39 +202,51 @@ runCliEffect
   => Config
   -> Eff (CliEffect : es) a
   -> Eff es a
-runCliEffect Config{nom} eff = do
-  let maybeWithNom =
-        if nom
-          then withNom
-          else \act -> act (const $ pure ())
+runCliEffect Config{nom, dumpLog} eff = do
+  let
+    maybeWithNom =
+      if nom
+        then withNom
+        else \act -> act (const $ pure ())
+    maybeWithDump :: (FileSystem :> es) => ((ByteString -> Eff es ()) -> Eff es a) -> Eff es a
+    maybeWithDump =
+      case dumpLog of
+        Just file -> \act -> do
+          withFile (toFilePath file) WriteMode \h ->
+            act \logLine ->
+              -- possibly not atomic, but i dont think that should matter?
+              BS.hPutStrLn h logLine
+        Nothing -> \act -> act (const $ pure ())
 
   chan <- newChan
   mainThread <- myThreadId
   withAsync (mainLoop chan >> throwTo mainThread AsyncCancelled) \a -> do
     link a
-    maybeWithNom \sendToNom ->
-      eff & interpret \_ -> \case
-        TellBuildStarted{machine} -> writeChan chan CliMessage'BuildStarted{machine}
-        TellEvaluationStarted{machine} -> writeChan chan CliMessage'EvaluationStarted{machine}
-        TellCopyStarted{machine} -> writeChan chan CliMessage'CopyStarted{machine}
-        TellDeploymentStarted{machine} -> writeChan chan CliMessage'DeploymentStarted{machine}
-        TellDeploymentFinished{machine, exitCode, output} -> writeChan chan CliMessage'DeploymentFinished{machine, exitCode, output}
-        TellException{machine, exception} -> writeChan chan CliMessage'Exception{machine, exception}
-        TellNixInternalLog{internalLog} -> do
-          sendToNom internalLog
-          writeChan chan CliMessage'NixInternalLog{internalLog}
-        AskReadLine{prompt} -> do
-          response <- newEmptyMVar'
+    maybeWithDump \sendToDump ->
+      maybeWithNom \sendToNom ->
+        eff & interpret \_ -> \case
+          TellBuildStarted{machine} -> writeChan chan CliMessage'BuildStarted{machine}
+          TellEvaluationStarted{machine} -> writeChan chan CliMessage'EvaluationStarted{machine}
+          TellCopyStarted{machine} -> writeChan chan CliMessage'CopyStarted{machine}
+          TellDeploymentStarted{machine} -> writeChan chan CliMessage'DeploymentStarted{machine}
+          TellDeploymentFinished{machine, exitCode, output} -> writeChan chan CliMessage'DeploymentFinished{machine, exitCode, output}
+          TellException{machine, exception} -> writeChan chan CliMessage'Exception{machine, exception}
+          TellNixInternalLog{internalLog} -> do
+            sendToNom internalLog
+            sendToDump internalLog
+            writeChan chan CliMessage'NixInternalLog{internalLog}
+          AskReadLine{prompt} -> do
+            response <- newEmptyMVar'
 
-          writeChan chan CliMessage'Readline{prompt, response}
+            writeChan chan CliMessage'Readline{prompt, response}
 
-          takeMVar' response
-        AskConfirmExit{mException} -> do
-          confirmed <- newEmptyMVar'
+            takeMVar' response
+          AskConfirmExit{mException} -> do
+            confirmed <- newEmptyMVar'
 
-          writeChan chan CliMessage'ConfirmExit{mException, confirmed}
+            writeChan chan CliMessage'ConfirmExit{mException, confirmed}
 
-          takeMVar' confirmed
+            takeMVar' confirmed
 
 eventConfirmExit
   :: (Concurrent :> es, Logger :> es, RequireCallStack)

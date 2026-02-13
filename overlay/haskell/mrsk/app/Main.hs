@@ -70,7 +70,7 @@ import Effectful.Process.Typed (ExitCode, TypedProcess, runTypedProcess)
 import GHC.Generics (Generic)
 import Nix (Nix, nixBuild, nixCopy, nixEval, nixSelect, runNixEffect)
 import Nix.Select (NixTarget (NixDerivation, NixFlake), Selector (..))
-import Options (Command (..), Logging (..), Options (Options, command, logging, nom), options)
+import Options (Command (..), Logging (..), Options (Options, command, dumpLog, logging, nom), options)
 import Options.Applicative (execParser)
 import Path.Posix (Abs, Dir, File, Path, parseAbsFile, toFilePath)
 import Remote (
@@ -255,7 +255,7 @@ main = do
   queue :: IO.MVar (Chan ByteString) <- IO.newEmptyMVar
 
   provideCallStack $
-    liftIO (execParser options) >>= \opts@Options{logging, nom, command} ->
+    liftIO (execParser options) >>= \opts@Options{logging, nom, command, dumpLog} ->
       case command of
         Far ->
           runEff
@@ -268,7 +268,7 @@ main = do
             . runConcurrent
             $ serveFar `catch` \(exception :: SomeException) ->
               logErrorN ("Far side caught exception: " <> T.show exception)
-        _ -> effectStack queue logging nom $ (mrsk opts >> askConfirmExit Nothing) `catch` (askConfirmExit . Just)
+        _ -> effectStack queue logging dumpLog nom $ (mrsk opts >> askConfirmExit Nothing) `catch` (askConfirmExit . Just)
  where
   tailer :: IO.MVar (Chan ByteString) -> Handle -> IO ()
   tailer queue h = do
@@ -279,10 +279,11 @@ main = do
     :: (RequireCallStack)
     => IO.MVar (Chan ByteString)
     -> Logging
+    -> Maybe (Path Abs File)
     -> Bool
     -> Eff TopLevelEffects a
     -> IO a
-  effectStack queue logging nom eff = do
+  effectStack queue logging dumpLog nom eff = do
     queue' <- IO.newChan
 
     runEff
@@ -293,7 +294,7 @@ main = do
       . runTypedProcess
       . runSomeLogging logging
       . runNixEffect (tailer queue)
-      . runCliEffect Cli.Config{nom}
+      . runCliEffect Cli.Config{nom, dumpLog}
       . runEnvironment
       . runRemote
       $ withAsync (forever (readChan queue' >>= tellNixInternalLog)) \a -> link a >> eff

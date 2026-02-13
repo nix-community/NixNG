@@ -32,6 +32,7 @@ data Options = Options
   { command :: Command
   , logging :: Logging
   , nom :: Bool
+  , dumpLog :: Maybe (Path Abs File)
   }
 
 readLoggingM :: ReadM Logging
@@ -90,6 +91,7 @@ parseOptions =
     <$> parseCommand
     <*> parseLogging
     <*> switch (long "nom" <> short 'n')
+    <*> optional (option pathAbsFile (metavar "FILE" <> long "dump-log"))
 
 options :: ParserInfo Options
 options =
