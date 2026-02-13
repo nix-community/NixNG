@@ -50,7 +50,7 @@ import Effectful.Concurrent.QSem (newQSem, signalQSem, waitQSem)
 import Effectful.Dispatch.Dynamic (localUnlift)
 import Effectful.Dispatch.Static (unEff, unsafeEff)
 import Effectful.Environment (Environment, runEnvironment)
-import Effectful.Exception (ExceptionWithContext, bracket_, catch, handle, throwIO)
+import Effectful.Exception (ExceptionWithContext, bracket_, catch, handle, onException, throwIO)
 import Effectful.Fail (Fail, runFailIO)
 import Effectful.FileSystem (FileSystem, runFileSystem)
 import Effectful.FileSystem.IO (Handle, stdin)
@@ -272,7 +272,7 @@ main = do
  where
   tailer :: IO.MVar (Chan ByteString) -> Handle -> IO ()
   tailer queue h = do
-    queue' <- IO.takeMVar queue
+    queue' <- IO.readMVar queue
     BSL.hGetContents h >>= mapM_ (IO.writeChan queue' . BSL.toStrict) . BSL.lines
 
   effectStack
@@ -281,10 +281,11 @@ main = do
     -> Logging
     -> Maybe (Path Abs File)
     -> Bool
-    -> Eff TopLevelEffects a
-    -> IO a
+    -> Eff TopLevelEffects ()
+    -> IO ()
   effectStack queue logging dumpLog nom eff = do
     queue' <- IO.newChan
+    IO.putMVar queue queue'
 
     runEff
       . runPrim

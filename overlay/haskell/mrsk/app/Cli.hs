@@ -40,7 +40,7 @@ import Cli.ScrollableList qualified as ScrollableList
 import Common (withChildReader)
 import Control.Exception (ExceptionWithContext)
 import Control.Exception.Base (SomeException)
-import Control.Monad (forever)
+import Control.Monad (forM_, forever)
 import Control.Monad.IO.Class (liftIO)
 import Data.Attoparsec.Text qualified as Atto
 import Data.ByteString (ByteString)
@@ -70,6 +70,7 @@ import Effectful.Concurrent.Async (AsyncCancelled (..), link, withAsync)
 import Effectful.Concurrent.Chan (Chan, newChan, readChan, writeChan)
 import Effectful.Concurrent.MVar.Strict (MVar', newEmptyMVar', putMVar', takeMVar')
 import Effectful.Dispatch.Dynamic
+import Effectful.Exception (catch, finally)
 import Effectful.FileSystem.IO (FileSystem, IOMode (WriteMode), withFile)
 import Effectful.FileSystem.IO.ByteString qualified as BS
 import Effectful.Monad.Logger (Logger, logDebugN, logErrorN)
@@ -200,8 +201,8 @@ runCliEffect
      , TypedProcess :> es
      )
   => Config
-  -> Eff (CliEffect : es) a
-  -> Eff es a
+  -> Eff (CliEffect : es) ()
+  -> Eff es ()
 runCliEffect Config{nom, dumpLog} eff = do
   let
     maybeWithNom =
@@ -222,31 +223,33 @@ runCliEffect Config{nom, dumpLog} eff = do
   mainThread <- myThreadId
   withAsync (mainLoop chan >> throwTo mainThread AsyncCancelled) \a -> do
     link a
-    maybeWithDump \sendToDump ->
-      maybeWithNom \sendToNom ->
-        eff & interpret \_ -> \case
-          TellBuildStarted{machine} -> writeChan chan CliMessage'BuildStarted{machine}
-          TellEvaluationStarted{machine} -> writeChan chan CliMessage'EvaluationStarted{machine}
-          TellCopyStarted{machine} -> writeChan chan CliMessage'CopyStarted{machine}
-          TellDeploymentStarted{machine} -> writeChan chan CliMessage'DeploymentStarted{machine}
-          TellDeploymentFinished{machine, exitCode, output} -> writeChan chan CliMessage'DeploymentFinished{machine, exitCode, output}
-          TellException{machine, exception} -> writeChan chan CliMessage'Exception{machine, exception}
-          TellNixInternalLog{internalLog} -> do
-            sendToNom internalLog
-            sendToDump internalLog
-            writeChan chan CliMessage'NixInternalLog{internalLog}
-          AskReadLine{prompt} -> do
-            response <- newEmptyMVar'
+    ( maybeWithDump \sendToDump ->
+        maybeWithNom \sendToNom ->
+          eff & interpret \_ -> \case
+            TellBuildStarted{machine} -> writeChan chan CliMessage'BuildStarted{machine}
+            TellEvaluationStarted{machine} -> writeChan chan CliMessage'EvaluationStarted{machine}
+            TellCopyStarted{machine} -> writeChan chan CliMessage'CopyStarted{machine}
+            TellDeploymentStarted{machine} -> writeChan chan CliMessage'DeploymentStarted{machine}
+            TellDeploymentFinished{machine, exitCode, output} -> writeChan chan CliMessage'DeploymentFinished{machine, exitCode, output}
+            TellException{machine, exception} -> writeChan chan CliMessage'Exception{machine, exception}
+            TellNixInternalLog{internalLog} -> do
+              sendToNom internalLog
+              sendToDump internalLog
+              writeChan chan CliMessage'NixInternalLog{internalLog}
+            AskReadLine{prompt} -> do
+              response <- newEmptyMVar'
 
-            writeChan chan CliMessage'Readline{prompt, response}
+              writeChan chan CliMessage'Readline{prompt, response}
 
-            takeMVar' response
-          AskConfirmExit{mException} -> do
-            confirmed <- newEmptyMVar'
+              takeMVar' response
+            AskConfirmExit{mException} -> do
+              confirmed <- newEmptyMVar'
 
-            writeChan chan CliMessage'ConfirmExit{mException, confirmed}
+              writeChan chan CliMessage'ConfirmExit{mException, confirmed}
 
-            takeMVar' confirmed
+              takeMVar' confirmed
+      )
+      `catch` \AsyncCancelled -> pure ()
 
 eventConfirmExit
   :: (Concurrent :> es, Logger :> es, RequireCallStack)
@@ -267,18 +270,19 @@ myEvent unlift (AppEvent CliMessage'NixInternalLog{internalLog = internalLog'}) 
     Right (Start MkStartAction{id = id', activity = Build derivation _host}) ->
       use _monitor >>= (liftIO . unlift . monitorStartedBuild id' derivation) >>= (_monitor .=)
     Right (Stop MkStopAction{id = id'}) -> _monitor %= (`monitorCompletedBuild` id')
-    Right (Result MkResultAction{id = id', result = BuildLogLine logLine}) ->
+    Right (Result MkResultAction{id = id', result = BuildLogLine logLine}) -> do
       _monitor %= monitorLogLine id' logLine
     Right (Message MkMessageAction{message = message'}) -> do
-      case Atto.parseOnly parseSomething message' of
-        Right message ->
-          _nixMessages %= \i ->
-            ScrollableList.addItem
-              ( hBox
-                  (map (\(attr, text) -> modifyDefAttr (const attr) (txt text)) $ escapeCodeToBrick message defAttr)
-              )
-              i
-        Left err -> liftIO . unlift $ logDebugN ("could not parse Nix message" <> T.show err)
+      forM_ (T.lines message') \singleLine ->
+        case Atto.parseOnly parseSomething singleLine of
+          Right message ->
+            _nixMessages %= \i ->
+              ScrollableList.addItem
+                ( hBox
+                    (map (\(attr, text) -> modifyDefAttr (const attr) (txt text)) $ escapeCodeToBrick message defAttr)
+                )
+                i
+          Left err -> liftIO . unlift $ logDebugN ("could not parse Nix message" <> T.show err)
     Right _internalLog -> pure ()
 -- liftIO . unlift . logDebugN $ T.show internalLog
 myEvent _ (AppEvent CliMessage'BuildStarted{machine}) = _machines . at machine .= Just MachineState'Building
@@ -339,10 +343,10 @@ mainLoop chan =
       app =
         App
           { appDraw = \CliState{machines, prompt, monitor, confirmExit, nixMessages} ->
-              [ vBox $
+              [ vLimitPercent 100 . vBox $
                   [ renderMachines altListAttr machines
                   , hBorder
-                  , vLimit 15 $ (\how -> padRight Max $ ScrollableList.render LogScroll how nixMessages) id
+                  , padBottom Max $ ScrollableList.render LogScroll id nixMessages
                   , renderMonitor monitor
                   , renderPrompt prompt
                   ]
