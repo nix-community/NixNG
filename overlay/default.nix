@@ -41,9 +41,67 @@ in
 
   setgroups = prev.writeCBin "setgroups" (builtins.readFile ./setgroups.c);
 
+  nixng = prev.haskellPackages.callPackage ./haskell/nixng/package.nix { };
+
   fileHammer = prev.haskell.lib.enableSeparateBinOutput (
     prev.haskellPackages.callPackage ./haskell/file-hammer/package.nix { }
   );
+
+  mrsk =
+    let
+      hpkgs = final.haskellPackages;
+      microlens = hpkgs.microlens_0_5_0_0;
+      microlens-ghc = hpkgs.microlens-ghc_0_4_15_2.override { inherit microlens; };
+      microlens-th = hpkgs.microlens-th_0_4_3_18.override { inherit microlens; };
+      microlens-mtl = hpkgs.microlens-mtl_0_2_1_1.override { inherit microlens; };
+      microlens-platform = hpkgs.microlens-platform_0_4_4_2.override {
+        inherit
+          microlens
+          microlens-ghc
+          microlens-th
+          microlens-mtl
+          ;
+      };
+      vty = hpkgs.vty.override {
+        inherit microlens microlens-mtl;
+      };
+      vty-unix = hpkgs.vty-unix.override {
+        inherit
+          microlens
+          microlens-mtl
+          microlens-th
+          vty
+          ;
+      };
+      vty-crossplatform = hpkgs.vty-crossplatform.override {
+        inherit vty vty-unix;
+      };
+      brick = hpkgs.brick_2_10.override {
+        inherit
+          microlens
+          microlens-th
+          microlens-mtl
+          vty
+          vty-crossplatform
+          ;
+      };
+    in
+    prev.haskell.lib.enableSeparateBinOutput (
+      prev.haskellPackages.callPackage ./haskell/mrsk/package.nix {
+        inherit (final) nixng;
+        typed-process-effectful = final.lib.pipe final.haskellPackages.typed-process-effectful [
+          final.haskell.lib.markUnbroken
+          final.haskell.lib.dontCheck
+        ];
+
+        inherit
+          brick
+          microlens-platform
+          vty
+          vty-crossplatform
+          ;
+      }
+    );
 
   # inherit
   #   (nixpkgsTrivialBuilders)

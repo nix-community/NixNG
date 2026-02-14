@@ -109,6 +109,10 @@
         }
       );
 
+      nixosModules = {
+        mrsk = ./overlay/haskell/mrsk/nixos-module.nix;
+      };
+
       formatter = forAllSystems (system: (treefmtEval.${system}.config.build.wrapper));
     };
 }

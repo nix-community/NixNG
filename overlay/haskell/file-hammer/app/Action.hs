@@ -25,9 +25,9 @@ import Foreign.C.Types (CInt (CInt), CUInt (CUInt))
 import Foreign.Ptr (Ptr, nullPtr)
 import Numeric.Extra (showIntAtBase)
 import Path.Posix (Abs, Dir, File, Path, toFilePath)
-import SomePath (SomePath (SomePath))
 import System.Directory.Extra (removeDirectoryRecursive)
 import System.IO.Extra (hFlush)
+import System.NixNG.SomePath (SomePath (SomePath))
 import System.Posix (COff (COff), createDirectory, fdToHandle)
 import System.Posix.Files (
   createSymbolicLink,
