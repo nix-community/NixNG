@@ -21,7 +21,7 @@ import Cli (
  )
 import Cli qualified
 import Control.Concurrent qualified as IO
-import Control.Exception (SomeException)
+import Control.Exception (SomeException (..))
 import Control.Monad (foldM, forM_, forever)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson.Key qualified as AK
@@ -42,7 +42,7 @@ import Data.Text qualified as T
 import Data.Vector qualified as V
 import Effectful (Eff, IOE, runEff, (:>))
 import Effectful.Concurrent (Concurrent, runConcurrent, threadDelay)
-import Effectful.Concurrent.Async (Concurrently (..), forConcurrently, link, withAsync)
+import Effectful.Concurrent.Async (AsyncCancelled (AsyncCancelled), Concurrently (..), forConcurrently, link, withAsync)
 import Effectful.Concurrent.Chan (Chan, readChan)
 import Effectful.Concurrent.MVar (putMVar)
 import Effectful.Concurrent.MVar.Strict (MVar')
@@ -50,7 +50,16 @@ import Effectful.Concurrent.QSem (newQSem, signalQSem, waitQSem)
 import Effectful.Dispatch.Dynamic (localUnlift)
 import Effectful.Dispatch.Static (unEff, unsafeEff)
 import Effectful.Environment (Environment, runEnvironment)
-import Effectful.Exception (ExceptionWithContext, bracket_, catch, handle, onException, throwIO)
+import Effectful.Exception (
+  Exception (fromException),
+  ExceptionWithContext,
+  bracket_,
+  catch,
+  catchIf,
+  handle,
+  onException,
+  throwIO,
+ )
 import Effectful.Fail (Fail, runFailIO)
 import Effectful.FileSystem (FileSystem, runFileSystem)
 import Effectful.FileSystem.IO (Handle, stdin)
@@ -268,7 +277,12 @@ main = do
             . runConcurrent
             $ serveFar `catch` \(exception :: SomeException) ->
               logErrorN ("Far side caught exception: " <> T.show exception)
-        _ -> effectStack queue logging dumpLog nom $ (mrsk opts >> askConfirmExit Nothing) `catch` (askConfirmExit . Just)
+        _ ->
+          effectStack queue logging dumpLog nom $
+            catchIf
+              (\exc -> case fromException exc of Just AsyncCancelled -> False; _ -> True)
+              (mrsk opts >> askConfirmExit Nothing)
+              (askConfirmExit . Just)
  where
   tailer :: IO.MVar (Chan ByteString) -> Handle -> IO ()
   tailer queue h = do
