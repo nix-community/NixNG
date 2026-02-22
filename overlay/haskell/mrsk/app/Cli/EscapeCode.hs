@@ -4,7 +4,9 @@ import Control.Applicative (Alternative ((<|>)), many)
 import Data.Attoparsec.Text qualified as Atto
 import Data.Functor ((<&>))
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Word (Word8)
+import Effectful.Exception (assert)
 import Graphics.Vty (Attr (..), MaybeDefault (..), defAttr)
 import Graphics.Vty qualified as Vty
 
@@ -205,6 +207,6 @@ applyCode attr (SGR'SetBackgroundColor color4bit) =
 applyCode attr _ = attr
 
 escapeCodeToBrick :: [Either Text [SGRCode]] -> Attr -> [(Attr, Text)]
-escapeCodeToBrick (Left text : rest) attr = (attr, text) : escapeCodeToBrick rest attr
+escapeCodeToBrick (Left text : rest) attr = (attr, assert (not $ T.elem '\ESC' text) text) : escapeCodeToBrick rest attr
 escapeCodeToBrick (Right codes : rest) attr = escapeCodeToBrick rest (foldl applyCode attr codes)
 escapeCodeToBrick [] _ = []

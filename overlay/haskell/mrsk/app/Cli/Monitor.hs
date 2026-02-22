@@ -29,7 +29,6 @@ data Monitor = Monitor
   { runningBuilds :: HashMap ActivityId Build
   , completedBuilds :: HashMap ActivityId Build
   , waitingBuilds :: HashMap ActivityId Build
-  , logs :: Vector (Text, Text)
   }
   deriving (Show)
 
@@ -42,7 +41,6 @@ emptyMonitor =
     { runningBuilds = HM.empty
     , completedBuilds = HM.empty
     , waitingBuilds = HM.empty
-    , logs = V.empty
     }
 
 guessNameFromDerivation :: DerivationPath -> Derivation Text Text -> Maybe Text
@@ -99,30 +97,9 @@ monitorWaitingBuild id' (DerivationPath derivationPath) monitor = do
       { waitingBuilds = HM.insert id' build (monitor ^. _waitingBuilds)
       }
 
-monitorLogLine :: ActivityId -> Text -> Monitor -> Monitor
-monitorLogLine id' logLine monitor =
-  monitor
-    { logs = V.snoc (monitor ^. _logs) (name, logLine)
-    }
- where
-  name =
-    case (monitor ^. _runningBuilds) HM.!? id' of
-      Just build -> build ^. _name
-      Nothing -> T.show id'
-
-renderLogs :: Monitor -> Widget n
-renderLogs monitor =
-  vBox . map (uncurry renderLog) . V.toList $ V.drop (V.length logs - 20) logs
- where
-  logs = monitor ^. _logs
-
-  renderLog :: Text -> Text -> Widget n
-  renderLog name logLine = txt $ "<" <> name <> "> " <> logLine
-
 renderMonitor :: Monitor -> Widget n
 renderMonitor monitor =
-  renderLogs monitor
-    <=> txt ("┗━ ∑ ⏵ " <> runningBuilds' <> " │ ✔ " <> completedBuilds' <> " │ ⏸ " <> waitingBuilds' <> " │ ⏱ 46s")
+  txt ("┗━ ∑ ⏵ " <> runningBuilds' <> " │ ✔ " <> completedBuilds' <> " │ ⏸ " <> waitingBuilds' <> " │ ⏱ 46s")
  where
   runningBuilds' = T.show . HM.size $ monitor ^. _runningBuilds
   completedBuilds' = T.show . HM.size $ monitor ^. _completedBuilds

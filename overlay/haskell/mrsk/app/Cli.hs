@@ -25,7 +25,7 @@ import Cli.Machine (
   renderMachines,
   _state,
  )
-import Cli.Monitor (Monitor, emptyMonitor, monitorCompletedBuild, monitorLogLine, monitorStartedBuild, renderMonitor)
+import Cli.Monitor (Monitor, emptyMonitor, monitorCompletedBuild, monitorStartedBuild, renderMonitor)
 import Cli.Prompt (
   Prompt,
   PromptItem (PromptItem'Freeform, confidential, prompt, response'text),
@@ -70,7 +70,7 @@ import Effectful.Concurrent.Async (AsyncCancelled (..), link, withAsync)
 import Effectful.Concurrent.Chan (Chan, newChan, readChan, writeChan)
 import Effectful.Concurrent.MVar.Strict (MVar', newEmptyMVar', putMVar', takeMVar')
 import Effectful.Dispatch.Dynamic
-import Effectful.Exception (catch, finally)
+import Effectful.Exception (catch, finally, onException)
 import Effectful.FileSystem.IO (FileSystem, IOMode (WriteMode), withFile)
 import Effectful.FileSystem.IO.ByteString qualified as BS
 import Effectful.Monad.Logger (Logger, logDebugN, logErrorN)
@@ -221,7 +221,7 @@ runCliEffect Config{nom, dumpLog} eff = do
 
   chan <- newChan
   mainThread <- myThreadId
-  withAsync (mainLoop chan >> throwTo mainThread AsyncCancelled) \a -> do
+  withAsync (mainLoop chan `finally` throwTo mainThread AsyncCancelled) \a -> do
     link a
     ( maybeWithDump \sendToDump ->
         maybeWithNom \sendToNom ->
@@ -261,6 +261,16 @@ eventConfirmExit unlift (VtyEvent (EvKey KEnter [])) = do
   pure False
 eventConfirmExit _ _ = pure True
 
+splitAndParseLogLine :: Text -> [Widget n]
+splitAndParseLogLine logLine =
+  (`map` (filter (not . T.null) $ T.lines logLine)) \singleLine ->
+    case Atto.parseOnly parseSomething singleLine of
+      Right message ->
+        hBox
+          . map (\(attr, text) -> modifyDefAttr (const attr) (txt text))
+          $ escapeCodeToBrick message defAttr
+      Left err -> txt $ "could not parse Nix message" <> T.show err
+
 myEvent
   :: (Concurrent :> es, Logger :> es, Nix :> es, RequireCallStack)
   => (forall a. Eff es a -> IO a) -> BrickEvent Name CliMessage -> EventM Name CliState ()
@@ -270,19 +280,10 @@ myEvent unlift (AppEvent CliMessage'NixInternalLog{internalLog = internalLog'}) 
     Right (Start MkStartAction{id = id', activity = Build derivation _host}) ->
       use _monitor >>= (liftIO . unlift . monitorStartedBuild id' derivation) >>= (_monitor .=)
     Right (Stop MkStopAction{id = id'}) -> _monitor %= (`monitorCompletedBuild` id')
-    Right (Result MkResultAction{id = id', result = BuildLogLine logLine}) -> do
-      _monitor %= monitorLogLine id' logLine
-    Right (Message MkMessageAction{message = message'}) -> do
-      forM_ (T.lines message') \singleLine ->
-        case Atto.parseOnly parseSomething singleLine of
-          Right message ->
-            _nixMessages %= \i ->
-              ScrollableList.addItem
-                ( hBox
-                    (map (\(attr, text) -> modifyDefAttr (const attr) (txt text)) $ escapeCodeToBrick message defAttr)
-                )
-                i
-          Left err -> liftIO . unlift $ logDebugN ("could not parse Nix message" <> T.show err)
+    Right (Result MkResultAction{id = id', result = BuildLogLine logLine}) ->
+      _nixMessages %= \sl -> (foldl (flip ScrollableList.addItem) sl (splitAndParseLogLine logLine))
+    Right (Message MkMessageAction{message = message'}) ->
+      _nixMessages %= \sl -> (foldl (flip ScrollableList.addItem) sl (splitAndParseLogLine message'))
     Right _internalLog -> pure ()
 -- liftIO . unlift . logDebugN $ T.show internalLog
 myEvent _ (AppEvent CliMessage'BuildStarted{machine}) = _machines . at machine .= Just MachineState'Building
@@ -346,15 +347,15 @@ mainLoop chan =
               [ vLimitPercent 100 . vBox $
                   [ renderMachines altListAttr machines
                   , hBorder
-                  , padBottom Max $ ScrollableList.render LogScroll id nixMessages
+                  , padBottom Max $ ScrollableList.render LogScroll (vLimit 1) nixMessages
                   , renderMonitor monitor
                   , renderPrompt prompt
                   ]
                     ++ maybe
                       []
                       ( \c -> case c ^. _mException of
-                          Just exception -> [padTop Max $ txt ("confirm exit: " <> T.show exception)]
-                          Nothing -> [padTop Max $ txt "confirm exit"]
+                          Just exception -> [txt ("confirm exit: " <> T.show exception)]
+                          Nothing -> [txt "confirm exit"]
                       )
                       confirmExit
               ]
@@ -366,11 +367,15 @@ mainLoop chan =
 
     eventChan <- liftIO $ newBChan 10
     mainThread <- unlift $ myThreadId
-    unlift $ withAsync (forever (readChan chan >>= liftIO . writeBChan eventChan) >> throwTo mainThread AsyncCancelled) \_ -> do
-      let buildVty = Graphics.Vty.CrossPlatform.mkVty Graphics.Vty.Config.defaultConfig
-      initialVty <- liftIO $ buildVty
-      _ <- liftIO $ customMain initialVty buildVty (Just eventChan) app initialCliState
-      pure ()
+    unlift $ withAsync
+      ( forever (readChan chan >>= liftIO . writeBChan eventChan)
+          `onException` throwTo mainThread AsyncCancelled
+      )
+      \_ -> do
+        let buildVty = Graphics.Vty.CrossPlatform.mkVty Graphics.Vty.Config.defaultConfig
+        initialVty <- liftIO $ buildVty
+        _ <- liftIO $ customMain initialVty buildVty (Just eventChan) app initialCliState
+        pure ()
 
 -- Use finalState and exit
 

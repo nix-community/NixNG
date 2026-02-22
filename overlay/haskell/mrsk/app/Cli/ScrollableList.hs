@@ -23,6 +23,7 @@ import Data.Functor ((<&>))
 import Data.Text qualified as T
 import Data.Vector (Vector)
 import Data.Vector qualified as V
+import Debug.Trace (trace)
 import Effectful (Eff, (:>))
 import Effectful.Monad.Logger (Logger, logDebugN)
 import Graphics.Vty.Input (Event (EvKey), Key (KPageDown, KPageUp))
@@ -47,35 +48,46 @@ addItem item sl = sl & _items %~ (`V.snoc` item) & if (sl ^. _offset) /= 0 then 
 
 data PageDirection = PageDown | PageUp
 
-scrollPage :: PageDirection -> Maybe (Extent n) -> ScrollableList a -> ScrollableList a
-scrollPage _ Nothing = id
-scrollPage pageDirection (Just (Extent _ _ (_, height))) = _offset %~ (max 0 . (+ amount))
+scrollPage :: PageDirection -> Int -> ScrollableList a -> ScrollableList a
+scrollPage _ 0 = id
+scrollPage pageDirection height = scroll height amount
  where
   amount = case pageDirection of
     PageUp -> 1 * height
     PageDown -> -1 * height
 
+scroll :: Int -> Int -> ScrollableList a -> ScrollableList a
+scroll height amount list
+  | amount < 0 =
+      list
+        { offset = max 0 (offset + amount)
+        }
+  | amount > 0 =
+      list
+        { offset = min (length items - height) (offset + amount)
+        }
+  | otherwise = list
+ where
+  offset = list ^. _offset
+  items = list ^. _items
+
 handleEvent
   :: (Eq n, Logger :> es, RequireCallStack)
   => n -> (forall _a. Eff es _a -> IO _a) -> BrickEvent n m -> EventM n (ScrollableList a) ()
-handleEvent _ unlift (VtyEvent (EvKey KDown [])) = do
-  _offset %= (max 0 . (+ (-1)))
-  offset <- use _offset
-  liftIO . unlift $ logDebugN ("scrolled to " <> T.show offset)
-handleEvent name unlift (VtyEvent (EvKey KUp [])) = do
+handleEvent name _ (VtyEvent (EvKey KDown [])) = do
   height <- lookupExtent name <&> maybe 0 ((^. _2) . extentSize)
-  items <- use _items
-  _offset %= (min (length items - height) . (+ 1))
-  offset <- use _offset
-  liftIO . unlift $ logDebugN ("scrolled to " <> T.show offset <> " length " <> T.show (length items))
+  modify $ scroll height (-1)
+handleEvent name _ (VtyEvent (EvKey KUp [])) = do
+  height <- lookupExtent name <&> maybe 0 ((^. _2) . extentSize)
+  modify $ scroll height 1
 handleEvent name _ (VtyEvent (EvKey KPageUp [])) = do
-  mExtent <- lookupExtent name
+  height <- lookupExtent name <&> maybe 0 ((^. _2) . extentSize)
 
-  modify (scrollPage PageUp mExtent)
+  modify (scrollPage PageUp height)
 handleEvent name _ (VtyEvent (EvKey KPageDown [])) = do
-  mExtent <- lookupExtent name
+  height <- lookupExtent name <&> maybe 0 ((^. _2) . extentSize)
 
-  modify (scrollPage PageDown mExtent)
+  modify (scrollPage PageDown height)
 handleEvent _ _ _ = pure ()
 
 takeEnd :: Int -> Vector a -> Vector a
@@ -91,7 +103,8 @@ render name renderItem ScrollableList{items, offset} =
     , vSize = Greedy
     , render = do
         c <- getContext
-        Brick.render $
+        let items' = V.map renderItem . takeEnd (c ^. availHeightL) . dropEnd offset $ items
+        trace (show (c ^. availHeightL, V.length items')) . Brick.render $
           reportExtent name $
-            (vBox (V.toList . takeEnd (c ^. availHeightL) . dropEnd offset . V.map renderItem $ items))
+            (vBox (V.toList items'))
     }
