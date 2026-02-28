@@ -1,0 +1,66 @@
+cabal-version:      3.4
+name:               nixng
+version:            0.1.0.0
+-- synopsis:
+-- description:
+homepage:
+    https://github.com/MagicRB/NixNG/tree/feat/environment/overlay/haskell/nixng
+
+license:            MPL-2.0
+license-file:       LICENSE
+author:             magic_rb
+maintainer:         magic_rb@redalder.org
+category:           System
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+
+common warnings
+    ghc-options: -Wall
+
+library
+    import:           warnings
+    exposed-modules:
+        System.NixNG.TH,
+        System.NixNG.SomePath,
+        Nix.Select,
+    build-depends:
+        base ^>=4.20.2.0,
+        microlens,
+        microlens-th,
+        template-haskell,
+        text,
+        bytestring,
+        typed-process,
+        path,
+        aeson,
+        exceptions,
+        hashable,
+        unix,
+        mtl,
+        unliftio,
+        optparse-applicative,
+        nix-derivation,
+        attoparsec,
+    hs-source-dirs:   src
+    default-language: GHC2021
+    default-extensions:
+        BlockArguments,
+        OverloadedStrings,
+        DeriveAnyClass,
+        DerivingStrategies,
+        LambdaCase,
+        TemplateHaskell,
+        QuasiQuotes,
+        FunctionalDependencies,
+        NoFieldSelectors,
+        DuplicateRecordFields,
+
+test-suite nixng-test
+    import:           warnings
+    default-language: GHC2021
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          Main.hs
+    build-depends:
+        base ^>=4.20.2.0,
+        nixng
