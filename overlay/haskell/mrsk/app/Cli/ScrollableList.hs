@@ -103,8 +103,12 @@ render name renderItem ScrollableList{items, offset} =
     , vSize = Greedy
     , render = do
         c <- getContext
-        let items' = V.map renderItem . takeEnd (c ^. availHeightL) . dropEnd offset $ items
-        trace (show (c ^. availHeightL, V.length items')) . Brick.render $
-          reportExtent name $
-            (vBox (V.toList items'))
+        Brick.render
+          . reportExtent name
+          . vBox
+          . V.toList
+          . V.map renderItem
+          . takeEnd (c ^. availHeightL)
+          . dropEnd offset
+          $ items
     }
