@@ -45,27 +45,28 @@ import System.NixNG.SomePath (SomePath)
 infixr 8 .:
 
 data Nix :: Effect where
-  NixBuild :: NixTarget Select.Build -> Nix m [Either (Path Abs Dir) (Path Abs File)]
-  NixEval :: (FromJSON a) => NixTarget Select.Eval -> Nix m a
-  NixCopy :: SomePath Abs -> Text -> Text -> Nix m ()
+  NixBuild :: Text -> NixTarget Select.Build -> Nix m [Either (Path Abs Dir) (Path Abs File)]
+  NixEval :: (FromJSON a) => Text -> NixTarget Select.Eval -> Nix m a
+  NixCopy :: Text -> SomePath Abs -> Text -> Text -> Nix m ()
   NixDerivationShow :: Path Abs File -> Nix m (Derivation Text Text)
-  NixSelect :: (FromJSON a) => [([Selector], A.Value -> A.Value)] -> Text -> Nix (Eff es) [a]
+  NixSelect :: (FromJSON a) => Text -> [([Selector], A.Value -> A.Value)] -> Text -> Nix (Eff es) [a]
 type instance DispatchOf Nix = Dynamic
 
-nixBuild :: (HasCallStack, Nix :> es) => NixTarget Select.Build -> Eff es [Either (Path Abs Dir) (Path Abs File)]
-nixBuild target = send (NixBuild target)
+nixBuild
+  :: (HasCallStack, Nix :> es) => Text -> NixTarget Select.Build -> Eff es [Either (Path Abs Dir) (Path Abs File)]
+nixBuild machine target = send (NixBuild machine target)
 
-nixEval :: forall a es. (FromJSON a, HasCallStack, Nix :> es) => NixTarget Select.Eval -> Eff es a
-nixEval target = send (NixEval target)
+nixEval :: forall a es. (FromJSON a, HasCallStack, Nix :> es) => Text -> NixTarget Select.Eval -> Eff es a
+nixEval machine target = send (NixEval machine target)
 
-nixCopy :: forall es. (HasCallStack, Nix :> es) => SomePath Abs -> Text -> Text -> Eff es ()
-nixCopy storePath remoteUser targetHost = send (NixCopy storePath remoteUser targetHost)
+nixCopy :: forall es. (HasCallStack, Nix :> es) => Text -> SomePath Abs -> Text -> Text -> Eff es ()
+nixCopy machine storePath remoteUser targetHost = send (NixCopy machine storePath remoteUser targetHost)
 
 nixDerivationShow :: (HasCallStack, Nix :> es) => Path Abs File -> Eff es (Derivation Text Text)
 nixDerivationShow derivation = send (NixDerivationShow derivation)
 
-nixSelect :: (FromJSON a, HasCallStack, Nix :> es) => [([Selector], A.Value -> A.Value)] -> Text -> Eff es [a]
-nixSelect selectors flakeRef = send (NixSelect selectors flakeRef)
+nixSelect :: (FromJSON a, HasCallStack, Nix :> es) => Text -> [([Selector], A.Value -> A.Value)] -> Text -> Eff es [a]
+nixSelect machine selectors flakeRef = send (NixSelect machine selectors flakeRef)
 
 data HandlesUpdated = HandlesUpdated
   deriving (Show)
@@ -74,7 +75,7 @@ instance Exception HandlesUpdated
 runNixEffect
   :: forall es a
    . (Concurrent :> es, FileSystem :> es, IOE :> es, Logger :> es, RequireCallStack)
-  => (Handle -> IO ()) -> Eff (Nix : es) a -> Eff es a
+  => (Text -> Handle -> IO ()) -> Eff (Nix : es) a -> Eff es a
 runNixEffect tailer eff = do
   readers <- newMVar' HS.empty
 
@@ -82,16 +83,16 @@ runNixEffect tailer eff = do
     catchEOF :: Eff es () -> (IOException -> Eff es ()) -> Eff es ()
     catchEOF = catchIf isEOFError
 
-    addHandle stderr = mask_ do
-      a <- async (liftIO (tailer stderr) `catchEOF` const (pure ()))
+    addHandle machine stderr = mask_ do
+      a <- async (liftIO (tailer machine stderr) `catchEOF` const (pure ()))
       modifyMVar'_ readers (pure . HS.insert a)
 
   ( eff & interpret \_ val -> case val of
-      NixBuild target -> Select.nixBuild target addHandle
-      NixEval target -> Select.nixEval target addHandle
-      NixCopy storePath remoteUser targetHost -> Select.nixCopy storePath remoteUser targetHost addHandle
+      NixBuild machine target -> Select.nixBuild target (addHandle machine)
+      NixEval machine target -> Select.nixEval target (addHandle machine)
+      NixCopy machine storePath remoteUser targetHost -> Select.nixCopy storePath remoteUser targetHost (addHandle machine)
       NixDerivationShow derivation -> Select.nixDerivationShow derivation
-      NixSelect selectors flakeRef -> Select.select selectors flakeRef addHandle
+      NixSelect machine selectors flakeRef -> Select.select selectors flakeRef (addHandle machine)
     )
     `finally` do
       readers' <- takeMVar' readers

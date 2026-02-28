@@ -104,6 +104,7 @@ data NixOSConfiguration
 getNixOSConfigurationMetadata :: (Nix :> es) => [Text] -> Text -> Eff es (HashMap Text (Maybe NixOSConfiguration))
 getNixOSConfigurationMetadata hosts flake =
   nixSelect
+    "none"
     [
       (
         [ SelectorStr "nixosConfigurations"
@@ -126,6 +127,7 @@ getNixOSConfigurationMetadata hosts flake =
 getNixOSConfigurations :: (Nix :> es) => Maybe [Text] -> Text -> Eff es [Text]
 getNixOSConfigurations hosts flake =
   nixSelect
+    "none"
     [
       (
         [ SelectorStr "nixosConfigurations"
@@ -189,7 +191,7 @@ mrsk Options{command = Replay{nixInternalLog, rate}} = do
     Just nixInternalLog' -> liftIO (BSL.readFile (toFilePath nixInternalLog')) <&> BSL.lines
     Nothing -> liftIO (BSL.hGetContents stdin) <&> BSL.lines
 
-  forM_ lines' \line -> delay <* tellNixInternalLog (BS.toStrict line)
+  forM_ lines' \line -> delay <* tellNixInternalLog "none" (BS.toStrict line)
  where
   second :: Float = 1.0
   delay = case rate of
@@ -214,17 +216,17 @@ mrsk Options{command = Deploy{hosts, flake, sudo, action}} = do
 
                        derivation <-
                          let attr = "nixosConfigurations.\"" <> configuration <> "\".config.system.build.toplevel.drvPath"
-                          in (nixEval @Text . NixFlake $ flake <> "#" <> attr) >>= parseAbsFile . T.unpack
+                          in (nixEval configuration . NixFlake $ flake <> "#" <> attr) >>= parseAbsFile . T.unpack
 
                        logDebugN "finished evaluation"
 
                        logDebugN "starting build"
                        tellBuildStarted configuration
 
-                       storePath <- nixBuild (NixDerivation derivation) <&> fromLeft undefined . head
+                       storePath <- nixBuild configuration (NixDerivation derivation) <&> fromLeft undefined . head
                        logDebugN "finished build"
 
-                       tellCopyStarted configuration <* nixCopy (SomePath storePath) remoteUser targetHost
+                       tellCopyStarted configuration <* nixCopy configuration (SomePath storePath) remoteUser targetHost
 
                        tellDeploymentStarted configuration
                        logDebugN "starting deploy"
@@ -261,7 +263,7 @@ runSomeLogging Logging'Stderr = runStderrLogging
 
 main :: IO ()
 main = do
-  queue :: IO.MVar (Chan ByteString) <- IO.newEmptyMVar
+  queue :: IO.MVar (Chan (Text, ByteString)) <- IO.newEmptyMVar
 
   provideCallStack $
     liftIO (execParser options) >>= \opts@Options{logging, nom, command, dumpLog} ->
@@ -284,14 +286,14 @@ main = do
               (mrsk opts >> askConfirmExit Nothing)
               (askConfirmExit . Just)
  where
-  tailer :: IO.MVar (Chan ByteString) -> Handle -> IO ()
-  tailer queue h = do
+  tailer :: IO.MVar (Chan (Text, ByteString)) -> Text -> Handle -> IO ()
+  tailer queue machine h = do
     queue' <- IO.readMVar queue
-    BSL.hGetContents h >>= mapM_ (IO.writeChan queue' . BSL.toStrict) . BSL.lines
+    BSL.hGetContents h >>= mapM_ (IO.writeChan queue' . (machine,) . BSL.toStrict) . BSL.lines
 
   effectStack
     :: (RequireCallStack)
-    => IO.MVar (Chan ByteString)
+    => IO.MVar (Chan (Text, ByteString))
     -> Logging
     -> Maybe (Path Abs File)
     -> Bool
@@ -312,4 +314,4 @@ main = do
       . runCliEffect Cli.Config{nom, dumpLog}
       . runEnvironment
       . runRemote
-      $ withAsync (forever (readChan queue' >>= tellNixInternalLog)) \a -> link a >> eff
+      $ withAsync (forever (readChan queue' >>= uncurry tellNixInternalLog)) \a -> link a >> eff

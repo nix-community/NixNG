@@ -35,7 +35,7 @@ import Cli.Prompt (
   promptAddItem,
   renderPrompt,
  )
-import Cli.ScrollableList (ScrollableList)
+import Cli.ScrollableList (ScrollableList, _offset)
 import Cli.ScrollableList qualified as ScrollableList
 import Common (withChildReader)
 import Control.Exception (ExceptionWithContext)
@@ -106,7 +106,7 @@ data CliEffect :: Effect where
   TellDeploymentStarted :: {machine :: Text} -> CliEffect m ()
   TellDeploymentFinished :: {machine :: Text, exitCode :: ExitCode, output :: Text} -> CliEffect m ()
   TellException :: {machine :: Text, exception :: (ExceptionWithContext SomeException)} -> CliEffect m ()
-  TellNixInternalLog :: {internalLog :: ByteString} -> CliEffect m ()
+  TellNixInternalLog :: {machine :: Text, internalLog :: ByteString} -> CliEffect m ()
   AskReadLine :: {prompt :: Text} -> CliEffect m Text
   AskConfirmExit :: {mException :: Maybe SomeException} -> CliEffect m ()
 type instance DispatchOf CliEffect = Dynamic
@@ -118,7 +118,7 @@ data CliMessage
   | CliMessage'DeploymentStarted {machine :: Text}
   | CliMessage'DeploymentFinished {machine :: Text, exitCode :: ExitCode, output :: Text}
   | CliMessage'Exception {machine :: Text, exception :: ExceptionWithContext SomeException}
-  | CliMessage'NixInternalLog {internalLog :: ByteString}
+  | CliMessage'NixInternalLog {machine :: Text, internalLog :: ByteString}
   | CliMessage'Readline {prompt :: Text, response :: MVar' Text}
   | CliMessage'ConfirmExit {mException :: Maybe SomeException, confirmed :: MVar' ()}
 
@@ -134,7 +134,7 @@ data CliState = CliState
   , prompt :: Prompt
   , monitor :: Monitor
   , confirmExit :: Maybe Cli'ConfirmExit
-  , nixMessages :: ScrollableList (Widget Name)
+  , nixMessages :: ScrollableList Text (Widget Name)
   }
 
 data Name = LogScroll
@@ -178,8 +178,8 @@ tellDeploymentFinished machine exitCode output = send (TellDeploymentFinished{ma
 tellException :: (CliEffect :> es, HasCallStack) => Text -> ExceptionWithContext SomeException -> Eff es ()
 tellException machine exception = send (TellException{machine, exception})
 
-tellNixInternalLog :: (CliEffect :> es, HasCallStack) => ByteString -> Eff es ()
-tellNixInternalLog internalLog = send (TellNixInternalLog{internalLog})
+tellNixInternalLog :: (CliEffect :> es, HasCallStack) => Text -> ByteString -> Eff es ()
+tellNixInternalLog machine internalLog = send (TellNixInternalLog{machine, internalLog})
 
 askReadLine :: (CliEffect :> es, HasCallStack) => Text -> Eff es Text
 askReadLine prompt = send (AskReadLine{prompt})
@@ -232,10 +232,10 @@ runCliEffect Config{nom, dumpLog} eff = do
             TellDeploymentStarted{machine} -> writeChan chan CliMessage'DeploymentStarted{machine}
             TellDeploymentFinished{machine, exitCode, output} -> writeChan chan CliMessage'DeploymentFinished{machine, exitCode, output}
             TellException{machine, exception} -> writeChan chan CliMessage'Exception{machine, exception}
-            TellNixInternalLog{internalLog} -> do
+            TellNixInternalLog{machine, internalLog} -> do
               sendToNom internalLog
               sendToDump internalLog
-              writeChan chan CliMessage'NixInternalLog{internalLog}
+              writeChan chan CliMessage'NixInternalLog{machine, internalLog}
             AskReadLine{prompt} -> do
               response <- newEmptyMVar'
 
@@ -274,16 +274,16 @@ splitAndParseLogLine logLine =
 myEvent
   :: (Concurrent :> es, Logger :> es, Nix :> es, RequireCallStack)
   => (forall a. Eff es a -> IO a) -> BrickEvent Name CliMessage -> EventM Name CliState ()
-myEvent unlift (AppEvent CliMessage'NixInternalLog{internalLog = internalLog'}) =
-  case parseJSONLine internalLog' of
-    Left err -> liftIO . unlift . logErrorN $ "Could not deserialize: " <> T.show (T.decodeUtf8' internalLog') <> T.pack err
+myEvent unlift (AppEvent CliMessage'NixInternalLog{internalLog, machine}) =
+  case parseJSONLine internalLog of
+    Left err -> liftIO . unlift . logErrorN $ "Could not deserialize: " <> T.show (T.decodeUtf8' internalLog) <> T.pack err
     Right (Start MkStartAction{id = id', activity = Build derivation _host}) ->
       use _monitor >>= (liftIO . unlift . monitorStartedBuild id' derivation) >>= (_monitor .=)
     Right (Stop MkStopAction{id = id'}) -> _monitor %= (`monitorCompletedBuild` id')
-    Right (Result MkResultAction{id = id', result = BuildLogLine logLine}) ->
-      _nixMessages %= \sl -> (foldl (flip ScrollableList.addItem) sl (splitAndParseLogLine logLine))
+    Right (Result MkResultAction{result = BuildLogLine logLine}) ->
+      _nixMessages %= \sl -> (foldl (flip (ScrollableList.addItem machine)) sl (splitAndParseLogLine logLine))
     Right (Message MkMessageAction{message = message'}) ->
-      _nixMessages %= \sl -> (foldl (flip ScrollableList.addItem) sl (splitAndParseLogLine message'))
+      _nixMessages %= \sl -> (foldl (flip (ScrollableList.addItem machine)) sl (splitAndParseLogLine message'))
     Right _internalLog -> pure ()
 -- liftIO . unlift . logDebugN $ T.show internalLog
 myEvent _ (AppEvent CliMessage'BuildStarted{machine}) = _machines . at machine .= Just MachineState'Building
@@ -347,7 +347,7 @@ mainLoop chan =
               [ vLimitPercent 100 . vBox $
                   [ renderMachines altListAttr machines
                   , hBorder
-                  , padBottom Max $ ScrollableList.render LogScroll (vLimit 1) nixMessages
+                  , padBottom Max $ ScrollableList.render LogScroll (vLimit 1) Nothing nixMessages
                   , renderMonitor monitor
                   , renderPrompt prompt
                   ]
