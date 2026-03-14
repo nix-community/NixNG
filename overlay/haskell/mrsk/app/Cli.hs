@@ -66,7 +66,7 @@ import Effectful (
   (:>),
  )
 import Effectful.Concurrent (Concurrent, ThreadId, myThreadId, throwTo)
-import Effectful.Concurrent.Async (AsyncCancelled (..), link, withAsync)
+import Effectful.Concurrent.Async (withAsync)
 import Effectful.Concurrent.Chan (Chan, newChan, readChan, writeChan)
 import Effectful.Concurrent.MVar.Strict (MVar', newEmptyMVar', putMVar', takeMVar')
 import Effectful.Dispatch.Dynamic
@@ -98,6 +98,7 @@ import Path.Posix (Abs, File, Path, toFilePath)
 import RequireCallStack (RequireCallStack)
 import System.NixNG.TH (duplicateRules)
 import System.Posix (OpenMode (..))
+import Util (catchSomeUnlessCancel)
 
 data CliEffect :: Effect where
   TellBuildStarted :: {machine :: Text} -> CliEffect m ()
@@ -221,35 +222,32 @@ runCliEffect Config{nom, dumpLog} eff = do
 
   chan <- newChan
   mainThread <- myThreadId
-  withAsync (mainLoop chan `finally` throwTo mainThread AsyncCancelled) \a -> do
-    link a
-    ( maybeWithDump \sendToDump ->
-        maybeWithNom \sendToNom ->
-          eff & interpret \_ -> \case
-            TellBuildStarted{machine} -> writeChan chan CliMessage'BuildStarted{machine}
-            TellEvaluationStarted{machine} -> writeChan chan CliMessage'EvaluationStarted{machine}
-            TellCopyStarted{machine} -> writeChan chan CliMessage'CopyStarted{machine}
-            TellDeploymentStarted{machine} -> writeChan chan CliMessage'DeploymentStarted{machine}
-            TellDeploymentFinished{machine, exitCode, output} -> writeChan chan CliMessage'DeploymentFinished{machine, exitCode, output}
-            TellException{machine, exception} -> writeChan chan CliMessage'Exception{machine, exception}
-            TellNixInternalLog{machine, internalLog} -> do
-              sendToNom internalLog
-              sendToDump internalLog
-              writeChan chan CliMessage'NixInternalLog{machine, internalLog}
-            AskReadLine{prompt} -> do
-              response <- newEmptyMVar'
+  withAsync (mainLoop chan `catchSomeUnlessCancel` throwTo mainThread) \_ -> do
+    maybeWithDump \sendToDump ->
+      maybeWithNom \sendToNom ->
+        eff & interpret \_ -> \case
+          TellBuildStarted{machine} -> writeChan chan CliMessage'BuildStarted{machine}
+          TellEvaluationStarted{machine} -> writeChan chan CliMessage'EvaluationStarted{machine}
+          TellCopyStarted{machine} -> writeChan chan CliMessage'CopyStarted{machine}
+          TellDeploymentStarted{machine} -> writeChan chan CliMessage'DeploymentStarted{machine}
+          TellDeploymentFinished{machine, exitCode, output} -> writeChan chan CliMessage'DeploymentFinished{machine, exitCode, output}
+          TellException{machine, exception} -> writeChan chan CliMessage'Exception{machine, exception}
+          TellNixInternalLog{machine, internalLog} -> do
+            sendToNom internalLog
+            sendToDump internalLog
+            writeChan chan CliMessage'NixInternalLog{machine, internalLog}
+          AskReadLine{prompt} -> do
+            response <- newEmptyMVar'
 
-              writeChan chan CliMessage'Readline{prompt, response}
+            writeChan chan CliMessage'Readline{prompt, response}
 
-              takeMVar' response
-            AskConfirmExit{mException} -> do
-              confirmed <- newEmptyMVar'
+            takeMVar' response
+          AskConfirmExit{mException} -> do
+            confirmed <- newEmptyMVar'
 
-              writeChan chan CliMessage'ConfirmExit{mException, confirmed}
+            writeChan chan CliMessage'ConfirmExit{mException, confirmed}
 
-              takeMVar' confirmed
-      )
-      `catch` \AsyncCancelled -> pure ()
+            takeMVar' confirmed
 
 eventConfirmExit
   :: (Concurrent :> es, Logger :> es, RequireCallStack)
@@ -366,10 +364,10 @@ mainLoop chan =
           }
 
     eventChan <- liftIO $ newBChan 10
-    mainThread <- unlift $ myThreadId
     unlift $ withAsync
       ( forever (readChan chan >>= liftIO . writeBChan eventChan)
-          `onException` throwTo mainThread AsyncCancelled
+          `catchSomeUnlessCancel` \exception ->
+            newEmptyMVar' >>= \confirmed -> liftIO $ writeBChan eventChan (CliMessage'ConfirmExit{mException = Just exception, confirmed})
       )
       \_ -> do
         let buildVty = Graphics.Vty.CrossPlatform.mkVty Graphics.Vty.Config.defaultConfig

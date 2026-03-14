@@ -92,6 +92,7 @@ import Remote (
 import Remote.Far (serveFar)
 import RequireCallStack (RequireCallStack, provideCallStack)
 import System.NixNG.SomePath (SomePath (SomePath))
+import Util (catchSomeUnlessCancel)
 
 data NixOSConfiguration
   = NixOSConfiguration
@@ -281,8 +282,7 @@ main = do
               logErrorN ("Far side caught exception: " <> T.show exception)
         _ ->
           effectStack queue logging dumpLog nom $
-            catchIf
-              (\exc -> case fromException exc of Just AsyncCancelled -> False; _ -> True)
+            catchSomeUnlessCancel
               (mrsk opts >> askConfirmExit Nothing)
               (askConfirmExit . Just)
  where
@@ -314,4 +314,4 @@ main = do
       . runCliEffect Cli.Config{nom, dumpLog}
       . runEnvironment
       . runRemote
-      $ withAsync (forever (readChan queue' >>= uncurry tellNixInternalLog)) \a -> link a >> eff
+      $ withAsync (forever (readChan queue' >>= uncurry tellNixInternalLog) `catchSomeUnlessCancel` (askConfirmExit . Just)) \a -> link a >> eff
