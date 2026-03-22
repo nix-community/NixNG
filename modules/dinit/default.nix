@@ -44,7 +44,7 @@ let
     let
       rules = (nglib.nottmpfiles.ensureSomethings service.ensureSomething) ++ service.tmpfiles;
       rulesFile = pkgs.writeText "${name}.tmpfiles" (nglib.nottmpfiles.generate rules);
-      filehammerEtcService = "file-hammer@" + nglib.escapeSystemdPath "/etc";
+      filehammerEtcService = "file-hammer_" + nglib.escapeSystemdPath "/etc";
     in
     pkgs.writeText "${name}-service" ''
       type = ${service.type}
@@ -166,7 +166,10 @@ in
           # Run activation script for this system
           "$_system_config/activation"
 
-          exec ${lib.getExe pkgs.dinit} -d /sv -s
+          exec ${lib.getExe pkgs.dinit} \
+            --services-dir /sv \
+            --system-mgr \
+            --container
         '';
 
         shutdown = pkgs.writeShellScript "dinit-shutdown" ''

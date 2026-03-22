@@ -27,22 +27,24 @@ index e4a9753..3fc7022 100644
  
      bool export_passwd_vars = false;
      bool export_service_name = false;
-@@ -1514,7 +1516,7 @@ void process_service_line(settings_wrapper &settings, const char *name, const ch
+@@ -1514,9 +1516,8 @@ void process_service_line(settings_wrapper &settings, const char *name, const ch
              settings.working_dir = read_setting_value(input_pos, i, end, nullptr);
              break;
          case setting_id_t::ENV_FILE:
--            settings.env_file = read_setting_value(input_pos, i, end, nullptr);
-+	    read_setting_value(settings.env_file, setting_op, input_pos, i, end, &settings.env_file_offsets);
+-            settings.env_file = read_value_resolved(details->setting_str, input_pos, i, end,
+-                    service_arg, lookup_var);
++	     read_setting_value(settings.env_file, setting_op, input_pos, i, end, &settings.env_file_offsets);
              break;
          #if SUPPORT_CGROUPS
          case setting_id_t::RUN_IN_CGROUP:
+
 diff --git a/src/load-service.cc b/src/load-service.cc
-index fd4f46b..2c45cb5 100644
+index 1177bfa..20f84a8 100644
 --- a/src/load-service.cc
 +++ b/src/load-service.cc
-@@ -548,20 +548,23 @@ service_record * dirload_service_set::load_reload_service(const char *fullname,
-         // and so we need to calculate a fresh mapping on each process invocation).
-         environment::env_map srv_envmap;
+@@ -580,17 +580,20 @@ service_record *dirload_service_set::load_reload_service(const char *fullname,
+             srv_env.set_var(std::move(envname));
+         }
  
 -        if (!settings.env_file.empty()) {
 -            try {
@@ -53,33 +55,28 @@ index fd4f46b..2c45cb5 100644
 -                else {
 -                    std::string fullpath = combine_paths(service_dsc_dir, settings.env_file.c_str());
 -                    read_env_file(fullpath.c_str(), false, srv_env, true);
--                }
++        for (pair<unsigned, unsigned>& env_offset : settings.env_file_offsets) {
++            std::string env = settings.env_file.substr(env_offset.first, env_offset.second - env_offset.first);
++            if (!env.empty()) {
++                try {
++                    if (env[0] == '/') {
++                        // (don't allocate a string if we don't have to)
++                        read_env_file(env.c_str(), false, srv_env, true);
++                    }
++                    else {
++                        std::string fullpath = combine_paths(service_dsc_dir, env.c_str());
++                        read_env_file(fullpath.c_str(), false, srv_env, true);
++                    }
++                } catch (const std::system_error &se) {
++                    throw service_load_exc(name, std::string("could not load environment file: ") + se.what());
+                 }
 -            } catch (const std::system_error &se) {
 -                throw service_load_exc(name, std::string("could not load environment file: ") + se.what());
--            }
--        }
-+	for (pair<unsigned, unsigned>& env_offset : settings.env_file_offsets) {
-+	  std::string env = settings.env_file.substr(env_offset.first, env_offset.second - env_offset.first);
-+	  if (!env.empty()) {
-+	      try {
-+		  if (env[0] == '/') {
-+		      // (don't allocate a string if we don't have to)
-+		      read_env_file(env.c_str(), false, srv_env, true);
-+		  }
-+		  else {
-+		      std::string fullpath = combine_paths(service_dsc_dir, env.c_str());
-+		      read_env_file(fullpath.c_str(), false, srv_env, true);
-+		  }
-+	      } catch (const std::system_error &se) {
-+		  throw service_load_exc(name, std::string("could not load environment file: ") + se.what());
-+	      }
-+	  }
-+	}
- 
-         srv_envmap = srv_env.build(main_env);
- 
+             }
+         }
+
 diff --git a/src/settings.cc b/src/settings.cc
-index f789bcf..945dea0 100644
+index c569d32..81a0e20 100644
 --- a/src/settings.cc
 +++ b/src/settings.cc
 @@ -10,7 +10,7 @@ setting_details all_settings[] = {
@@ -87,10 +84,9 @@ index f789bcf..945dea0 100644
          {"command",                 setting_id_t::COMMAND,                  false,  true,   true },
          {"working-dir",             setting_id_t::WORKING_DIR,              false,  true,   false},
 -        {"env-file",                setting_id_t::ENV_FILE,                 false,  true,   false},
-+        {"env-file",                setting_id_t::ENV_FILE,                 false,  true,   true },
++        {"env-file",                setting_id_t::ENV_FILE,                 false,  true,   true},
          {"socket-listen",           setting_id_t::SOCKET_LISTEN,            false,  true,   false},
          {"socket-permissions",      setting_id_t::SOCKET_PERMISSIONS,       false,  true,   false},
          {"socket-uid",              setting_id_t::SOCKET_UID,               false,  true,   false},
--- 
 2.46.0
 

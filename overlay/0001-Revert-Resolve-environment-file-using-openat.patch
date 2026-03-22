@@ -1,0 +1,328 @@
+From b9d43531c2372a5d8a3add34b40587d78baebbb7 Mon Sep 17 00:00:00 2001
+From: magic_rb <richard@brezak.sk>
+Date: Sun, 22 Mar 2026 16:29:04 +0100
+Subject: [PATCH] Revert "Resolve environment file using openat"
+
+This reverts commit 5b399df701f6529eb21594cff3126e2ca45e4266.
+---
+ src/dinit-check.cc          | 27 ++++++++++++---------------
+ src/dinit-env.cc            | 16 ++++++++++++----
+ src/dinit.cc                |  2 +-
+ src/includes/dinit-env.h    | 31 ++++++++++---------------------
+ src/includes/dinit-util.h   |  5 -----
+ src/includes/load-service.h | 33 +++------------------------------
+ src/load-service.cc         | 10 ++++++++--
+ 7 files changed, 46 insertions(+), 78 deletions(-)
+
+diff --git a/src/dinit-check.cc b/src/dinit-check.cc
+index d37dd83..96b0425 100644
+--- a/src/dinit-check.cc
++++ b/src/dinit-check.cc
+@@ -209,8 +209,7 @@ int main(int argc, char **argv)
+             };
+ 
+             try {
+-                read_env_file_inline(env_file.c_str(), AT_FDCWD, true, menv, false,
+-                        log_inv_env_setting, log_bad_env_command);
++                read_env_file_inline(env_file.c_str(), true, menv, false, log_inv_env_setting, log_bad_env_command);
+             }
+             catch (std::system_error &err) {
+                 std::cerr << DINIT_CHECK_APPNAME ": error reading environment file " << env_file
+@@ -532,7 +531,7 @@ int main(int argc, char **argv)
+                 std::cerr << " (via 'before')";
+             }
+             if (dep_it->dep_type == dependency_type::AFTER) {
+-            	std::cerr << " (via 'after')";
++                std::cerr << " (via 'after')";
+             }
+             std::cerr << "\n";
+         }
+@@ -652,8 +651,8 @@ service_record *load_service(service_set_t &services, const std::string &name,
+     string service_arg;
+     auto at_pos = name.find('@');
+     if (at_pos != string::npos) {
+-    	service_arg = name.substr(at_pos + 1);
+-    	base_name = string_view(name.data(), at_pos);
++        service_arg = name.substr(at_pos + 1);
++        base_name = string_view(name.data(), at_pos);
+     }
+ 
+     string service_wdir;
+@@ -721,7 +720,7 @@ service_record *load_service(service_set_t &services, const std::string &name,
+                         string_iterator &i, string_iterator &end) -> void {
+ 
+                     auto process_dep_dir_n = [&](std::list<prelim_dep> &deplist,
+-                    		const std::string &waitsford,
++                                const std::string &waitsford,
+                             dependency_type dep_type) -> void {
+                         const string &service_filename = input_stack.current_file_name();
+                         process_dep_dir(name.c_str(), service_filename, deplist, waitsford, dep_type);
+@@ -733,8 +732,8 @@ service_record *load_service(service_set_t &services, const std::string &name,
+ 
+                     try {
+                         process_service_line(settings, name.c_str(), service_arg.c_str(), line,
+-                        		input_pos, setting, op, i, end, load_service_n, process_dep_dir_n,
+-								resolve_var);
++                                        input_pos, setting, op, i, end, load_service_n, process_dep_dir_n,
++                                                                resolve_var);
+                     }
+                     catch (service_description_exc &exc) {
+                         if (exc.service_name.empty()) {
+@@ -784,8 +783,9 @@ service_record *load_service(service_set_t &services, const std::string &name,
+     }
+ 
+     if (!settings.env_file.empty()) {
+-        fd_holder env_resolve_fd = std::move(settings.env_file_dir_fd);
+         try {
++            std::string fullpath = combine_paths(service_wdir, settings.env_file.c_str());
++
+             auto log_inv_env_setting = [&](int line_num) {
+                 report_service_description_err(name,
+                         std::string("invalid environment variable setting in environment file "
+@@ -798,12 +798,9 @@ service_record *load_service(service_set_t &services, const std::string &name,
+                                 + " (line " + std::to_string(line_num) + ")");
+             };
+ 
+-            read_env_file_inline(settings.env_file.c_str(), env_resolve_fd.get(), false, srv_env, true,
+-                    log_inv_env_setting, log_bad_env_command);
+-        }
+-        catch (const std::system_error &se) {
+-            report_service_description_err(name, std::string("could not load environment file: ")
+-                    + se.what());
++            read_env_file_inline(fullpath.c_str(), false, srv_env, true, log_inv_env_setting, log_bad_env_command);
++        } catch (const std::system_error &se) {
++            report_service_description_err(name, std::string("could not load environment file: ") + se.what());
+         }
+     }
+ 
+diff --git a/src/dinit-env.cc b/src/dinit-env.cc
+index 2c45819..c51695a 100644
+--- a/src/dinit-env.cc
++++ b/src/dinit-env.cc
+@@ -17,9 +17,17 @@ static void log_bad_env_cmd(int linenum)
+     log(loglevel_t::ERROR, "Unknown command in environment file (line ", linenum, ")");
+ }
+ 
+-void read_env_file(const char *env_file_path, int resolve_fd, bool log_warnings, environment &env,
+-        bool throw_on_open_failure)
++// Read and set environment variables (encapsulated in an 'environment' object) from a file.
++// File contains "VAR=VALUE" assignments (line by line) and "!" meta-commands.
++// Parameters:
++//   env_file_path - the path to the environment file to process
++//   log_warnings - whether warnings should be logged (eg about invalid embedded commands)
++//   env - the environment to modify
++//   throw_on_open_failure - whether to throw an exception on failure to open the specified
++//                           file. If false, returns instead (without logging failure).
++// Throws:
++//   std::bad_alloc, std::system_error
++void read_env_file(const char *env_file_path, bool log_warnings, environment &env, bool throw_on_open_failure)
+ {
+-    read_env_file_inline(env_file_path, resolve_fd, log_warnings, env, throw_on_open_failure,
+-            log_bad_env, log_bad_env_cmd);
++    read_env_file_inline(env_file_path, log_warnings, env, throw_on_open_failure, log_bad_env, log_bad_env_cmd);
+ }
+diff --git a/src/dinit.cc b/src/dinit.cc
+index 083ed6c..6223901 100644
+--- a/src/dinit.cc
++++ b/src/dinit.cc
+@@ -652,7 +652,7 @@ int dinit_main(int argc, char **argv)
+     }
+ 
+     if (env_file != nullptr) {
+-        read_env_file(env_file, AT_FDCWD, true, main_env, false);
++        read_env_file(env_file, true, main_env, false);
+     }
+ 
+     for (auto svc : services_to_start) {
+diff --git a/src/includes/dinit-env.h b/src/includes/dinit-env.h
+index 960dee4..0c1404a 100644
+--- a/src/includes/dinit-env.h
++++ b/src/includes/dinit-env.h
+@@ -14,22 +14,13 @@
+ class environment;
+ extern environment main_env;
+ 
+-// Read and set environment variables (encapsulated in an 'environment' object) from a file.
+-// File contains "VAR=VALUE" assignments (line by line) and "!" meta-commands.
+-// Parameters:
+-//   env_file_path - the path to the environment file to process
+-//   resolve_fd - directory to resolve path against; may be AT_FDCWD
+-//   log_warnings - whether warnings should be logged (eg about invalid embedded commands)
+-//   env - the environment to modify
+-//   throw_on_open_failure - whether to throw an exception on failure to open the specified
+-//                           file. If false, returns instead (without logging failure).
+-// Throws:
+-//   std::bad_alloc, std::system_error
+-//
+-// This function is available within dinit only, not utilities, but see read_env_file_inline
+-// below.
+-void read_env_file(const char *file, int resolve_fd, bool log_warnings, environment &env,
+-        bool throw_on_open_failure);
++// Read an environment file and set variables in the current environment.
++//   file - the file to read
++//   log_warnings - if true, syntactic errors are logged
++//   throw_on_open_failure - if true, failure to open file will result in a std::system_error exception
++// May throw bad_alloc or system_error. This function is available within dinit only, not utilities,
++// but see read_env_file_inline below.
++void read_env_file(const char *file, bool log_warnings, environment &env, bool throw_on_open_failure);
+ 
+ // Note that our sets (defined as part of environment class below) allow searching based on a name
+ // only (string_view) or "NAME=VALUE" assignment pair (std::string). It is important to always
+@@ -368,7 +359,6 @@ public:
+ // File contains "VAR=VALUE" assignments (line by line) and "!" meta-commands.
+ // Parameters:
+ //   env_file_path - the path to the environment file to process
+-//   resolve_fd - directory to resolve path against; may be AT_FDCWD
+ //   log_warnings - whether warnings should be logged (eg about invalid embedded commands)
+ //   env - the environment to modify
+ //   throw_on_open_failure - whether to throw an exception on failure to open the specified
+@@ -378,11 +368,10 @@ public:
+ // Throws:
+ //   std::bad_alloc, std::system_error
+ template <typename LOG_INV_SETTING, typename LOG_BAD_COMMAND>
+-inline void read_env_file_inline(const char *env_file_path, int resolve_fd, bool log_warnings,
+-        environment &env, bool throw_on_open_failure, LOG_INV_SETTING &log_inv_setting,
+-        LOG_BAD_COMMAND &log_bad_cmd)
++inline void read_env_file_inline(const char *env_file_path, bool log_warnings, environment &env,
++        bool throw_on_open_failure, LOG_INV_SETTING &log_inv_setting, LOG_BAD_COMMAND &log_bad_cmd)
+ {
+-    int env_file_fd = bp_sys::openat(resolve_fd, env_file_path, O_RDONLY);
++    int env_file_fd = bp_sys::open(env_file_path, O_RDONLY);
+     if (env_file_fd == -1) {
+         if (throw_on_open_failure) {
+             throw std::system_error(errno, std::generic_category());
+diff --git a/src/includes/dinit-util.h b/src/includes/dinit-util.h
+index 7e5d056..7c36631 100644
+--- a/src/includes/dinit-util.h
++++ b/src/includes/dinit-util.h
+@@ -200,11 +200,6 @@ class fd_holder
+         if (fd != -1) bp_sys::close(fd);
+     }
+ 
+-    int get()
+-    {
+-        return fd;
+-    }
+-
+     int release()
+     {
+         int r = fd;
+diff --git a/src/includes/load-service.h b/src/includes/load-service.h
+index fdc3b1b..52047e8 100644
+--- a/src/includes/load-service.h
++++ b/src/includes/load-service.h
+@@ -153,18 +153,10 @@ class file_pos_ref
+ {
+     unsigned line_num;
+     const std::string &file_name;
+-    int resolve_dir_fd = -1;
+ 
+     public:
+     file_pos_ref(file_input_stack &stack)
+-        : line_num(stack.current_line()), file_name(stack.current_file_name()),
+-          resolve_dir_fd(stack.current_resolve_dir())
+-    {
+-    }
+-
+-    file_pos_ref(file_input_stack &stack, unsigned line_num_p)
+-        : line_num(line_num_p), file_name(stack.current_file_name()),
+-          resolve_dir_fd(stack.current_resolve_dir())
++        : line_num(stack.current_line()), file_name(stack.current_file_name())
+     {
+     }
+ 
+@@ -187,11 +179,6 @@ class file_pos_ref
+     {
+         return line_num;
+     }
+-
+-    int get_resolve_fd()
+-    {
+-        return resolve_dir_fd;
+-    }
+ };
+ 
+ // File position
+@@ -1204,7 +1191,7 @@ void process_service_file(string name, file_input_stack &service_input, T proces
+ 
+             i = skip_ws_ln(++i, end, line_num);
+ 
+-            file_pos_ref fpr { service_input, line_num };
++            file_pos_ref fpr { service_input.current_file_name(), line_num };
+             process_line_func(line, fpr, setting, setting_op, i, end);
+         }
+     }
+@@ -1522,9 +1509,6 @@ class service_settings_wrapper
+     string pid_file;
+     string env_file;
+ 
+-    // file descriptor to resolve env_file against (if it is relative).
+-    fd_holder env_file_dir_fd;
+-
+     bool export_passwd_vars = false;
+     bool export_service_name = false;
+ 
+@@ -1842,7 +1826,7 @@ class service_settings_wrapper
+ //
+ // Throws:
+ //  service_description_exc, std::bad_alloc, std::length_error (string too long; unlikely),
+-//  std::system_error, anything thrown by lookup_var
++//  anything thrown by lookup_var
+ template <typename settings_wrapper,
+     typename load_service_t,
+     typename process_dep_dir_t,
+@@ -1883,17 +1867,6 @@ void process_service_line(settings_wrapper &settings, ::string_view name, const
+         case setting_id_t::ENV_FILE:
+             settings.env_file = read_value_resolved(details->setting_str, input_pos, i, end,
+                     service_arg, lookup_var);
+-            if (settings.env_file[0] != '/') {
+-                // We need to duplicate the resolve-fd as it is owned by the input stack and will
+-                // be closed before the environment file is actually resolved
+-                int rfd = input_pos.get_resolve_fd();
+-                rfd = dup(rfd);
+-                if (rfd == -1) {
+-                    // TODO: throw a more bespoke exception (dio::-exception perhaps)
+-                    throw std::system_error(errno, std::generic_category(), "dup");
+-                }
+-                settings.env_file_dir_fd = rfd;
+-            }
+             break;
+         #if SUPPORT_CGROUPS
+         case setting_id_t::RUN_IN_CGROUP:
+diff --git a/src/load-service.cc b/src/load-service.cc
+index b0a760b..1177bfa 100644
+--- a/src/load-service.cc
++++ b/src/load-service.cc
+@@ -581,9 +581,15 @@ service_record *dirload_service_set::load_reload_service(const char *fullname,
+         }
+ 
+         if (!settings.env_file.empty()) {
+-            fd_holder env_resolve_fd = std::move(settings.env_file_dir_fd);
+             try {
+-                read_env_file(settings.env_file.c_str(), env_resolve_fd.get(), false, srv_env, true);
++                if (settings.env_file[0] == '/') {
++                    // (don't allocate a string if we don't have to)
++                    read_env_file(settings.env_file.c_str(), false, srv_env, true);
++                }
++                else {
++                    std::string fullpath = combine_paths(service_dsc_dir, settings.env_file.c_str());
++                    read_env_file(fullpath.c_str(), false, srv_env, true);
++                }
+             } catch (const std::system_error &se) {
+                 throw service_load_exc(name, std::string("could not load environment file: ") + se.what());
+             }
+diff --git a/src/dinitctl.cc b/src/dinitctl.cc
+index b68fdcd..86d15b0 100644
+--- a/src/dinitctl.cc
++++ b/src/dinitctl.cc
+@@ -2132,7 +2132,7 @@ static int enable_disable_service(dinit_conn_t &dinit_conn, service_dir_opt &ser
+         if (environment_file != nullptr && *environment_file != 0) {
+             try {
+                 auto log_bad_setting_or_cmd = [](int line_num){};
+-                read_env_file_inline(environment_file, AT_FDCWD, true, dinit_env, false,
++                read_env_file_inline(environment_file, true, dinit_env, false,
+                     log_bad_setting_or_cmd, log_bad_setting_or_cmd);
+             }
+             catch (std::system_error &se) {
+2.52.0
+

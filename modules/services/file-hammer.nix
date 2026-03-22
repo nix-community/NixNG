@@ -195,7 +195,7 @@ in
 
   config.init.services = lib.mapAttrs' (
     name: cfg:
-    lib.nameValuePair "file-hammer@${nglib.escapeSystemdPath name}" {
+    lib.nameValuePair "file-hammer_${nglib.escapeSystemdPath name}" {
       enabled = true;
 
       environment = {

@@ -6,17 +6,17 @@
 }:
 stdenv.mkDerivation (self: {
   pname = "dinit";
-  version = "0.19.0";
+  version = "0.21.0";
 
   src = fetchFromGitHub {
     owner = "davmac314";
     repo = "dinit";
     rev = "v" + self.version;
-    hash = "sha256-ApB0pEFSyawNASF/rqRmhT4FLofZzYmNdNmG2FGpnnk=";
+    hash = "sha256-3OsuKA34xcanDM72mu0K97Z4lngWZbWOoJzeedPWQDs=";
   };
 
   patches = [
-    ./dinit-dont-shutdown-system.patch
+    ./0001-Revert-Resolve-environment-file-using-openat.patch
     ./dinit-allow-multiple-env-files.patch
   ];
 
