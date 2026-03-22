@@ -33,6 +33,7 @@ let
     "ntfy-sh" = ./ntfy-sh;
     "environment-etc" = ./environment-etc;
     "file-hammer" = ./file-hammer;
+    "failing" = ./failing;
   };
 in
 nixpkgs.lib.mapAttrs (_: v: import v { inherit nixpkgs nglib nixng; }) examples
