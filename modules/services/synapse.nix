@@ -10,6 +10,7 @@
   pkgs,
   config,
   lib,
+  nglib,
   ...
 }:
 let
@@ -108,6 +109,10 @@ let
   synapseService = name: cfg: bin: {
     enabled = true;
     shutdownOnExit = true;
+
+    user = "matrix-synapse";
+    group = "matrix-synapse";
+
     script = pkgs.writeShellScript "synapse-worker-${name}.sh" ''
       ${cfg.package}/bin/${bin} \
         ${concatStringsSep " \\\n  " (
@@ -145,11 +150,23 @@ in
     };
   };
 
-  config = {
+  config = lib.mkIf cfg.enable {
+    users.users."matrix-synapse" = nglib.mkDefaultRec {
+      description = "Matrix Synapse";
+      group = "matrix-synapse";
+      home = "/var/empty";
+
+      createHome = false;
+      useDefaultShell = false;
+
+      uid = config.ids.uids."matrix-synapse";
+    };
+
+    users.groups."matrix-synapse".gid = lib.mkDefault config.ids.gids."matrix-synapse";
+
     init.services = listToAttrs (
       (flip mapAttrsToList cfg.workers (
         name: value: nameValuePair "synapse-worker-${name}" (synapseService name value "synapse_worker")
-
       ))
       ++ (optional cfg.enable (nameValuePair "synapse" (synapseService "main" cfg "synapse_homeserver")))
     );

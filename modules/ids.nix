@@ -43,6 +43,7 @@
       dnsmasq = 405;
       attic = 406;
       ntfy-sh = 407;
+      matrix-synapse = 412;
       vmail = 5000;
       nobody = 65534;
     };
@@ -70,6 +71,7 @@
       dnsmasq = 405;
       attic = 406;
       ntfy-sh = 407;
+      matrix-synapse = 412;
       vmail = 5000;
       nogroup = 65534;
     };
