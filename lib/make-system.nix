@@ -7,7 +7,7 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 # These arguments are provided by the overarching NixNG repository and are not user confugurable.
-{ nglib, overlay }:
+{ nglib, overlay, ... }:
 # These arguments are user configurable
 {
   nixpkgs,
@@ -24,6 +24,8 @@ let
   evaledModules = evalModules {
     specialArgs = specialArgs // {
       inherit nglib;
+      __enableExperimentalNixOSCompatibility =
+        specialArgs.__enableExperimentalNixOSCompatibility or false;
     };
 
     modules =
