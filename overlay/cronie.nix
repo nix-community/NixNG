@@ -9,7 +9,7 @@
 { stdenv, fetchurl }:
 stdenv.mkDerivation {
   name = "cronie";
-  version = "1.5.7";
+  version = "1.7.2";
 
   configureFlags = [
     "--localstatedir=/var"
@@ -17,7 +17,7 @@ stdenv.mkDerivation {
   ];
 
   src = fetchurl {
-    url = "https://github.com/cronie-crond/cronie/releases/download/cronie-1.5.7/cronie-1.5.7.tar.gz";
-    sha256 = "sha256-U4vPry6Yblrh7fbRRyp36oJx1qkAWu4kl6ntbhMyDrM=";
+    url = "https://github.com/cronie-crond/cronie/releases/download/cronie-1.7.2/cronie-1.7.2.tar.gz";
+    sha256 = "sha256-8do3ShW6dgXPN4NH+WvItnjT18B2UmnIJCz+WweJxXE=";
   };
 }
