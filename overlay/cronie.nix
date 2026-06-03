@@ -6,18 +6,30 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-{ stdenv, fetchurl }:
+{ stdenv, autoconf, automake, fetchurl, fetchFromGitHub }:
 stdenv.mkDerivation {
   name = "cronie";
-  version = "1.7.2";
+  version = "unstable-2026-06-03";
+
+  buildInputs = [
+    autoconf
+    automake
+  ];
+
+  preConfigure = ''
+    patchShebangs autogen.sh
+    ./autogen.sh
+  '';
 
   configureFlags = [
     "--localstatedir=/var"
     "--sysconfdir=/etc"
   ];
 
-  src = fetchurl {
-    url = "https://github.com/cronie-crond/cronie/releases/download/cronie-1.7.2/cronie-1.7.2.tar.gz";
-    sha256 = "sha256-8do3ShW6dgXPN4NH+WvItnjT18B2UmnIJCz+WweJxXE=";
+  src = fetchFromGitHub {
+    owner = "cronie-crond";
+    repo = "cronie";
+    rev = "5f9f16b5663becefdd0dd70df31c0ef5ac36f943";
+    hash = "sha256-0ZuohRl97kqLi5FrgaAeOaCaDLlYUV3pY2MI7KAr1S0=";
   };
 }
