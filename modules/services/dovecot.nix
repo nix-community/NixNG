@@ -24,8 +24,14 @@ let
   };
 
   inherit (config) ids;
+
+  dovecot = nglib.generators.dovecot { inherit (cfg.settings) dovecot_config_version; };
 in
 {
+  imports = [
+    (lib.mkRenamedOptionModule ["services""dovecot""config"] ["services""dovecot""settings"])
+  ];
+
   options = {
     services.dovecot = {
       enable = lib.mkEnableOption "Enable Dovecot.";
@@ -77,27 +83,36 @@ in
         '';
       };
 
-      config = lib.mkOption {
-        type =
-          with lib.types;
-          let
-            self = attrsOf (
-              nullOr (oneOf [
-                str
-                int
-                package
-                bool
-                (listOf (oneOf [
-                  str
-                  int
-                  package
-                  bool
-                ]))
-                (attrsOf (self // { description = "Dovecot config type"; }))
-              ])
-            );
-          in
-          self;
+      settings = lib.mkOption {
+        type = lib.types.submodule {
+          freeformType = dovecot.type;
+
+          options.dovecot_config_version = lib.mkOption {
+            type = lib.types.str;
+            description = ''
+              Dovecot configuration version. It uses the same versioning as Dovecot in general,
+              e.g. `3.0.5`. This must be the first setting in the configuration file. It specifies
+              the configuration syntax, the used setting names and the expected default values.
+
+              When there are default configuration changes in newer Dovecot versions, the existing
+              installations will continue to work the same as before with the same default settings
+              until this version number is increased. If there are other configuration changes, the
+              old configuration will either keep working or there will be a clear failure at startup.
+            '';
+          };
+
+          options.dovecot_storage_version = lib.mkOption {
+            type = lib.types.str;
+            description = ''
+              Dovecot storage file format version. It uses the same versioning as Dovecot in general,
+              e.g. `3.0.5`. It specifies the oldest Dovecot version that must be able to read files
+              written by this Dovecot instance. The intention is that when upgrading Dovecot cluster,
+              this setting is first kept as the old Dovecot version. Once the cluster is fully upgraded
+              to a new version and there is no intention to rollback to the old version anymore, this
+              version number can be increased.
+            '';
+          };
+        };
         description = "Dovecot configuration entries in Nix format.";
         default = { };
       };
@@ -132,7 +147,7 @@ in
     environment.systemPackages = [ cfg.package ];
 
     services.dovecot = {
-      configFile = lib.mkDefault (pkgs.writeText "dovecot.conf" (nglib.generators.toDovecot cfg.config));
+      configFile = lib.mkDefault (pkgs.writeText "dovecot.conf" (dovecot.generate cfg.settings));
       config = {
         default_login_user = lib.mkIf (cfg.loginUser != null) cfg.loginUser;
         default_internal_user = lib.mkIf (cfg.user != null) cfg.user;
