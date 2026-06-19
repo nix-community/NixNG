@@ -22,50 +22,38 @@ nglib.makeSystem {
     in
     {
       config = {
-        dumb-init = {
-          enable = true;
-          type.services = { };
-        };
+        dinit.enable = true;
+
         init.services.postfix = {
-          shutdownOnExit = true;
+          shutdownOnExit = false;
 
-          ensureSomething.create."mailDir" = {
-            type = "directory";
-            mode = "755";
-            owner = "5000:5000";
-            persistent = true;
-            dst = "/var/mail/vhosts";
-          };
-
-          ensureSomething.create."postfixSpoolDir" = {
-            type = "directory";
-            mode = "750";
-            owner = "root:root";
-            persistent = false;
-            dst = "/var/spool/postfix/";
-          };
+          tmpfiles = with nglib.nottmpfiles.dsl; [
+            (d "/var/mail/vhosts" "0755" "5000" "5000" _ _)
+            (d "/var/lib/postfix/private/" "0755" "postfix" "postfix" _ _)
+          ];
         };
         init.services.dovecot = {
-          shutdownOnExit = true;
+          shutdownOnExit = false;
 
-          ensureSomething.create."dovecotSockets" = {
-            type = "directory";
-            mode = "755";
-            owner = "postgres:postgres";
-            persistent = false;
-            dst = "/var/spool/postfix/private/";
-          };
+          dependencies = [
+            "postfix"
+          ];
         };
         init.services.postgresql = {
-          shutdownOnExit = true;
+          shutdownOnExit = false;
 
-          ensureSomething.create."postfixRunSocket" = {
-            type = "directory";
-            mode = "755";
-            owner = "postgres:postgres";
-            persistent = false;
-            dst = "/var/spool/postfix/run/postgresql/";
-          };
+          dependencies = [
+            "postfix"
+          ];
+
+          supplementaryGroups = [
+            "postfix"
+          ];
+
+          tmpfiles = with nglib.nottmpfiles.dsl; [
+            (d "/var/lib/postfix/run" "0775" "postfix" "postfix" _ _)
+            (d "/var/lib/postfix/run/postgresql" "0775" "postfix" "postfix" _ _)
+          ];
         };
 
         services.postgresql = {
@@ -73,7 +61,7 @@ nglib.makeSystem {
           package = pkgs.postgresql_17;
 
           config = {
-            unix_socket_directories = "/run/postgresql/, /var/spool/postfix/run/postgresql/";
+            unix_socket_directories = "/run/postgresql/, /var/lib/postfix/run/postgresql/";
           };
 
           initialScript = pkgs.writeText "init.sql" ''
@@ -164,7 +152,7 @@ nglib.makeSystem {
             protocol."lmtp" = { };
 
             service."lmtp" = {
-              unix_listener."/var/spool/postfix/private/dovecot-lmtp" = {
+              unix_listener."/var/lib/postfix/private/dovecot-lmtp" = {
                 mode = "0600";
                 user = "postfix";
                 group = "postfix";
@@ -172,7 +160,7 @@ nglib.makeSystem {
             };
 
             service."auth" = {
-              unix_listener."/var/spool/postfix/private/auth" = {
+              unix_listener."/var/lib/postfix/private/auth" = {
                 mode = "0666";
                 user = "postfix";
                 group = "postfix";
@@ -284,7 +272,7 @@ nglib.makeSystem {
             virtual_uid_maps = "static:5000";
             virtual_gid_maps = "static:5000";
 
-            virtual_transport = "lmtp:unix:/var/spool/postfix/private/dovecot-lmtp";
+            virtual_transport = "lmtp:unix:/var/lib/postfix/private/dovecot-lmtp";
           };
         };
       };

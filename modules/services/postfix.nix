@@ -413,42 +413,21 @@ in
       };
     };
 
-    init.services.postfix =
-      let
-        mainCnf = pkgs.writeText "main.cf" (toMainCnf cfg.mainConfig);
-        masterCnf = pkgs.writeText "master.cf" cfg.masterConfig;
-        configDir = pkgs.runCommand "postfix-config-dir" { } ''
-          mkdir -p $out
-          ln -s ${mainCnf} $out/main.cf
-          ln -s ${masterCnf} $out/master.cf
-        '';
-      in
-      {
-        ensureSomething.create."data" = lib.mkDefault {
-          type = "directory";
-          mode = "750";
-          owner = "${cfg.user}:${cfg.group}";
-          dst = cfg.mainConfig.data_directory;
-          persistent = true;
-        };
+    environment.etc."postfix/main.cf".source = pkgs.writeText "main.cf" (toMainCnf cfg.mainConfig);
+    environment.etc."postfix/master.cf".source = pkgs.writeText "master.cf" cfg.masterConfig;
 
-        ensureSomething.create."queue" = lib.mkDefault {
-          type = "directory";
-          mode = "750";
-          owner = "${cfg.user}:root";
-          dst = cfg.mainConfig.queue_directory;
-          persistent = false;
-        };
+    init.services.postfix = {
+      tmpfiles = with nglib.nottmpfiles.dsl; [
+        (d cfg.mainConfig.data_directory "0750" cfg.user cfg.group _ _)
+        (d cfg.mainConfig.queue_directory "0750" cfg.user cfg.group _ _)
+      ];
 
-        script = pkgs.writeShellScript "postfix-run" ''
-          echo asd
-
-          mkdir -p /etc/postfix/
-          ${cfg.package}/bin/postfix -c ${configDir} set-permissions
-          ${cfg.package}/libexec/postfix/master -c ${configDir}
-        '';
-        enabled = true;
-      };
+      script = pkgs.writeShellScript "postfix-run" ''
+        ${cfg.package}/bin/postfix -c /etc/postfix set-permissions
+        ${cfg.package}/libexec/postfix/master -c /etc/postfix
+      '';
+      enabled = true;
+    };
     assertions = [
       {
         assertion = createDefaultUsersGroups;
