@@ -9,7 +9,7 @@
 * Writing Documentation
 
 This documentation uses a format called [[https://orgmode.org/][Org]]. It's native to Emacs but the subset
-of it that is used here is small enough and simple enoug that it can be written
+of it that is used here is small enough and simple enough that it can be written
 in any text editor. To familiarize yourself with Org, take a look at this [[https://nhigham.com/2017/11/02/org-mode-syntax-cheat-sheet/][Org
 Mode Syntax Cheat Sheet]].
 
