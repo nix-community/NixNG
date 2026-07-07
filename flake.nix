@@ -74,7 +74,11 @@
           pkgs = pkgsForSystem system;
         in
         {
-          default = pkgs.mkShell { nativeBuildInputs = with pkgs; [ ]; };
+          default = pkgs.mkShell {
+            nativeBuildInputs = with pkgs; [
+              deadnix
+            ];
+          };
           haskell = pkgs.mkShell {
             nativeBuildInputs = with pkgs; [
               ghc
