@@ -95,7 +95,7 @@
       );
 
       checks = {
-        formatting = forAllSystems (system: treefmtEval.${system}.config.build.check self);
+        formatting."x86_64-linux" = treefmtEval."x86_64-linux".config.build.check self;
         examples = lib.pipe self.examples [
           (lib.mapAttrs (_: v: v.config.system.build.toplevel))
           (lib.filterAttrs (n: _: n != "postfix"))
