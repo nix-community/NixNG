@@ -2,6 +2,8 @@ lib:
 let
   inherit (lib) types;
   this = {
+    optionalAttr = pred: key: if pred then key else null;
+    optionalAttr' = pred: key: if pred != null then key else null;
     makeSystem = import ./make-system.nix {
       nglib = this;
       overlay = import ../overlay;

@@ -205,7 +205,7 @@ in
 
       type = "scripted";
 
-      execStart = ''${lib.getExe pkgs.fileHammer} --root "${name}" apply --parent --configuration ${cfg.specificationFile}'';
+      execStart = pkgs.writeShellScript "file-hammer-start" ''${lib.getExe pkgs.fileHammer} --root "${name}" apply --parent --configuration ${cfg.specificationFile}'';
     }
   ) cfg;
 }

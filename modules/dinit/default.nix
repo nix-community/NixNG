@@ -16,94 +16,105 @@
 let
   cfg = config.dinit;
 
-  generateUserCommandsScript =
+  dinitService = nglib.generators.dinitService { };
+
+  wrapEnv =
+    {
+      path,
+      environment,
+      command,
+    }:
+    pkgs.runCommand "${command.name}-env-wrapper"
+      {
+        buildInputs = [ pkgs.makeBinaryWrapper ];
+      }
+      ''
+        makeWrapper ${command} $out \
+          ${
+            lib.concatMapAttrsStringSep " \\\n" (
+              name: value: "--set ${lib.escapeShellArg name} ${lib.escapeShellArg value}"
+            ) environment
+          } \
+          --prefix PATH : "${lib.makeBinPath path}"
+      '';
+
+  generateServices = lib.concatMapAttrs (
     name: service:
-    pkgs.writeShellScript "${name}-user-commands.sh" ''
-      set -eo pipefail
-
-      ${lib.optionalString (service.execStartPre != null) service.execStartPre}
-      ${service.execStart}
-      ${lib.optionalString (service.execStop != null) service.execStop}
-    '';
-
-  generateDependsOn = lib.concatMapStringsSep "\n" (dep: ''
-    depends-on: ${dep}
-    waits-for: ${dep}
-  '');
-
-  generateEnvFile =
-    { name, environment, ... }:
-    pkgs.writeText "${name}.env" (
-      lib.concatMapStringsSep "\n" (var: var.name + "=" + var.value) (
-        lib.mapAttrsToList lib.nameValuePair (lib.filterAttrs (n: _: !lib.elem n [ "PATH" ]) environment)
-      )
-    );
-
-  generateServiceFile =
-    { name, service }:
     let
+      doExecStartPre = service.execStartPre != null || rules != [ ];
+      doExecStopPost = rules != [ ];
+      wrapCommand =
+        command:
+        nglib.maybeChangeUserAndGroup service.user service.group service.supplementaryGroups (wrapEnv {
+          path = lib.optional (service.environment ? PATH) service.environment."PATH";
+          environment = lib.removeAttrs service.environment [ "PATH" ];
+          inherit command;
+        });
+
       rules = (nglib.nottmpfiles.ensureSomethings service.ensureSomething) ++ service.tmpfiles;
       rulesFile = pkgs.writeText "${name}.tmpfiles" (nglib.nottmpfiles.generate rules);
       filehammerEtcService = "file-hammer_" + nglib.escapeSystemdPath "/etc";
     in
-    pkgs.writeText "${name}-service" ''
-      type = ${service.type}
-      pid-file = /service/${name}/pid
+    {
+      ${nglib.optionalAttr doExecStartPre "${name}-pre-start"} = {
+        type = "scripted";
 
-      command = ${pkgs.writeShellScript "${name}-start.sh" ''
-        set -eo pipefail
+        logfile = "/proc/1/fd/2";
+        working-dir = service.workingDirectory;
 
-        export PATH="${
-          lib.concatStringsSep ":" (
-            [ "$PATH" ]
-            ++ (lib.optional (service.environment ? PATH) service.environment."PATH")
-            ++ [ (pkgs.setgroups + "/bin") ]
-          )
-        }"
+        command = [
+          "${lib.getExe' pkgs.systemdTmpfilesD "systemd-tmpfiles"} --create ${rulesFile}"
+        ]
+        ++ (lib.optional (service.execStartPre != null) (wrapCommand service.execStartPre));
+      };
+      "${name}-start" = {
+        inherit (service) type;
+        pid-file = "/sv/${name}/pid";
 
-        ${pkgs.systemdTmpfilesD}/bin/systemd-tmpfiles --create ${rulesFile}
-        ${nglib.maybeChangeUserAndGroup service.user service.group service.supplementaryGroups (
-          generateUserCommandsScript name service
-        )}
-        ${pkgs.systemdTmpfilesD}/bin/systemd-tmpfiles --remove ${rulesFile}
-      ''}
+        logfile = "/proc/1/fd/2";
+        working-dir = service.workingDirectory;
 
-      logfile = /proc/1/fd/2
-      env-file =
-      ${lib.optionalString (service.environmentFile != null) ''
-        env-file += ${service.environmentFile}
-      ''}
-      env-file += ${
-        generateEnvFile {
-          inherit name;
-          inherit (service) environment;
-        }
-      }
-      working-dir = ${service.workingDirectory}
-      ${generateDependsOn (
-        service.dependencies ++ (lib.optional (name != filehammerEtcService) filehammerEtcService)
-      )}
-    '';
+        ${nglib.optionalAttr doExecStartPre "depends-on"} = "${name}-pre-start";
+        ${nglib.optionalAttr doExecStopPost "chain-to"} = "${name}-stop-post";
 
-  bootService = pkgs.writeText "dinit-boot-service" ''
-    type = internal
+        command = wrapCommand service.execStart;
+        ${nglib.optionalAttr' service.execStop "stop-command"} = wrapCommand service.execStop;
+      };
+      ${nglib.optionalAttr doExecStopPost "${name}-stop-post"} = {
+        type = "scripted";
 
-    restart = no
+        logfile = "/proc/1/fd/2";
+        working-dir = service.workingDirectory;
 
-    ${lib.pipe config.init.services [
-      (lib.mapAttrsToList (name: service: service // { inherit name; }))
-      (lib.filter (service: service.enabled && service.shutdownOnExit))
-      (lib.map (service: "depends-on: " + service.name))
-      (lib.concatStringsSep "\n")
-    ]}
+        command = "${lib.getExe' pkgs.systemdTmpfilesD "systemd-tmpfiles"} --remove ${rulesFile}";
+      };
+      ${name} = {
+        type = "internal";
 
-    ${lib.pipe config.init.services [
-      (lib.mapAttrsToList (name: service: service // { inherit name; }))
-      (lib.filter (service: service.enabled && !service.shutdownOnExit))
-      (lib.map (service: "waits-for: " + service.name))
-      (lib.concatStringsSep "\n")
-    ]}
-  '';
+        depends-on = [
+          "${name}-start"
+        ]
+        ++ service.dependencies
+        ++ (lib.optional (name != filehammerEtcService) filehammerEtcService);
+      };
+    }
+  );
+
+  bootService = pkgs.writeText "dinit-boot-service" (dinitService.generate {
+    type = "internal";
+
+    restart = "no";
+
+    depends-on = lib.pipe config.init.services [
+      (lib.filterAttrs (_: service: service.enabled && service.shutdownOnExit))
+      lib.attrNames
+    ];
+
+    waits-for = lib.pipe config.init.services [
+      (lib.filterAttrs (_: service: service.enabled && !service.shutdownOnExit))
+      lib.attrNames
+    ];
+  });
 in
 {
   options.dinit = {
@@ -143,17 +154,11 @@ in
       dinit.serviceDirectory = pkgs.runCommand "dinit-service-directory" { } ''
         mkdir -p $out
 
-        ${lib.concatMapStringsSep "\n" (
-          { name, value }:
-          ''
-            ln -s ${
-              generateServiceFile {
-                inherit name;
-                service = value;
-              }
-            } $out/${name}
-          ''
-        ) (lib.mapAttrsToList lib.nameValuePair config.init.services)}
+        ${lib.concatMapAttrsStringSep "\n" (name: value: ''
+          cat > $out/${name} <<EOF
+          ${dinitService.generate value}
+          EOF
+        '') (generateServices config.init.services)}
 
         ln -s ${bootService} $out/boot
       '';

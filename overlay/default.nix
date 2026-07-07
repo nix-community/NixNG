@@ -44,10 +44,4 @@ in
   fileHammer = prev.haskell.lib.enableSeparateBinOutput (
     prev.haskellPackages.callPackage ./haskell/file-hammer/package.nix { }
   );
-
-  # inherit
-  #   (nixpkgsTrivialBuilders)
-  #   writeShellScript
-  #   writeShellScriptBin
-  #   writeShellScriptApplication;
 }

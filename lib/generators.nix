@@ -254,4 +254,32 @@ rec {
         ++ [ "" ]
       );
   };
+
+  dinitService =
+    {
+
+    }:
+    {
+      type = throw "no type defined for dinit-service yet";
+      generate = lib.concatMapAttrsStringSep "\n" (
+        name: value:
+        if
+          lib.elem name [
+            "depends-on"
+            "depends-ms"
+            "waits-for"
+            "depends-on.d"
+            "depends-ms.d"
+            "waits-for.d"
+            "after"
+            "before"
+          ]
+        then
+          lib.concatMapStringsSep "\n" (value': "${name}: ${value'}") (lib.toList value)
+        else if lib.isList value then
+          "${name} =\n" + lib.concatMapStringsSep "\n" (value': "${name} += ${value'}") value
+        else
+          "${name} = ${value}"
+      );
+    };
 }
