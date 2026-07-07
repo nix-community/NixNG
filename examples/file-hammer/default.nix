@@ -13,7 +13,7 @@ nglib.makeSystem {
   name = "nixng-file-hammer";
 
   config = (
-    { pkgs, ... }:
+    { ... }:
     {
       dinit.enable = true;
 

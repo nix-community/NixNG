@@ -22,14 +22,12 @@ let
     flip
     mapAttrs
     mkDefault
-    mapAttrs'
     nameValuePair
     singleton
     mapAttrsToList
     isList
     concatMapStringsSep
     concatStringsSep
-    makeSearchPathOutput
     listToAttrs
     mkEnableOption
     optional
@@ -52,7 +50,7 @@ let
     };
 
   mainDefaults =
-    { config, name, ... }:
+    { config, name }:
     {
       package = mkDefault pkgs.matrix-synapse;
 
@@ -65,9 +63,9 @@ let
     defaults:
     {
       config,
-      name ? "",
+      name,
       ...
-    }@args:
+    }:
     {
       options = {
         package = mkOption {
@@ -103,7 +101,7 @@ let
         };
       };
 
-      config = defaults args;
+      config = defaults { inherit config name; };
     };
 
   synapseService = name: cfg: bin: {

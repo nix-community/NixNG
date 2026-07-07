@@ -274,7 +274,7 @@ in
     users.groups = builtins.listToAttrs (
       lib.filter (x: x.value != null) (
         lib.mapAttrsToList (
-          pool: opts:
+          _pool: opts:
           let
             group = opts.phpSettings.group;
           in

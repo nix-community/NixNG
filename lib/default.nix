@@ -4,10 +4,7 @@ let
   this = {
     optionalAttr = pred: key: if pred then key else null;
     optionalAttr' = pred: key: if pred != null then key else null;
-    makeSystem = import ./make-system.nix {
-      nglib = this;
-      overlay = import ../overlay;
-    };
+    makeSystem = import ./make-system.nix { nglib = this; };
     dag = import ./dag.nix { inherit lib; };
     generators = import ./generators.nix { inherit lib; };
     mkDefaultRec = lib.mapAttrsRecursive (_: v: lib.mkDefault v);

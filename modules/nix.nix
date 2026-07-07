@@ -25,7 +25,6 @@ let
     concatStringsSep
     mapAttrsToList
     mkIf
-    mkDefault
     optionals
     mkMerge
     range

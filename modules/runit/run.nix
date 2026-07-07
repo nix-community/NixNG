@@ -23,7 +23,7 @@ writeShellScript "${n}-run" ''
 
   ${lib.concatStringsSep "\n" (
     lib.mapAttrsToList (
-      cn: cv: with cv; ''
+      _cn: cv: with cv; ''
         if ! [[ -e ${dst} ]] ; then
           echo '${n}: linking `${src}` to `${dst}`'
           mkdir -p "$(dirname '${dst}')"
@@ -35,7 +35,7 @@ writeShellScript "${n}-run" ''
 
   ${lib.concatStringsSep "\n" (
     lib.mapAttrsToList (
-      cn: cv: with cv; ''
+      _cn: cv: with cv; ''
         if ! [[ -e ${dst} ]] ; then
           echo '${n}: copying `${src}` to `${dst}`'
           mkdir -p "$(dirname '${dst}')"
@@ -47,13 +47,13 @@ writeShellScript "${n}-run" ''
 
   ${lib.concatStringsSep "\n" (
     lib.mapAttrsToList (
-      cn: cv: abort "linkFarm is not implemented yet in runit!"
+      _cn: _cv: abort "linkFarm is not implemented yet in runit!"
     ) s.ensureSomething.linkFarm
   )}
 
   ${lib.concatStringsSep "\n" (
     lib.mapAttrsToList (
-      cn: cv: with cv; ''
+      _cn: cv: with cv; ''
         if ! [[ -e ${dst} ]] ; then
           echo '${n}: executing `${executable}` to create `${dst}`'
           mkdir -p "$(dirname '${dst}')"
@@ -70,7 +70,7 @@ writeShellScript "${n}-run" ''
 
   ${lib.concatStringsSep "\n" (
     lib.mapAttrsToList (
-      cn: cv: with cv; ''
+      _cn: cv: with cv; ''
         if ! [[ -e ${dst} ]] ; then
           echo '${n}: creating `${dst}`'
 

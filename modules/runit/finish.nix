@@ -15,7 +15,7 @@
 writeShellScript "${n}-finish" ''
   ${lib.concatStringsSep "\n" (
     lib.mapAttrsToList (
-      cn: cv:
+      _cn: cv:
       with cv;
       lib.optionalString (!cv.persistent) ''
         if [[ -e ${dst} ]] ; then
@@ -28,7 +28,7 @@ writeShellScript "${n}-finish" ''
 
   ${lib.concatStringsSep "\n" (
     lib.mapAttrsToList (
-      cn: cv:
+      _cn: cv:
       with cv;
       lib.optionalString (!cv.persistent) ''
         if [[ -e ${dst} ]] ; then
@@ -41,13 +41,13 @@ writeShellScript "${n}-finish" ''
 
   ${lib.concatStringsSep "\n" (
     lib.mapAttrsToList (
-      cn: cv: abort "linkFarm is not implemented yet in runit!"
+      _cn: _cv: abort "linkFarm is not implemented yet in runit!"
     ) s.ensureSomething.linkFarm
   )}
 
   ${lib.concatStringsSep "\n" (
     lib.mapAttrsToList (
-      cn: cv:
+      _cn: cv:
       with cv;
       lib.optionalString (!cv.persistent) ''
         if [[ -e ${dst} ]] ; then
@@ -60,7 +60,7 @@ writeShellScript "${n}-finish" ''
 
   ${lib.concatStringsSep "\n" (
     lib.mapAttrsToList (
-      cn: cv:
+      _cn: cv:
       with cv;
       lib.optionalString (!cv.persistent) ''
         if [[ -e ${dst} ]] ; then

@@ -12,7 +12,7 @@ nglib.makeSystem {
   system = "x86_64-linux";
   name = "nixng-home-assistant";
   config = (
-    { pkgs, config, ... }:
+    { pkgs, ... }:
     {
       config = {
         dumb-init = {
@@ -64,7 +64,7 @@ nglib.makeSystem {
               ];
               extraPackages = ps: with ps; [ xmodem ];
             }).overridePythonAttrs
-              (old: {
+              (_old: {
                 doCheck = false;
               });
         };

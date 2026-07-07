@@ -20,83 +20,6 @@ let
 
   defaultUser = "gitea";
 
-  giteaSecrets = {
-    options = {
-      secretKeyFile = lib.mkOption {
-        description = ''
-          Path to a file containing Gitea's secret key, on one line.
-          If non-<literal>null</literal>, the contents of this file will
-          substituted into the generated configuration file in-place of
-          <literal>#secretKey#</literal>.
-        '';
-        type = with lib.types; nullOr path;
-        default = null;
-      };
-      internalTokenFile = lib.mkOption {
-        description = ''
-          Path to a file containing Gitea's internal token, on one line.
-          If non-<literal>null</literal>, the contents of this file will
-          substituted into the generated configuration file in-place of
-          <literal>#internalToken#</literal>.
-        '';
-        type = with lib.types; nullOr path;
-        default = null;
-      };
-      jwtSecretFile = lib.mkOption {
-        description = ''
-          Path to a file containing Gitea's JWT secret, on one line.
-          If non-<literal>null</literal>, the contents of this file
-          will substituted into the generated configuration file in-place
-          of <literal>#jwtSecret#</literal>.
-        '';
-        type = with lib.types; nullOr path;
-        default = null;
-      };
-      lfsJwtSecretFile = lib.mkOption {
-        description = ''
-          Path to a file containing Gitea's LFS JWT secret, on one line.
-          If non-<literal>null</literal>, the contents of this file will
-          substituted into the generated configuration file in-place of
-          <literal>#lfsJwtSecret#</literal>.
-        '';
-        type = with lib.types; nullOr path;
-        default = null;
-      };
-
-      databaseUserFile = lib.mkOption {
-        description = ''
-          Path to a file containing user with which Gitea should connect
-          to it's database, on one line. If non-<literal>null</literal>,
-          the contents of this file will substituted into the generated
-          configuration file in-place of <literal>#databaseUser#</literal>.
-        '';
-        type = with lib.types; nullOr path;
-        default = null;
-      };
-      databasePasswordFile = lib.mkOption {
-        description = ''
-          Path to a file containing password with which Gitea should
-          connect to it's database, on one line. If
-          on-<literal>null</literal>, the contents of this file will
-          substituted into the generated configuration file in-place
-          of <literal>#databasePassword#</literal>.
-        '';
-        type = with lib.types; nullOr path;
-        default = null;
-      };
-      databaseHostFile = lib.mkOption {
-        description = ''
-          Path to a file containing database host to which Gitea should
-          connect, on one line. If non-<literal>null</literal>, the
-          contents of this file will substituted into the generated
-          configuration file in-place of <literal>#databaseHost#</literal>.
-        '';
-        type = with lib.types; nullOr path;
-        default = null;
-      };
-    };
-  };
-
   secretModule =
     { name, ... }:
     {
@@ -121,11 +44,7 @@ let
       };
     };
 
-  case = a: attrs: attrs.${a};
-
   tagCase = a: attrs: attrs.${lib.head (lib.attrNames a)};
-
-  fromMaybe = maybe: value: if maybe == null then value else maybe;
 
   declareSubstituteSecrets =
     secrets:

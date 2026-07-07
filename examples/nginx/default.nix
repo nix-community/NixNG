@@ -12,7 +12,7 @@ nglib.makeSystem {
   system = "x86_64-linux";
   name = "nixng-nginx";
   config = (
-    { pkgs, config, ... }:
+    { pkgs, ... }:
     {
       config = {
         dinit = {

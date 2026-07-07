@@ -7,7 +7,6 @@
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 {
-  lib,
   util-linux,
   writeShellScript,
 }:
@@ -28,9 +27,9 @@ writeShellScript "${n}-log" ''
           if type == "uds" then
             "-u ${dst}"
           else if type == "udp" then
-            ''-d ${inetDst}''
+            "-d ${inetDst}"
           else if type == "tcp" then
-            ''-T ${inetDst}''
+            "-T ${inetDst}"
           else
             abort "Unknown log type, module system should have caught this!";
         rfc5424 = optional (!time) "notime" ++ optional (!timeQuality) "notq" ++ optional (!host) "nohost";

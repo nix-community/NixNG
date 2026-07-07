@@ -10,7 +10,6 @@
   config,
   pkgs,
   lib,
-  nglib,
   ...
 }:
 let

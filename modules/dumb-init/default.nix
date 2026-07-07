@@ -150,7 +150,7 @@ in
     assertions = lib.mkIf cfg.enable (
       [
         {
-          assertion = lib.count (x: x) (lib.mapAttrsToList (n: v: v != null) cfg.type) == 1;
+          assertion = lib.count (x: x) (lib.mapAttrsToList (_n: v: v != null) cfg.type) == 1;
           message = "Please select exactly one dumb-init type.";
         }
       ]

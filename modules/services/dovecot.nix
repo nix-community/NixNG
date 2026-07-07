@@ -29,7 +29,7 @@ let
 in
 {
   imports = [
-    (lib.mkRenamedOptionModule ["services""dovecot""config"] ["services""dovecot""settings"])
+    (lib.mkRenamedOptionModule [ "services" "dovecot" "config" ] [ "services" "dovecot" "settings" ])
   ];
 
   options = {

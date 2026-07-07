@@ -19,7 +19,6 @@ let
     mkOption
     types
     singleton
-    foldr
     ;
 
   overlayType = mkOptionType {

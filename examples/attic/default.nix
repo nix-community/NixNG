@@ -10,7 +10,6 @@ nglib.makeSystem {
   config =
     {
       pkgs,
-      lib,
       config,
       ...
     }:

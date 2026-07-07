@@ -80,7 +80,7 @@ let
                   makeWrapper "$path/bin/$prg" "$out/bin/$prg" ${makeWrapperArgs} \
                     ${
                       if cfg.dbiFile == null then
-                        ''--set HYDRA_DBI '${localDB}' ''
+                        "--set HYDRA_DBI '${localDB}' "
                       else
                         ''--run 'export HYDRA_DBI=$(cat "${cfg.dbiFile}")' ''
                     }

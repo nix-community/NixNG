@@ -9,7 +9,6 @@
 {
   runCommandLocal,
   busybox,
-  runtimeShell,
 }:
 {
   writeSubstitutedShellScript =

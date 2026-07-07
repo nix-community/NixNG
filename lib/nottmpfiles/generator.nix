@@ -1,4 +1,4 @@
-{ lib, nglib, ... }:
+{ lib, ... }:
 rules:
 let
   fromNull = x: if x == null then "-" else x;

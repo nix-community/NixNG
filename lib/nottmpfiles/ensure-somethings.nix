@@ -5,7 +5,7 @@ with nglib.nottmpfiles.dsl;
   let
     link = lib.pipe ensureSomethings.link [
       (lib.mapAttrsToList (
-        u:
+        _u:
         {
           src,
           dst,
@@ -17,7 +17,7 @@ with nglib.nottmpfiles.dsl;
     ];
     copy = lib.pipe ensureSomethings.copy [
       (lib.mapAttrsToList (
-        u:
+        _u:
         {
           src,
           dst,
@@ -29,7 +29,7 @@ with nglib.nottmpfiles.dsl;
     ];
     create = lib.pipe ensureSomethings.create [
       (lib.mapAttrsToList (
-        u:
+        _u:
         {
           dst,
           type,

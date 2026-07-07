@@ -8,7 +8,6 @@
 
 {
   lib,
-  nglib,
   pkgs,
   config,
   ...

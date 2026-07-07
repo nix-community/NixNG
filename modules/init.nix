@@ -14,7 +14,7 @@ let
     description = "Logging settings.";
     type = lib.types.nullOr (
       lib.types.submodule (
-        { config, ... }:
+        { ... }:
         {
           options = {
             file = lib.mkOption {
@@ -383,7 +383,7 @@ in
           assertion =
             let
               selectedCount = (
-                lib.count (x: x) (lib.mapAttrsToList (n: v: if v == null then false else true) v.log)
+                lib.count (x: x) (lib.mapAttrsToList (_n: v: if v == null then false else true) v.log)
               );
             in
             selectedCount == 1 || selectedCount == 0;

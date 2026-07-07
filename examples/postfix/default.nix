@@ -12,7 +12,7 @@ nglib.makeSystem {
   system = "x86_64-linux";
   name = "nixng-postfix";
   config = (
-    { pkgs, config, ... }:
+    { pkgs, ... }:
     let
       pgsql =
         cfg:

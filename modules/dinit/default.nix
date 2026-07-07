@@ -100,21 +100,23 @@ let
     }
   );
 
-  bootService = pkgs.writeText "dinit-boot-service" (dinitService.generate {
-    type = "internal";
+  bootService = pkgs.writeText "dinit-boot-service" (
+    dinitService.generate {
+      type = "internal";
 
-    restart = "no";
+      restart = "no";
 
-    depends-on = lib.pipe config.init.services [
-      (lib.filterAttrs (_: service: service.enabled && service.shutdownOnExit))
-      lib.attrNames
-    ];
+      depends-on = lib.pipe config.init.services [
+        (lib.filterAttrs (_: service: service.enabled && service.shutdownOnExit))
+        lib.attrNames
+      ];
 
-    waits-for = lib.pipe config.init.services [
-      (lib.filterAttrs (_: service: service.enabled && !service.shutdownOnExit))
-      lib.attrNames
-    ];
-  });
+      waits-for = lib.pipe config.init.services [
+        (lib.filterAttrs (_: service: service.enabled && !service.shutdownOnExit))
+        lib.attrNames
+      ];
+    }
+  );
 in
 {
   options.dinit = {

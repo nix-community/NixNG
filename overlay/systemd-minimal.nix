@@ -9,7 +9,6 @@
 {
   stdenv,
   # Path to the nixpkgs checkout
-  path,
   meson,
   ninja,
   fetchFromGitHub,

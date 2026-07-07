@@ -1,4 +1,4 @@
-{ lib, config, ... }:
+{ lib, ... }:
 {
   options.networking = {
     hostName = lib.mkOption {
@@ -21,5 +21,5 @@
     };
   };
 
-  config = {};
+  config = { };
 }

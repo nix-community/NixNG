@@ -1,16 +1,13 @@
 module:
 {
-  pkgs,
   lib,
   config,
-  options,
   ...
 }:
 let
   inherit (lib)
     types
     mkOption
-    setAttrByPath
     getAttrFromPath
     mkOptionType
     concatStringsSep
@@ -27,7 +24,6 @@ let
     ;
 
   rootConfig = config;
-  rootOptions = options;
 
   cfg = getAttrFromPath [
     "services"
@@ -53,7 +49,7 @@ let
       merge =
         loc:
         foldl' (
-          res: def:
+          _res: def:
           types.${def.value.type}.merge loc [
             (lib.recursiveUpdate { value._module.args = specialArgs; } def)
           ]
