@@ -284,18 +284,18 @@ in
 
             execStartPre = lib.mkOption {
               description = "Service script to start before the program.";
-              type = lib.types.nullOr lib.types.path;
+              type = lib.types.nullOr (lib.types.either lib.types.str lib.types.path);
               default = null;
             };
 
             execStart = lib.mkOption {
               description = "Service script to start the program.";
-              type = lib.types.path;
+              type = lib.types.either lib.types.str lib.types.path;
             };
 
             execStop = lib.mkOption {
               description = "Script to run upon service stop.";
-              type = lib.types.nullOr lib.types.path;
+              type = lib.types.nullOr (lib.types.either lib.types.str lib.types.path);
               default = null;
             };
 

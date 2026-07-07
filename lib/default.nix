@@ -69,14 +69,14 @@ let
     };
 
     maybeChangeUserAndGroup =
-      user: group: supp: script:
+      { setgroups, user,  group,  supplementaryGroups, command }:
       if user != null then
         let
           group' = if group != null then "${group}" else ":";
         in
-        "setgroups ${user} ${group'} :${lib.concatStringsSep ":" supp} ${script}"
+        "${lib.getExe setgroups} ${user} ${group'} :${lib.concatStringsSep ":" supplementaryGroups} ${command}"
       else
-        script;
+        command;
 
     #########################################
     ## Copied straight from nixpkgs for now #

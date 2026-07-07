@@ -10,6 +10,7 @@
   lib,
   nglib,
   writeShellScript,
+  setgroups,
 }:
 { n, s }:
 writeShellScript "${n}-run" ''
@@ -100,10 +101,18 @@ writeShellScript "${n}-run" ''
   ${
     {
       "process" = "exec ${
-        nglib.maybeChangeUserAndGroup s.user s.group s.supplementaryGroups s.execStart
+        nglib.maybeChangeUserAndGroup {
+          inherit setgroups;
+          inherit (s) user group supplementaryGroups;
+          command = s.execStart;
+        }
       }";
       "scripted" = "${
-        nglib.maybeChangeUserAndGroup s.user s.group s.supplementaryGroups s.execStart
+        nglib.maybeChangeUserAndGroup {
+          inherit setgroups;
+          inherit (s) user group supplementaryGroups;
+          command = s.execStart;
+        }
       } ; sleep infinity";
     }
     .${s.type}

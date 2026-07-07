@@ -20,11 +20,12 @@ let
 
   wrapEnv =
     {
+      name,
       path,
       environment,
       command,
     }:
-    pkgs.runCommand "${command.name}-env-wrapper"
+    pkgs.runCommand "${name}-env-wrapper"
       {
         buildInputs = [ pkgs.makeBinaryWrapper ];
       }
@@ -35,7 +36,7 @@ let
               name: value: "--set ${lib.escapeShellArg name} ${lib.escapeShellArg value}"
             ) environment
           } \
-          --prefix PATH : "${lib.makeBinPath path}"
+          --prefix PATH : "${path}"
       '';
 
   generateServices = lib.concatMapAttrs (
@@ -45,11 +46,29 @@ let
       doExecStopPost = rules != [ ];
       wrapCommand =
         command:
-        nglib.maybeChangeUserAndGroup service.user service.group service.supplementaryGroups (wrapEnv {
-          path = lib.optional (service.environment ? PATH) service.environment."PATH";
-          environment = lib.removeAttrs service.environment [ "PATH" ];
-          inherit command;
-        });
+        let
+          envCommand = wrapEnv {
+            inherit name;
+            path = lib.concatStringsSep ":" (
+              [ (pkgs.setgroups + "/bin") ] ++ lib.optional (service.environment ? PATH) service.environment."PATH");
+            environment = lib.removeAttrs service.environment [ "PATH" ];
+            command = lib.removePrefix "+" command;
+          };
+        in
+          if lib.hasPrefix "+" command then
+            envCommand
+          else
+            nglib.maybeChangeUserAndGroup {
+              inherit (pkgs) setgroups;
+              inherit (service) user group supplementaryGroups;
+              command = envCommand;
+            };
+      multiCommand = name: commands:
+        pkgs.writeShellScript name ''
+          set -eEuo pipefail
+
+          ${lib.concatStringsSep "\n" commands}
+        '';
 
       rules = (nglib.nottmpfiles.ensureSomethings service.ensureSomething) ++ service.tmpfiles;
       rulesFile = pkgs.writeText "${name}.tmpfiles" (nglib.nottmpfiles.generate rules);
@@ -62,10 +81,9 @@ let
         logfile = "/proc/1/fd/2";
         working-dir = service.workingDirectory;
 
-        command = [
-          "${lib.getExe' pkgs.systemdTmpfilesD "systemd-tmpfiles"} --create ${rulesFile}"
-        ]
-        ++ (lib.optional (service.execStartPre != null) (wrapCommand service.execStartPre));
+        command = multiCommand "${name}-pre-start-command" (
+          (lib.optional (rules != []) "${lib.getExe' pkgs.systemdTmpfilesD "systemd-tmpfiles"} --create ${rulesFile}")
+        ++ (lib.optional (service.execStartPre != null) (wrapCommand service.execStartPre)));
       };
       "${name}-start" = {
         inherit (service) type;
