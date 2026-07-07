@@ -52,7 +52,7 @@ let
             path = lib.concatStringsSep ":" (
               [ (pkgs.setgroups + "/bin") ] ++ lib.optional (service.environment ? PATH) service.environment."PATH");
             environment = lib.removeAttrs service.environment [ "PATH" ];
-            command = lib.removePrefix "+" command;
+            command = pkgs.writeShellScript "${name}-command" ("exec " + lib.removePrefix "+" command);
           };
         in
           if lib.hasPrefix "+" command then
@@ -80,6 +80,7 @@ let
 
         logfile = "/proc/1/fd/2";
         working-dir = service.workingDirectory;
+        ${nglib.optionalAttr' service.environmentFile "env-file"} = service.environmentFile;
 
         command = multiCommand "${name}-pre-start-command" (
           (lib.optional (rules != []) "${lib.getExe' pkgs.systemdTmpfilesD "systemd-tmpfiles"} --create ${rulesFile}")
@@ -91,6 +92,7 @@ let
 
         logfile = "/proc/1/fd/2";
         working-dir = service.workingDirectory;
+        ${nglib.optionalAttr' service.environmentFile "env-file"} = service.environmentFile;
 
         ${nglib.optionalAttr doExecStartPre "depends-on"} = "${name}-pre-start";
         ${nglib.optionalAttr doExecStopPost "chain-to"} = "${name}-stop-post";
@@ -103,6 +105,7 @@ let
 
         logfile = "/proc/1/fd/2";
         working-dir = service.workingDirectory;
+        ${nglib.optionalAttr' service.environmentFile "env-file"} = service.environmentFile;
 
         command = "${lib.getExe' pkgs.systemdTmpfilesD "systemd-tmpfiles"} --remove ${rulesFile}";
       };
