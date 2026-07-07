@@ -96,7 +96,8 @@ in
             ''
         }
 
-        ${lib.optionalString (cfg.customComponents != { }) "mkdir -p /var/home-assistant/custom_components"}
+        mkdir --parents /var/home-assistant/custom_components
+        find /var/home-assistant/custom_components -type l -delete
         ${lib.concatStringsSep "\n" (
           lib.mapAttrsToList (
             n: v: "ln --symbolic --force --no-dereference ${v} /var/home-assistant/custom_components/${n}"
