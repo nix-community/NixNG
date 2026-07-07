@@ -18,6 +18,7 @@ let
   runtimeConfig = "/run/cfg/nginx.cfg";
 
   inherit (nglib.generators) toNginx;
+  configFile = pkgs.writeText "nginx.cfg" (toNginx cfg.configuration);
 in
 {
   options = {
@@ -71,33 +72,28 @@ in
 
   config = lib.mkIf cfg.enable {
     init.services.nginx =
-      let
-        config = pkgs.writeText "nginx.cfg" (toNginx cfg.configuration);
-      in
       {
-        ensureSomething.create."cache" = {
-          type = "directory";
-          mode = "750";
-          owner = "${cfg.user}:${cfg.group}";
-          dst = "/var/cache/nginx/";
-          persistent = false;
-        };
-        script = pkgs.writeShellScript "nginx-run" (
+        tmpfiles = with nglib.nottmpfiles.dsl; [
+          (d "/var/cache/nginx/" "0755" "${cfg.user}" "${cfg.group}" _ _)
+        ];
+        execStartPre = lib.mkIf cfg.envsubst
+          (pkgs.writeShellScript "nginx-start-pre" ''
+            export PATH=${pkgs.envsubst}/bin:$PATH
+
+            mkdir -p /run/cfg
+            install -o nginx -g nginx -m 0440 /dev/null ${runtimeConfig}
+            envsubst < ${configFile} > ${runtimeConfig}
+          '');
+        execStart = pkgs.writeShellScript "nginx-start" (
           if cfg.envsubst then
             ''
-              export PATH=${pkgs.envsubst}/bin:$PATH
-
-              mkdir -p /run/cfg
-              install -o nginx -g nginx -m 0440 /dev/null ${runtimeConfig}
-              envsubst < ${config} > ${runtimeConfig}
-
               HOME=~nginx ${cfg.package}/bin/nginx \
                 -c ${runtimeConfig}
             ''
           else
             ''
               HOME=~nginx ${cfg.package}/bin/nginx \
-                -c ${config}
+                -c ${configFile}
             ''
         );
         enabled = true;
