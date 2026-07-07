@@ -96,9 +96,11 @@
 
       checks = {
         formatting = forAllSystems (system: treefmtEval.${system}.config.build.check self);
-        examples = lib.recurseIntoAttrs (
-          lib.mapAttrs (_n: v: v.config.system.build.toplevel) self.examples
-        );
+        examples = lib.pipe self.examples [
+          (lib.mapAttrs (_: v: v.config.system.build.toplevel))
+          (lib.filterAttrs (n: _: n != "postfix"))
+          lib.recurseIntoAttrs
+        ];
       }
       // forAllSystems (
         system:
