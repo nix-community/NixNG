@@ -1,12 +1,17 @@
-lib:
-let
-  inherit (lib) types;
-  this = {
+{ lib, inputs }:
+lib.fix (
+  nglib:
+  let
+    overlay = import ../overlay;
+    args = {
+      inherit lib nglib overlay;
+    };
+  in
+  {
     optionalAttr = pred: key: if pred then key else null;
     optionalAttr' = pred: key: if pred != null then key else null;
-    makeSystem = import ./make-system.nix { nglib = this; };
-    dag = import ./dag.nix { inherit lib; };
-    generators = import ./generators.nix { inherit lib; };
+    dag = import ./dag.nix args;
+    generators = import ./generators.nix args;
     mkDefaultRec = lib.mapAttrsRecursive (_: v: lib.mkDefault v);
     mkApply = fun: x: {
       original = x;
@@ -17,31 +22,31 @@ let
       description:
       lib.mkOption {
         inherit description;
-        type = types.attrsOf (
-          types.submodule {
+        type = lib.types.attrsOf (
+          lib.types.submodule {
             options = {
               data = lib.mkOption {
                 description = ''
                   Script fragment which to run.
                 '';
-                type = types.str;
+                type = lib.types.str;
               };
               before = lib.mkOption {
                 description = ''
                   Script before dependencies. See <literal>/lib/dag.nix</literal>.
                 '';
-                type = with types; listOf str;
+                type = lib.types.listOf lib.types.str;
               };
               after = lib.mkOption {
                 description = ''
                   Script after dependencies. See <literal>/lib/dag.nix</literal>
                 '';
-                type = with types; listOf str;
+                type = lib.types.listOf lib.types.str;
               };
             };
           }
         );
-        apply = this.dag.dagTopoSort;
+        apply = nglib.dag.dagTopoSort;
         default = { };
       };
 
@@ -62,11 +67,7 @@ let
         '') fragments
       )}
     '';
-
-    nottmpfiles = import ./nottmpfiles {
-      inherit lib;
-      nglib = this;
-    };
+    nottmpfiles = import ./nottmpfiles args;
 
     maybeChangeUserAndGroup =
       { setgroups, user,  group,  supplementaryGroups, command }:
@@ -101,6 +102,26 @@ let
           )
         )
       );
-  };
-in
-this
+
+    errorExperimentalNixOS =
+      config:
+      lib.throwIfNot (config.nixos.acceptRisks == "I accept the risks") ''
+        NixOS module compatibility is highly experimental, severely unfinished and most definitely has
+        functional and security bugs. Unless you know what you're doing and are willing to accept the risks
+        reconsider it's usage. To signify you are aware of these risks, set the option
+        `config.nixos.acceptRisks` to `"I accept the risks"`.
+
+        If you run into any of the aforementioned deficiencies please reach out on Matrix at
+        `#nixng:matrix.redalder.org`.
+      '';
+
+    inherit (import ./options.nix args)
+      mkUserOption
+      mkGroupOption
+      mkOptionsEqual
+      getOptionFromPath
+      ;
+
+    makeSystem = import ./make-system.nix { inherit nglib inputs; };
+  }
+)
