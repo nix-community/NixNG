@@ -36,7 +36,7 @@ let
               name: value: "--set ${lib.escapeShellArg name} ${lib.escapeShellArg value}"
             ) environment
           } \
-          --prefix PATH : "${path}"
+          ${lib.optionalString (path != "") ''--prefix PATH : "${path}"''}
       '';
 
   generateServices = lib.concatMapAttrs (
@@ -50,7 +50,7 @@ let
           envCommand = wrapEnv {
             inherit name;
             path = lib.concatStringsSep ":" (
-              [ (pkgs.setgroups + "/bin") ] ++ lib.optional (service.environment ? PATH) service.environment."PATH");
+              lib.optional ((service.environment.PATH or []) != []) service.environment."PATH");
             environment = lib.removeAttrs service.environment [ "PATH" ];
             command = pkgs.writeShellScript "${name}-command" ("exec " + lib.removePrefix "+" command);
           };
