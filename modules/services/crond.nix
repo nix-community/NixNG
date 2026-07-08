@@ -97,15 +97,18 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    system.activation."crond" = nglib.dag.dagEntryAnywhere ''
-      export PATH=${pkgs.busybox}/bin
-
-      mkdir -p /etc /var/run /var/spool/cron /var/cron
-      ln -s ${cfg.crontabs}/ /etc/cron.d
-    '';
+    environment.etc."cron.d" = {
+      source = cfg.crontabs;
+      mode = "symlink";
+    };
 
     init.services.crond = {
-      script = ''
+      tmpfiles = with nglib.nottmpfiles.dsl; [
+        (d "/var/spool/cron" "0755" "root" "root" _ _)
+        (d "/var/cron" "0755" "root" "root" _ _)
+      ];
+
+      execStart = pkgs.writeShellScript "crond-start" ''
         ${cfg.package}/bin/crond -n -x ext,sch,misc
       '';
       enabled = true;

@@ -155,21 +155,18 @@ in
       };
     };
 
+    environment.etc."dovecot/modules" = {
+      source = modulesDir;
+      mode = "symlink";
+    };
+
+    environment.etc."dovecot/dovecot.conf" = {
+      source = cfg.configFile;
+      mode = "symlink";
+    };
+
     init.services.dovecot = {
-      ensureSomething.link."modules" = lib.mkDefault {
-        src = modulesDir;
-        dst = "/etc/dovecot/modules";
-        persistent = false;
-      };
-
-      ensureSomething.link."config" = lib.mkDefault {
-        src = cfg.configFile;
-        dst = "/etc/dovecot/dovecot.conf";
-        persistent = false;
-      };
-
       script = pkgs.writeShellScript "dovecot-run" ''
-        echo ${cfg.package}/sbin/dovecot -F
         ${cfg.package}/sbin/dovecot -F
       '';
       enabled = true;
