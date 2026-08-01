@@ -71,33 +71,33 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    init.services.nginx =
-      {
-        tmpfiles = with nglib.nottmpfiles.dsl; [
-          (d "/var/cache/nginx/" "0755" "${cfg.user}" "${cfg.group}" _ _)
-        ];
-        execStartPre = lib.mkIf cfg.envsubst
-          (pkgs.writeShellScript "nginx-start-pre" ''
-            export PATH=${pkgs.envsubst}/bin:$PATH
+    init.services.nginx = {
+      tmpfiles = with nglib.nottmpfiles.dsl; [
+        (d "/var/cache/nginx/" "0755" "${cfg.user}" "${cfg.group}" _ _)
+      ];
+      execStartPre = lib.mkIf cfg.envsubst (
+        pkgs.writeShellScript "nginx-start-pre" ''
+          export PATH=${pkgs.envsubst}/bin:$PATH
 
-            mkdir -p /run/cfg
-            install -o nginx -g nginx -m 0440 /dev/null ${runtimeConfig}
-            envsubst < ${configFile} > ${runtimeConfig}
-          '');
-        execStart = pkgs.writeShellScript "nginx-start" (
-          if cfg.envsubst then
-            ''
-              HOME=~nginx ${cfg.package}/bin/nginx \
-                -c ${runtimeConfig}
-            ''
-          else
-            ''
-              HOME=~nginx ${cfg.package}/bin/nginx \
-                -c ${configFile}
-            ''
-        );
-        enabled = true;
-      };
+          mkdir -p /run/cfg
+          install -o nginx -g nginx -m 0440 /dev/null ${runtimeConfig}
+          envsubst < ${configFile} > ${runtimeConfig}
+        ''
+      );
+      execStart = pkgs.writeShellScript "nginx-start" (
+        if cfg.envsubst then
+          ''
+            HOME=~nginx ${cfg.package}/bin/nginx \
+              -c ${runtimeConfig}
+          ''
+        else
+          ''
+            HOME=~nginx ${cfg.package}/bin/nginx \
+              -c ${configFile}
+          ''
+      );
+      enabled = true;
+    };
 
     environment.systemPackages = [ cfg.package ];
 
