@@ -140,6 +140,19 @@ in
     services.postfix = {
       enable = lib.mkEnableOption "Enable Postfix MTA.";
 
+      hashMaps = lib.mkOption {
+        description = "";
+        type = lib.types.attrsOf (
+          lib.types.attrsOf (
+            lib.types.oneOf [
+              lib.types.str
+              lib.types.int
+            ]
+          )
+        );
+        default = { };
+      };
+
       package = lib.mkOption {
         description = "Postfix package.";
         type = lib.types.package;
@@ -162,6 +175,12 @@ in
         description = "Postfix privilege drop group.";
         type = lib.types.str;
         default = "postdrop";
+      };
+
+      stateDirectory = lib.mkOption {
+        description = "Postfix state directory.";
+        type = lib.types.path;
+        default = "/var/lib/postfix";
       };
 
       mainConfig = lib.mkOption {
@@ -235,8 +254,8 @@ in
         default_privs = lib.mkDefault "nobody";
 
         # NixOS specific locations
-        data_directory = lib.mkDefault "/var/lib/postfix/data";
-        queue_directory = lib.mkDefault "/var/lib/postfix/queue";
+        data_directory = lib.mkDefault "${cfg.stateDirectory}/data";
+        queue_directory = lib.mkDefault "${cfg.stateDirectory}/queue";
 
         # Default location of everything in package
         meta_directory = "${cfg.package}/etc/postfix";
@@ -413,42 +432,40 @@ in
       };
     };
 
-    init.services.postfix =
-      let
-        mainCnf = pkgs.writeText "main.cf" (toMainCnf cfg.mainConfig);
-        masterCnf = pkgs.writeText "master.cf" cfg.masterConfig;
-        configDir = pkgs.runCommand "postfix-config-dir" { } ''
-          mkdir -p $out
-          ln -s ${mainCnf} $out/main.cf
-          ln -s ${masterCnf} $out/master.cf
-        '';
-      in
-      {
-        ensureSomething.create."data" = lib.mkDefault {
-          type = "directory";
-          mode = "750";
-          owner = "${cfg.user}:${cfg.group}";
-          dst = cfg.mainConfig.data_directory;
-          persistent = true;
-        };
+    environment.etc."postfix/main.cf".source = pkgs.writeText "main.cf" (toMainCnf cfg.mainConfig);
+    environment.etc."postfix/master.cf".source = pkgs.writeText "master.cf" cfg.masterConfig;
+    environment.etc."postfix/postfix-files".source = "${pkgs.postfix}/etc/postfix/postfix-files";
 
-        ensureSomething.create."queue" = lib.mkDefault {
-          type = "directory";
-          mode = "750";
-          owner = "${cfg.user}:root";
-          dst = cfg.mainConfig.queue_directory;
-          persistent = false;
-        };
+    init.services.postfix = {
+      tmpfiles = with nglib.nottmpfiles.dsl; [
+        (d cfg.stateDirectory "0755" "root" "root" _ _)
+        (d cfg.mainConfig.data_directory "0750" cfg.user cfg.group _ _)
+        (d cfg.mainConfig.queue_directory "0750" cfg.user cfg.group _ _)
+        (d "${cfg.stateDirectory}/conf/hash_maps" "0755" "root" "root" _ _)
+      ];
 
-        script = pkgs.writeShellScript "postfix-run" ''
-          echo asd
+      script = pkgs.writeShellScript "postfix-run" ''
+         ${lib.pipe cfg.hashMaps [
+           (lib.mapAttrsToList (
+             n: v: ''
+               _map="${cfg.stateDirectory}/conf/hash_maps/${n}"
+               cat > "$_map" <<EOF
+               ${lib.pipe v [
+                 (lib.mapAttrsToList (n': v': "${n'} ${v'}"))
+                 (lib.concatStringsSep "\n")
+               ]}
+               EOF
+               ${lib.getExe' cfg.package "postmap"} -c ${cfg.stateDirectory}/conf "$_map"
+             ''
+           ))
+           (lib.concatStringsSep "\n")
+         ]}
 
-          mkdir -p /etc/postfix/
-          ${cfg.package}/bin/postfix -c ${configDir} set-permissions
-          ${cfg.package}/libexec/postfix/master -c ${configDir}
-        '';
-        enabled = true;
-      };
+        ${cfg.package}/bin/postfix -c /etc/postfix set-permissions
+         exec ${cfg.package}/libexec/postfix/master -c /etc/postfix
+      '';
+      enabled = true;
+    };
     assertions = [
       {
         assertion = createDefaultUsersGroups;
