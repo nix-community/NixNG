@@ -50,20 +50,22 @@ let
           envCommand = wrapEnv {
             inherit name;
             path = lib.concatStringsSep ":" (
-              lib.optional ((service.environment.PATH or []) != []) service.environment."PATH");
+              lib.optional ((service.environment.PATH or [ ]) != [ ]) service.environment."PATH"
+            );
             environment = lib.removeAttrs service.environment [ "PATH" ];
             command = pkgs.writeShellScript "${name}-command" ("exec " + lib.removePrefix "+" command);
           };
         in
-          if lib.hasPrefix "+" command then
-            envCommand
-          else
-            nglib.maybeChangeUserAndGroup {
-              inherit (pkgs) setgroups;
-              inherit (service) user group supplementaryGroups;
-              command = envCommand;
-            };
-      multiCommand = name: commands:
+        if lib.hasPrefix "+" command then
+          envCommand
+        else
+          nglib.maybeChangeUserAndGroup {
+            inherit (pkgs) setgroups;
+            inherit (service) user group supplementaryGroups;
+            command = envCommand;
+          };
+      multiCommand =
+        name: commands:
         pkgs.writeShellScript name ''
           set -eEuo pipefail
 
@@ -83,8 +85,11 @@ let
         ${nglib.optionalAttr' service.environmentFile "env-file"} = service.environmentFile;
 
         command = multiCommand "${name}-pre-start-command" (
-          (lib.optional (rules != []) "${lib.getExe' pkgs.systemdTmpfilesD "systemd-tmpfiles"} --create ${rulesFile}")
-        ++ (lib.optional (service.execStartPre != null) (wrapCommand service.execStartPre)));
+          (lib.optional (
+            rules != [ ]
+          ) "${lib.getExe' pkgs.systemdTmpfilesD "systemd-tmpfiles"} --create ${rulesFile}")
+          ++ (lib.optional (service.execStartPre != null) (wrapCommand service.execStartPre))
+        );
       };
       "${name}-start" = {
         inherit (service) type;

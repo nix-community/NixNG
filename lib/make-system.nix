@@ -19,9 +19,9 @@
   specialArgs ? { },
 }:
 let
-  inherit (nixpkgs.lib) evalModules filter concatStringsSep;
+  inherit (nixpkgs) lib;
 
-  evaledModules = evalModules {
+  evaledModules = lib.evalModules {
     specialArgs = specialArgs // {
       inherit nglib;
     };
@@ -30,29 +30,29 @@ let
       defaultModules
       ++ extraModules
       ++ [
-        (
-          { ... }:
-          {
-            networking.hostName = name;
-          }
-        )
+        "${nixpkgs}/nixos/modules/misc/nixpkgs.nix"
+        {
+          disabledModules = [ "${nixpkgs}/nixos/modules/misc/assertions.nix" ];
+          nixpkgs = {
+            inherit system;
+            overlays = [ (import ../overlay) ];
+          };
+          _module.args = {
+            inherit system;
+          };
+          networking.hostName = name;
+          system.name = name;
+        }
         config
-        (
-          { ... }:
-          {
-            nixpkgs.pkgs = nixpkgs.legacyPackages.${system};
-            _module.args = {
-              inherit system;
-            };
-          }
-        )
       ];
   };
 
-  failedAssertions = map (x: x.message) (filter (x: !x.assertion) evaledModules.config.assertions);
+  failedAssertions = lib.map (x: x.message) (
+    lib.filter (x: !x.assertion) evaledModules.config.assertions
+  );
   configValid =
     if failedAssertions != [ ] then
-      throw "\nFailed assertions:\n${concatStringsSep "\n" (map (x: "- ${x}") failedAssertions)}"
+      throw "\nFailed assertions:\n${lib.concatStringsSep "\n" (map (x: "- ${x}") failedAssertions)}"
     else
       evaledModules.config;
 in

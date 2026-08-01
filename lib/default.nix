@@ -69,7 +69,13 @@ let
     };
 
     maybeChangeUserAndGroup =
-      { setgroups, user,  group,  supplementaryGroups, command }:
+      {
+        setgroups,
+        user,
+        group,
+        supplementaryGroups,
+        command,
+      }:
       if user != null then
         let
           group' = if group != null then "${group}" else ":";
